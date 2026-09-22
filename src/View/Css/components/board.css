@@ -1,0 +1,113 @@
+/*
+ * The board: one column per status, each holding cards.
+ *
+ * The columns scroll sideways rather than shrinking below a width where a card
+ * stops being readable. Five columns on a laptop screen is already tight, and a
+ * board whose cards wrap to three lines each is one nobody scans.
+ */
+.board {
+    display: grid;
+    grid-auto-columns: minmax(230px, 1fr);
+    grid-auto-flow: column;
+    gap: 14px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+}
+
+.board__column {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius);
+    background: rgba(255, 255, 255, 0.55);
+}
+
+.board__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--ct-border);
+}
+
+.board__count {
+    color: var(--ct-muted);
+    font-size: 0.82rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.board__cards {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+}
+
+.board__empty {
+    margin: 0;
+    padding: 10px 0;
+    color: var(--ct-border);
+    text-align: center;
+}
+
+.ticket-card {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 12px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-sm);
+    background: var(--ct-surface);
+    box-shadow: var(--ct-shadow);
+}
+
+.ticket-card__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.ticket-card__title {
+    color: var(--ct-text);
+    font-size: 0.93rem;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.ticket-card__epic {
+    align-self: flex-start;
+    padding: 1px 8px;
+    border-radius: 6px;
+    background: var(--ct-primary-soft);
+    color: var(--ct-primary);
+    font-size: 0.74rem;
+}
+
+.ticket-card__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.82rem;
+}
+
+/*
+ * The status select on a card. Small and quiet: it is on every card, and a row
+ * of full-sized dropdowns would be the loudest thing on the board.
+ */
+.move {
+    display: flex;
+    gap: 6px;
+}
+
+.move__select {
+    width: 100%;
+    padding: 4px 8px;
+    border-radius: 8px;
+    color: var(--ct-muted);
+    font-size: 0.78rem;
+}

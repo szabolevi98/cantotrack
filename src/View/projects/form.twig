@@ -1,0 +1,62 @@
+{% extends 'layout.twig' %}
+
+{% set editing = project is not null and project.id is defined %}
+
+{% block title %}{{ editing ? 'Project settings' : 'New project' }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ editing ? 'Project settings' : 'New project' }}{% endblock %}
+
+{% block content %}
+    {% if error %}<p class="flash flash--danger">{{ error }}</p>{% endif %}
+
+    <section class="card card--narrow">
+        <form method="post" action="{{ editing ? url('/projects/' ~ project.id) : url('/projects/create') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+
+            <label for="code">Code</label>
+            {% if editing %}
+                {# Not editable: it is printed on every ticket this project ever
+                   had, and in everything anyone wrote about them. #}
+                <input id="code" class="field" type="text" value="{{ project.code }}" disabled>
+                <p class="hint">The code cannot be changed — every ticket in the project carries it.</p>
+            {% else %}
+                <input id="code" class="field" type="text" name="code" value="{{ project.code|default('') }}"
+                       maxlength="10" placeholder="CT" required autofocus>
+                <p class="hint">2 to 10 letters and digits. Tickets are named after it: CT-14.</p>
+            {% endif %}
+
+            <label for="name">Name</label>
+            <input id="name" class="field" type="text" name="name" value="{{ project.name|default('') }}"
+                   maxlength="160" required>
+
+            <label for="description">Description</label>
+            <textarea id="description" class="field" name="description" rows="4">{{ project.description|default('') }}</textarea>
+
+            {% if editing %}
+                <label class="check">
+                    <input type="checkbox" name="is_archived" value="1"{{ project.is_archived ? ' checked' : '' }}>
+                    Archived — hidden from the lists, and takes no new tickets
+                </label>
+            {% endif %}
+
+            <div class="form__actions">
+                <button class="button button--primary" type="submit">{{ editing ? 'Save' : 'Create project' }}</button>
+                <a class="button" href="{{ editing ? url('/projects/' ~ project.id) : url('/projects') }}">Cancel</a>
+            </div>
+        </form>
+    </section>
+
+    {% if editing %}
+        <section class="card card--narrow">
+            <h2 class="card__title">Delete this project</h2>
+            <p class="card__body">
+                This removes the project, its epics, its tickets and every hour logged
+                against them. Archiving keeps all of that and takes it out of the way.
+            </p>
+            <form method="post" action="{{ url('/projects/' ~ project.id ~ '/delete') }}"
+                  onsubmit="return confirm('Delete {{ project.code }} and everything in it?')">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <button class="button button--danger" type="submit">Delete {{ project.code }}</button>
+            </form>
+        </section>
+    {% endif %}
+{% endblock %}

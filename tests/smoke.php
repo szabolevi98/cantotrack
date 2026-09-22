@@ -152,8 +152,110 @@ if ($email === null || $password === null) {
 
     $dashboard = request($baseUrl . '/', [], $jar);
     check('and lands on the dashboard', $dashboard['status'] === 200, 'status ' . $dashboard['status']);
-    check('which greets the signed-in person',
-        str_contains($dashboard['body'], 'Dashboard') && str_contains($dashboard['body'], $email));
+    // The signed-in shell rather than the greeting itself: the heading says
+    // hello by first name, which this script does not know.
+    check('which is the signed-in shell',
+        str_contains($dashboard['body'], '<title>Dashboard')
+        && str_contains($dashboard['body'], 'Sign out')
+        && str_contains($dashboard['body'], 'Timesheet'));
+
+    // ---------------------------------------------------------------------
+    // The work: a project, an epic in it, a ticket in the epic, and the moves
+    // that follow. Done over HTTP as well, because what is being checked is
+    // that the forms, the routes and the redirects agree with each other.
+    // ---------------------------------------------------------------------
+    $code = 'T' . random_int(100, 999);
+
+    $projectForm = request($baseUrl . '/projects/create', [], $jar);
+    preg_match('/name="_token" value="([^"]+)"/', $projectForm['body'], $m);
+    $token = $m[1] ?? $token;
+
+    $madeProject = request($baseUrl . '/projects/create', [
+        '_token' => $token,
+        'code' => $code,
+        'name' => 'Smoke test project',
+        'description' => 'Created by tests/smoke.php.',
+    ], $jar);
+
+    check('a project can be created',
+        $madeProject['status'] === 302, 'status ' . $madeProject['status']);
+
+    preg_match('#/projects/(\d+)#', $madeProject['headers'], $m);
+    $projectId = (int) ($m[1] ?? 0);
+    check('and the redirect points at it', $projectId > 0);
+
+    // A code that is already taken has to be refused, or two projects end up
+    // sharing the prefix their tickets are named after.
+    $duplicate = request($baseUrl . '/projects/create', [
+        '_token' => $token,
+        'code' => $code,
+        'name' => 'The same code again',
+    ], $jar);
+    check('a code that is taken is refused',
+        str_contains($duplicate['body'], 'already a project with that code'));
+
+    $madeEpic = request($baseUrl . '/projects/' . $projectId . '/epics/create', [
+        '_token' => $token,
+        'title' => 'Smoke test epic',
+    ], $jar);
+    check('an epic can be created', $madeEpic['status'] === 302, 'status ' . $madeEpic['status']);
+
+    preg_match('#/epics/(\d+)#', $madeEpic['headers'], $m);
+    $epicId = (int) ($m[1] ?? 0);
+
+    $madeTicket = request($baseUrl . '/tickets/create', [
+        '_token' => $token,
+        'project_id' => $projectId,
+        'epic_id' => $epicId,
+        'title' => 'Smoke test ticket',
+        'description' => 'Created by tests/smoke.php.',
+        'status' => 'todo',
+        'priority' => 'high',
+        'estimate' => '1h 30m',
+    ], $jar);
+    check('a ticket can be created', $madeTicket['status'] === 302, 'status ' . $madeTicket['status']);
+
+    preg_match('#/tickets/(\d+)#', $madeTicket['headers'], $m);
+    $ticketId = (int) ($m[1] ?? 0);
+
+    $ticketPage = request($baseUrl . '/tickets/' . $ticketId, [], $jar);
+    check('the ticket page carries its name and project',
+        str_contains($ticketPage['body'], $code . '-1') && str_contains($ticketPage['body'], 'Smoke test ticket'),
+        'the first ticket of a project should be ' . $code . '-1');
+    check('and the estimate was read as an hour and a half',
+        str_contains($ticketPage['body'], '1h 30m'));
+
+    // An estimate nobody can parse is refused rather than quietly dropped.
+    $badEstimate = request($baseUrl . '/tickets/create', [
+        '_token' => $token,
+        'project_id' => $projectId,
+        'title' => 'Unreadable estimate',
+        'estimate' => 'three apples',
+    ], $jar);
+    check('an estimate that cannot be read is refused',
+        str_contains($badEstimate['body'], 'should read like'));
+
+    $moved = request($baseUrl . '/tickets/' . $ticketId . '/status', [
+        '_token' => $token,
+        'status' => 'done',
+        'back' => '/projects/' . $projectId,
+    ], $jar);
+    check('a ticket can be moved along the board', $moved['status'] === 302);
+    check('and the move goes back where it was clicked',
+        str_contains($moved['headers'], '/projects/' . $projectId));
+
+    $board = request($baseUrl . '/projects/' . $projectId, [], $jar);
+    check('the board shows the ticket in its new column',
+        str_contains($board['body'], 'Smoke test ticket') && str_contains($board['body'], 'Smoke test epic'));
+
+    $list = request($baseUrl . '/tickets?q=' . $code . '-1', [], $jar);
+    check('the ticket can be found by its name', str_contains($list['body'], 'Smoke test ticket'));
+
+    // Tidy up after itself: the project takes the epic and the ticket with it.
+    $removed = request($baseUrl . '/projects/' . $projectId . '/delete', ['_token' => $token], $jar);
+    check('the project can be deleted again', $removed['status'] === 302);
+    check('and its ticket is gone with it',
+        request($baseUrl . '/tickets/' . $ticketId, [], $jar)['status'] === 404);
 
     $out = request($baseUrl . '/logout', [], $jar);
     check('signing out redirects to the login page',

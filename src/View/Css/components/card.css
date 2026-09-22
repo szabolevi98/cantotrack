@@ -21,6 +21,21 @@
     font-size: 1.05rem;
 }
 
+/* A title with a link opposite it, on a card whose body is a flush table. The
+   padding lives here rather than on the card, which has none in that variant. */
+.card__head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 16px 16px 12px;
+}
+
+.card__head .card__title {
+    margin-bottom: 0;
+}
+
 .card__body {
     margin: 0;
     color: var(--ct-muted);

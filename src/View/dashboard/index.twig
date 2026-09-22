@@ -1,17 +1,71 @@
 {% extends 'layout.twig' %}
+{% import 'common/macros.twig' as ui %}
 
 {% block title %}Dashboard — {{ app_name }}{% endblock %}
-{% block heading %}Dashboard{% endblock %}
-{% block subheading %}<p class="content__sub">Signed in as {{ current_user.email }}.</p>{% endblock %}
+{% block heading %}Hello, {{ current_user.name|split(' ')|first }}{% endblock %}
+{% block subheading %}<p class="content__sub">What is on your plate today.</p>{% endblock %}
+
+{% block actions %}
+    <a class="button button--primary" href="{{ url('/tickets/create') }}">New ticket</a>
+{% endblock %}
 
 {% block content %}
-    <section class="card">
-        <h2 class="card__title">Nothing here yet</h2>
-        <p class="card__body">
-            The way through works: the session, the layout, the stylesheet and the
-            database are all in place. What belongs on this page — the tickets
-            assigned to you and the hours you logged this week — arrives with the
-            tables that hold them.
-        </p>
+    <div class="stats">
+        <div class="stat">
+            <div class="stat__label">Assigned to you</div>
+            <div class="stat__value">{{ mine|length }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat__label">In progress</div>
+            <div class="stat__value">{{ in_progress }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat__label">Projects</div>
+            <div class="stat__value">{{ projects|length }}</div>
+        </div>
+    </div>
+
+    <section class="card card--flush">
+        <header class="card__head">
+            <h2 class="card__title">Your open tickets</h2>
+            <a href="{{ url('/tickets?assignee=' ~ current_user.id ~ '&open=1') }}">See all</a>
+        </header>
+
+        {% if mine is empty %}
+            <p class="card__empty">
+                Nothing is assigned to you.
+                {% if projects is empty %}
+                    There are no projects yet either.
+                {% else %}
+                    Pick something up from a <a href="{{ url('/projects') }}">project board</a>.
+                {% endif %}
+            </p>
+        {% else %}
+            <table class="table">
+                <thead>
+                <tr>
+                    <th class="table__key">Ticket</th>
+                    <th>Title</th>
+                    <th>Status</th>
+                    <th class="table__number">Est.</th>
+                    <th class="table__number">Logged</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for ticket in mine %}
+                    <tr>
+                        <td>{{ ui.ticket_key(ticket) }}</td>
+                        <td>
+                            <a href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a>
+                            {{ ui.priority(ticket.priority) }}
+                        </td>
+                        <td>{{ ui.status(ticket.status) }}</td>
+                        <td class="table__number">{{ ticket.estimate_minutes ? ticket.estimate_minutes|duration : '—' }}</td>
+                        <td class="table__number">{{ ticket.logged_minutes > 0 ? ticket.logged_minutes|duration : '—' }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
     </section>
 {% endblock %}

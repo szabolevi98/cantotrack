@@ -1,0 +1,126 @@
+/*
+ * The small coloured labels: a ticket's status, its priority, an archived
+ * project. Dark text on a tint rather than white on a solid colour — at this
+ * size, and this many to a page, solid pills turn a list into a set of traffic
+ * lights.
+ */
+.badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border: 1px solid var(--ct-border);
+    border-radius: 999px;
+    background: var(--ct-bg);
+    color: var(--ct-muted);
+    font-size: 0.76rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* The board's columns, from waiting to finished. Only the two that mean
+   something at a glance — in progress and done — carry the brand colours; the
+   rest stay quiet so those two stand out. */
+.badge--backlog {
+    color: var(--ct-muted);
+}
+
+.badge--todo {
+    border-color: var(--ct-border);
+    background: #eef1f7;
+    color: #44506a;
+}
+
+.badge--in-progress {
+    border-color: var(--ct-primary-border);
+    background: var(--ct-primary-soft);
+    color: var(--ct-primary);
+}
+
+.badge--review {
+    border-color: rgba(164, 112, 29, 0.3);
+    background: var(--ct-warning-soft);
+    color: var(--ct-warning);
+}
+
+.badge--done {
+    border-color: rgba(46, 139, 100, 0.3);
+    background: var(--ct-success-soft);
+    color: var(--ct-success);
+}
+
+.badge--muted {
+    background: var(--ct-bg);
+}
+
+/* Priorities. Normal is never drawn — see the macro. */
+.badge--priority {
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    font-size: 0.68rem;
+}
+
+.badge--low {
+    color: var(--ct-muted);
+}
+
+.badge--high {
+    border-color: rgba(164, 112, 29, 0.35);
+    background: var(--ct-warning-soft);
+    color: var(--ct-warning);
+}
+
+.badge--urgent {
+    border-color: rgba(193, 74, 95, 0.35);
+    background: var(--ct-danger-soft);
+    color: var(--ct-danger);
+}
+
+/* How far along something is. The only chart in the application, and it is two
+   nested boxes. */
+.bar {
+    display: block;
+    width: 100%;
+    height: 6px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--ct-border);
+}
+
+.bar__fill {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--ct-primary);
+}
+
+/* A person, wherever one is named. */
+.person {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    white-space: nowrap;
+}
+
+.person__mark {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--ct-primary-soft);
+    color: var(--ct-primary);
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+
+.tag {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 6px;
+    background: var(--ct-bg);
+    color: var(--ct-muted);
+    font-size: 0.76rem;
+}
+
+.muted {
+    color: var(--ct-muted);
+}

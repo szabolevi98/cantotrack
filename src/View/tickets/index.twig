@@ -1,0 +1,89 @@
+{% extends 'layout.twig' %}
+{% import 'common/macros.twig' as ui %}
+
+{% block title %}Tickets — {{ app_name }}{% endblock %}
+{% block heading %}Tickets{% endblock %}
+
+{% block actions %}
+    <a class="button button--primary" href="{{ url('/tickets/create') }}">New ticket</a>
+{% endblock %}
+
+{% block content %}
+    {#
+        The filters are a GET form, so a filtered list is a URL: it can be
+        bookmarked, sent to somebody and reloaded without a warning about
+        resubmitting anything.
+    #}
+    <form class="filters card" method="get" action="{{ url('/tickets') }}">
+        <input class="field field--inline filters__search" type="search" name="q"
+               value="{{ filters.q }}" placeholder="Search title, text or CT-14" aria-label="Search tickets">
+
+        <select class="field field--inline" name="project" aria-label="Project">
+            <option value="">Every project</option>
+            {% for project in projects %}
+                <option value="{{ project.id }}"{{ filters.project_id == project.id ? ' selected' : '' }}>
+                    {{ project.code }} — {{ project.name }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <select class="field field--inline" name="status" aria-label="Status">
+            <option value="">Any status</option>
+            {% for status in statuses %}
+                <option value="{{ status }}"{{ filters.status == status ? ' selected' : '' }}>
+                    {{ { backlog: 'Backlog', todo: 'To do', in_progress: 'In progress', review: 'Review', done: 'Done' }[status] }}
+                </option>
+            {% endfor %}
+        </select>
+
+        <select class="field field--inline" name="assignee" aria-label="Assignee">
+            <option value="">Anyone</option>
+            {% for person in people %}
+                <option value="{{ person.id }}"{{ filters.assignee_id == person.id ? ' selected' : '' }}>{{ person.name }}</option>
+            {% endfor %}
+        </select>
+
+        <label class="check check--inline">
+            <input type="checkbox" name="open" value="1"{{ filters.open_only ? ' checked' : '' }}>
+            Open only
+        </label>
+
+        <button class="button" type="submit">Filter</button>
+        <a class="button" href="{{ url('/tickets') }}">Clear</a>
+    </form>
+
+    <section class="card card--flush">
+        {% if tickets is empty %}
+            <p class="card__empty">Nothing matches that.</p>
+        {% else %}
+            <table class="table">
+                <thead>
+                <tr>
+                    <th class="table__key">Ticket</th>
+                    <th>Title</th>
+                    <th>Status</th>
+                    <th>Assignee</th>
+                    <th class="table__number">Est.</th>
+                    <th class="table__number">Logged</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for ticket in tickets %}
+                    <tr>
+                        <td>{{ ui.ticket_key(ticket) }}</td>
+                        <td>
+                            <a href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a>
+                            {{ ui.priority(ticket.priority) }}
+                            {% if ticket.epic_title %}<span class="tag">{{ ticket.epic_title }}</span>{% endif %}
+                        </td>
+                        <td>{{ ui.status(ticket.status) }}</td>
+                        <td>{{ ui.person(ticket.assignee_name) }}</td>
+                        <td class="table__number">{{ ticket.estimate_minutes ? ticket.estimate_minutes|duration : '—' }}</td>
+                        <td class="table__number">{{ ticket.logged_minutes > 0 ? ticket.logged_minutes|duration : '—' }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </section>
+{% endblock %}

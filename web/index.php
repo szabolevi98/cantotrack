@@ -8,7 +8,10 @@
  */
 
 use CantoTrack\Controller\DashboardController;
+use CantoTrack\Controller\EpicController;
 use CantoTrack\Controller\LoginController;
+use CantoTrack\Controller\ProjectController;
+use CantoTrack\Controller\TicketController;
 use CantoTrack\Core\Config;
 use CantoTrack\Core\Csrf;
 use CantoTrack\Core\Logger;
@@ -82,5 +85,38 @@ $router->get('/logout', static fn() => (new LoginController())->logout());
 // The application
 // ---------------------------------------------------------------------------
 $router->get('/', static fn() => (new DashboardController())->index());
+
+// ---------------------------------------------------------------------------
+// Projects and the epics inside them
+//
+// The create routes come before the {id} ones: "create" would otherwise match
+// as an id, and the form would answer "there is no such project".
+// ---------------------------------------------------------------------------
+$router->get('/projects', static fn() => (new ProjectController())->index());
+$router->get('/projects/create', static fn() => (new ProjectController())->createForm());
+$router->post('/projects/create', static fn() => (new ProjectController())->create());
+$router->get('/projects/{id}', static fn($id) => (new ProjectController())->show((int) $id));
+$router->get('/projects/{id}/edit', static fn($id) => (new ProjectController())->editForm((int) $id));
+$router->post('/projects/{id}', static fn($id) => (new ProjectController())->update((int) $id));
+$router->post('/projects/{id}/delete', static fn($id) => (new ProjectController())->delete((int) $id));
+
+$router->get('/projects/{id}/epics/create', static fn($id) => (new EpicController())->createForm((int) $id));
+$router->post('/projects/{id}/epics/create', static fn($id) => (new EpicController())->create((int) $id));
+$router->get('/epics/{id}', static fn($id) => (new EpicController())->show((int) $id));
+$router->get('/epics/{id}/edit', static fn($id) => (new EpicController())->editForm((int) $id));
+$router->post('/epics/{id}', static fn($id) => (new EpicController())->update((int) $id));
+$router->post('/epics/{id}/delete', static fn($id) => (new EpicController())->delete((int) $id));
+
+// ---------------------------------------------------------------------------
+// Tickets
+// ---------------------------------------------------------------------------
+$router->get('/tickets', static fn() => (new TicketController())->index());
+$router->get('/tickets/create', static fn() => (new TicketController())->createForm());
+$router->post('/tickets/create', static fn() => (new TicketController())->create());
+$router->get('/tickets/{id}', static fn($id) => (new TicketController())->show((int) $id));
+$router->get('/tickets/{id}/edit', static fn($id) => (new TicketController())->editForm((int) $id));
+$router->post('/tickets/{id}', static fn($id) => (new TicketController())->update((int) $id));
+$router->post('/tickets/{id}/status', static fn($id) => (new TicketController())->changeStatus((int) $id));
+$router->post('/tickets/{id}/delete', static fn($id) => (new TicketController())->delete((int) $id));
 
 $router->dispatch($_SERVER['REQUEST_METHOD'] ?? 'GET', $_SERVER['REQUEST_URI'] ?? '/');

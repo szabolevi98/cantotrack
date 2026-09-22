@@ -1,0 +1,103 @@
+/*
+ * The project cards on the index, and the epic strip on a project's page.
+ */
+.project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: var(--ct-gap);
+}
+
+.project {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 18px 20px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius);
+    background: var(--ct-surface);
+    box-shadow: var(--ct-shadow);
+    color: var(--ct-text);
+    transition: border-color 0.12s ease, transform 0.12s ease;
+}
+
+.project:hover {
+    border-color: var(--ct-primary-border);
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+/* An archived project stays legible but stops competing with the live ones. */
+.project--archived {
+    background: var(--ct-bg);
+    box-shadow: none;
+}
+
+.project__code {
+    align-self: flex-start;
+    padding: 2px 9px;
+    border-radius: 7px;
+    background: var(--ct-primary-soft);
+    color: var(--ct-primary);
+    font-family: var(--ct-mono);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.project__name {
+    font-size: 1.05rem;
+}
+
+.project__note {
+    margin: 0;
+    color: var(--ct-muted);
+    font-size: 0.88rem;
+}
+
+.project__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 6px;
+    color: var(--ct-muted);
+    font-size: 0.84rem;
+}
+
+.project__meta .bar {
+    flex-basis: 100%;
+}
+
+.epics {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 12px;
+}
+
+.epic {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 14px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-sm);
+    background: var(--ct-surface);
+    color: var(--ct-text);
+}
+
+.epic:hover {
+    border-color: var(--ct-primary-border);
+    background: var(--ct-primary-soft);
+    text-decoration: none;
+}
+
+.epic--done {
+    background: var(--ct-bg);
+    color: var(--ct-muted);
+}
+
+.epic__meta {
+    color: var(--ct-muted);
+    font-size: 0.82rem;
+}

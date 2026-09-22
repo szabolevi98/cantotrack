@@ -1,0 +1,63 @@
+{#
+    The pieces that appear on more than one page: a ticket's name, its status,
+    its priority and who it belongs to.
+
+    They are macros rather than copied markup because a status pill that reads
+    "In progress" on one page and "in_progress" on another is the kind of thing
+    nobody reports and everybody notices.
+#}
+
+{% macro status(value) %}
+    {% set labels = {
+        backlog: 'Backlog',
+        todo: 'To do',
+        in_progress: 'In progress',
+        review: 'Review',
+        done: 'Done'
+    } %}
+    <span class="badge badge--{{ value|replace({'_': '-'}) }}">{{ labels[value]|default(value) }}</span>
+{% endmacro %}
+
+{% macro priority(value) %}
+    {% set labels = { low: 'Low', normal: 'Normal', high: 'High', urgent: 'Urgent' } %}
+    {# Normal is the priority most tickets have; drawing a pill for it would put
+       a label on every row that says nothing. #}
+    {% if value != 'normal' %}
+        <span class="badge badge--priority badge--{{ value }}">{{ labels[value]|default(value) }}</span>
+    {% endif %}
+{% endmacro %}
+
+{% macro ticket_key(ticket) %}
+    <a class="ticket-key" href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.project_code }}-{{ ticket.number }}</a>
+{% endmacro %}
+
+{% macro person(name) %}
+    {% if name %}
+        <span class="person"><span class="person__mark">{{ name|initials }}</span>{{ name }}</span>
+    {% else %}
+        <span class="muted">Unassigned</span>
+    {% endif %}
+{% endmacro %}
+
+{#
+    The one-click move along the board. A form rather than a link, because it
+    changes something — and a link that changes something is a link a browser or
+    a crawler will follow on its own.
+#}
+{% macro move(ticket, statuses, back) %}
+    <form class="move" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/status') }}">
+        <input type="hidden" name="_token" value="{{ csrf_token }}">
+        <input type="hidden" name="back" value="{{ back }}">
+        <select class="field field--inline move__select" name="status" onchange="this.form.submit()"
+                aria-label="Status of {{ ticket.project_code }}-{{ ticket.number }}">
+            {% for value in statuses %}
+                <option value="{{ value }}"{{ ticket.status == value ? ' selected' : '' }}>
+                    {{ { backlog: 'Backlog', todo: 'To do', in_progress: 'In progress', review: 'Review', done: 'Done' }[value] }}
+                </option>
+            {% endfor %}
+        </select>
+        {# Without JavaScript the select changes nothing on its own, so the form
+           keeps a button that does. #}
+        <noscript><button class="button" type="submit">Move</button></noscript>
+    </form>
+{% endmacro %}

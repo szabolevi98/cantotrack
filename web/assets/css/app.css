@@ -367,6 +367,112 @@ button {
 }
 
 /*
+ * The pieces a page is put together from: the two-column split on a detail
+ * page, the filter strip above a list, the fact list beside a ticket, and the
+ * handful of form arrangements that appear on more than one form.
+ */
+.card--narrow {
+    max-width: 680px;
+}
+
+.split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: var(--ct-gap);
+    align-items: start;
+}
+
+.split__main,
+.split__side {
+    min-width: 0;
+}
+
+/* The filter strip. A form that reads as one row, wrapping on a narrow window
+   rather than scrolling. */
+.filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    padding: 14px 16px;
+}
+
+.filters__search {
+    flex: 1;
+    min-width: 200px;
+}
+
+/* Name and value down the side of a ticket. A definition list, because that is
+   what it is. */
+.facts {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 9px 14px;
+    margin: 0;
+}
+
+.facts dt {
+    color: var(--ct-muted);
+    font-size: 0.82rem;
+}
+
+.facts dd {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+/* Text somebody typed, with its line breaks kept. */
+.prose {
+    color: var(--ct-text);
+    white-space: normal;
+}
+
+.form__row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0 14px;
+}
+
+.form__actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+/* A checkbox and its words on one line, aligned on the box rather than on the
+   text's baseline. */
+.check {
+    display: flex;
+    gap: 9px;
+    align-items: flex-start;
+    margin-bottom: 14px;
+    font-weight: 400;
+}
+
+.check input {
+    margin-top: 3px;
+}
+
+.check--inline {
+    margin-bottom: 0;
+    white-space: nowrap;
+}
+
+code {
+    padding: 1px 5px;
+    border-radius: 5px;
+    background: var(--ct-bg);
+    font-family: var(--ct-mono);
+    font-size: 0.86em;
+}
+
+@media (max-width: 980px) {
+    .split {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/*
  * The white surface almost everything sits on, and the small pieces that live
  * inside it: titles, bodies and the empty state a list shows when it is empty.
  */
@@ -387,6 +493,21 @@ button {
 .card__title {
     margin-bottom: 8px;
     font-size: 1.05rem;
+}
+
+/* A title with a link opposite it, on a card whose body is a flush table. The
+   padding lives here rather than on the card, which has none in that variant. */
+.card__head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 16px 16px 12px;
+}
+
+.card__head .card__title {
+    margin-bottom: 0;
 }
 
 .card__body {
@@ -532,6 +653,426 @@ label {
 .button[disabled] {
     opacity: 0.55;
     cursor: not-allowed;
+}
+
+/*
+ * The small coloured labels: a ticket's status, its priority, an archived
+ * project. Dark text on a tint rather than white on a solid colour — at this
+ * size, and this many to a page, solid pills turn a list into a set of traffic
+ * lights.
+ */
+.badge {
+    display: inline-block;
+    padding: 2px 9px;
+    border: 1px solid var(--ct-border);
+    border-radius: 999px;
+    background: var(--ct-bg);
+    color: var(--ct-muted);
+    font-size: 0.76rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+/* The board's columns, from waiting to finished. Only the two that mean
+   something at a glance — in progress and done — carry the brand colours; the
+   rest stay quiet so those two stand out. */
+.badge--backlog {
+    color: var(--ct-muted);
+}
+
+.badge--todo {
+    border-color: var(--ct-border);
+    background: #eef1f7;
+    color: #44506a;
+}
+
+.badge--in-progress {
+    border-color: var(--ct-primary-border);
+    background: var(--ct-primary-soft);
+    color: var(--ct-primary);
+}
+
+.badge--review {
+    border-color: rgba(164, 112, 29, 0.3);
+    background: var(--ct-warning-soft);
+    color: var(--ct-warning);
+}
+
+.badge--done {
+    border-color: rgba(46, 139, 100, 0.3);
+    background: var(--ct-success-soft);
+    color: var(--ct-success);
+}
+
+.badge--muted {
+    background: var(--ct-bg);
+}
+
+/* Priorities. Normal is never drawn — see the macro. */
+.badge--priority {
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    font-size: 0.68rem;
+}
+
+.badge--low {
+    color: var(--ct-muted);
+}
+
+.badge--high {
+    border-color: rgba(164, 112, 29, 0.35);
+    background: var(--ct-warning-soft);
+    color: var(--ct-warning);
+}
+
+.badge--urgent {
+    border-color: rgba(193, 74, 95, 0.35);
+    background: var(--ct-danger-soft);
+    color: var(--ct-danger);
+}
+
+/* How far along something is. The only chart in the application, and it is two
+   nested boxes. */
+.bar {
+    display: block;
+    width: 100%;
+    height: 6px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: var(--ct-border);
+}
+
+.bar__fill {
+    display: block;
+    height: 100%;
+    border-radius: 999px;
+    background: var(--ct-primary);
+}
+
+/* A person, wherever one is named. */
+.person {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    white-space: nowrap;
+}
+
+.person__mark {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--ct-primary-soft);
+    color: var(--ct-primary);
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+
+.tag {
+    display: inline-block;
+    padding: 1px 8px;
+    border-radius: 6px;
+    background: var(--ct-bg);
+    color: var(--ct-muted);
+    font-size: 0.76rem;
+}
+
+.muted {
+    color: var(--ct-muted);
+}
+
+/*
+ * The list tables: tickets, epics, and later the worklogs.
+ *
+ * Flush inside a card (.card--flush) so the rows run the full width, with the
+ * card's own border doing the framing.
+ */
+.table {
+    font-size: 0.93rem;
+}
+
+.table thead th {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--ct-border);
+    background: var(--ct-bg);
+    color: var(--ct-muted);
+    font-size: 0.74rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-align: left;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.table tbody td {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--ct-border);
+    vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.table tbody tr:hover {
+    background: var(--ct-primary-soft);
+}
+
+/* The ticket's own name, which is the thing people scan a list by. Monospaced
+   so the letters and the number line up down the column. */
+.table__key {
+    width: 1%;
+    white-space: nowrap;
+}
+
+.ticket-key {
+    font-family: var(--ct-mono);
+    font-size: 0.86rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.ticket-key--plain {
+    color: var(--ct-muted);
+}
+
+/* Numbers align right and share a width, so a column of durations can be
+   compared by looking down it rather than by reading each one. */
+.table__number {
+    width: 1%;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+    /* On a phone the estimate and the logged time are what go: the title, who
+       has it and what state it is in are the three that survive the width. */
+    .table th:nth-child(5),
+    .table td:nth-child(5),
+    .table th:nth-child(6),
+    .table td:nth-child(6) {
+        display: none;
+    }
+}
+
+/*
+ * The board: one column per status, each holding cards.
+ *
+ * The columns scroll sideways rather than shrinking below a width where a card
+ * stops being readable. Five columns on a laptop screen is already tight, and a
+ * board whose cards wrap to three lines each is one nobody scans.
+ */
+.board {
+    display: grid;
+    grid-auto-columns: minmax(230px, 1fr);
+    grid-auto-flow: column;
+    gap: 14px;
+    overflow-x: auto;
+    padding-bottom: 8px;
+}
+
+.board__column {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius);
+    background: rgba(255, 255, 255, 0.55);
+}
+
+.board__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 12px 14px;
+    border-bottom: 1px solid var(--ct-border);
+}
+
+.board__count {
+    color: var(--ct-muted);
+    font-size: 0.82rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.board__cards {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 10px;
+    padding: 12px;
+}
+
+.board__empty {
+    margin: 0;
+    padding: 10px 0;
+    color: var(--ct-border);
+    text-align: center;
+}
+
+.ticket-card {
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+    padding: 12px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-sm);
+    background: var(--ct-surface);
+    box-shadow: var(--ct-shadow);
+}
+
+.ticket-card__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.ticket-card__title {
+    color: var(--ct-text);
+    font-size: 0.93rem;
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.ticket-card__epic {
+    align-self: flex-start;
+    padding: 1px 8px;
+    border-radius: 6px;
+    background: var(--ct-primary-soft);
+    color: var(--ct-primary);
+    font-size: 0.74rem;
+}
+
+.ticket-card__foot {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    font-size: 0.82rem;
+}
+
+/*
+ * The status select on a card. Small and quiet: it is on every card, and a row
+ * of full-sized dropdowns would be the loudest thing on the board.
+ */
+.move {
+    display: flex;
+    gap: 6px;
+}
+
+.move__select {
+    width: 100%;
+    padding: 4px 8px;
+    border-radius: 8px;
+    color: var(--ct-muted);
+    font-size: 0.78rem;
+}
+
+/*
+ * The project cards on the index, and the epic strip on a project's page.
+ */
+.project-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: var(--ct-gap);
+}
+
+.project {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    padding: 18px 20px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius);
+    background: var(--ct-surface);
+    box-shadow: var(--ct-shadow);
+    color: var(--ct-text);
+    transition: border-color 0.12s ease, transform 0.12s ease;
+}
+
+.project:hover {
+    border-color: var(--ct-primary-border);
+    text-decoration: none;
+    transform: translateY(-1px);
+}
+
+/* An archived project stays legible but stops competing with the live ones. */
+.project--archived {
+    background: var(--ct-bg);
+    box-shadow: none;
+}
+
+.project__code {
+    align-self: flex-start;
+    padding: 2px 9px;
+    border-radius: 7px;
+    background: var(--ct-primary-soft);
+    color: var(--ct-primary);
+    font-family: var(--ct-mono);
+    font-size: 0.78rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.project__name {
+    font-size: 1.05rem;
+}
+
+.project__note {
+    margin: 0;
+    color: var(--ct-muted);
+    font-size: 0.88rem;
+}
+
+.project__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    margin-top: auto;
+    padding-top: 6px;
+    color: var(--ct-muted);
+    font-size: 0.84rem;
+}
+
+.project__meta .bar {
+    flex-basis: 100%;
+}
+
+.epics {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 12px;
+}
+
+.epic {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 14px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-sm);
+    background: var(--ct-surface);
+    color: var(--ct-text);
+}
+
+.epic:hover {
+    border-color: var(--ct-primary-border);
+    background: var(--ct-primary-soft);
+    text-decoration: none;
+}
+
+.epic--done {
+    background: var(--ct-bg);
+    color: var(--ct-muted);
+}
+
+.epic__meta {
+    color: var(--ct-muted);
+    font-size: 0.82rem;
 }
 
 /*

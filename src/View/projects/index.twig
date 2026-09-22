@@ -1,0 +1,60 @@
+{% extends 'layout.twig' %}
+
+{% block title %}Projects — {{ app_name }}{% endblock %}
+{% block heading %}Projects{% endblock %}
+
+{% block actions %}
+    {% if show_archived %}
+        <a class="button" href="{{ url('/projects') }}">Hide archived</a>
+    {% else %}
+        <a class="button" href="{{ url('/projects?archived=1') }}">Show archived</a>
+    {% endif %}
+    {% if is_admin %}
+        <a class="button button--primary" href="{{ url('/projects/create') }}">New project</a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    {% if projects is empty %}
+        <section class="card">
+            <p class="card__empty">
+                No projects yet.
+                {% if is_admin %}
+                    A project is where everything else hangs from — <a href="{{ url('/projects/create') }}">make the first one</a>.
+                {% else %}
+                    An administrator has to set the first one up.
+                {% endif %}
+            </p>
+        </section>
+    {% else %}
+        <div class="project-grid">
+            {% for project in projects %}
+                {% set total = project.ticket_count|default(0) %}
+                {% set done = project.done_count|default(0) %}
+                <a class="project{{ project.is_archived ? ' project--archived' : '' }}"
+                   href="{{ url('/projects/' ~ project.id) }}">
+                    <span class="project__code">{{ project.code }}</span>
+                    <h2 class="project__name">{{ project.name }}</h2>
+
+                    {% if project.description %}
+                        {# Cut with slice rather than the string extension's truncate: one
+                           less package for one line of Twig. #}
+                        <p class="project__note">{{ project.description|slice(0, 120) }}{{ project.description|length > 120 ? '…' }}</p>
+                    {% endif %}
+
+                    <div class="project__meta">
+                        {% if total > 0 %}
+                            <span>{{ done }} of {{ total }} done</span>
+                            {# The bar is the only place the numbers become a shape,
+                               which is what makes two projects comparable at a glance. #}
+                            <span class="bar"><span class="bar__fill" style="width: {{ (done / total * 100)|round }}%"></span></span>
+                        {% else %}
+                            <span class="muted">No tickets yet</span>
+                        {% endif %}
+                        {% if project.is_archived %}<span class="badge badge--muted">Archived</span>{% endif %}
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+    {% endif %}
+{% endblock %}

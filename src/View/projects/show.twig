@@ -1,0 +1,88 @@
+{% extends 'layout.twig' %}
+{% import 'common/macros.twig' as ui %}
+
+{% block title %}{{ project.code }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ project.name }}{% endblock %}
+
+{% block subheading %}
+    <p class="content__sub">
+        <span class="project__code">{{ project.code }}</span>
+        {% if project.is_archived %}<span class="badge badge--muted">Archived</span>{% endif %}
+        {% if project.description %}{{ project.description }}{% endif %}
+    </p>
+{% endblock %}
+
+{% block actions %}
+    <a class="button" href="{{ url('/projects/' ~ project.id ~ '/epics/create') }}">New epic</a>
+    <a class="button button--primary" href="{{ url('/tickets/create?project=' ~ project.id) }}">New ticket</a>
+    {% if is_admin %}
+        <a class="button" href="{{ url('/projects/' ~ project.id ~ '/edit') }}">Settings</a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    {% if epics is not empty %}
+        <section class="card">
+            <h2 class="card__title">Epics</h2>
+            <div class="epics">
+                {% for epic in epics %}
+                    {% set total = epic.ticket_count|default(0) %}
+                    {% set done = epic.done_count|default(0) %}
+                    <a class="epic{{ epic.is_done ? ' epic--done' : '' }}" href="{{ url('/epics/' ~ epic.id) }}">
+                        <strong>{{ epic.title }}</strong>
+                        <span class="epic__meta">
+                            {{ total > 0 ? done ~ ' of ' ~ total ~ ' done' : 'No tickets yet' }}
+                        </span>
+                        {% if total > 0 %}
+                            <span class="bar"><span class="bar__fill" style="width: {{ (done / total * 100)|round }}%"></span></span>
+                        {% endif %}
+                    </a>
+                {% endfor %}
+            </div>
+        </section>
+    {% endif %}
+
+    {#
+        The board. Five columns, each one a list rather than anything draggable:
+        a select moves a ticket, which works with a keyboard, on a phone, and
+        without a line of JavaScript.
+    #}
+    <div class="board">
+        {% for status in statuses %}
+            <section class="board__column">
+                <header class="board__head">
+                    {{ ui.status(status) }}
+                    <span class="board__count">{{ counts[status] }}</span>
+                </header>
+
+                <div class="board__cards">
+                    {% for ticket in board[status] %}
+                        <article class="ticket-card">
+                            <div class="ticket-card__top">
+                                {{ ui.ticket_key(ticket) }}
+                                {{ ui.priority(ticket.priority) }}
+                            </div>
+
+                            <a class="ticket-card__title" href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a>
+
+                            {% if ticket.epic_title %}
+                                <span class="ticket-card__epic">{{ ticket.epic_title }}</span>
+                            {% endif %}
+
+                            <div class="ticket-card__foot">
+                                {{ ui.person(ticket.assignee_name) }}
+                                {% if ticket.logged_minutes > 0 %}
+                                    <span class="muted">{{ ticket.logged_minutes|duration }}</span>
+                                {% endif %}
+                            </div>
+
+                            {{ ui.move(ticket, statuses, '/projects/' ~ project.id) }}
+                        </article>
+                    {% else %}
+                        <p class="board__empty">—</p>
+                    {% endfor %}
+                </div>
+            </section>
+        {% endfor %}
+    </div>
+{% endblock %}

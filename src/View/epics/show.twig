@@ -1,0 +1,57 @@
+{% extends 'layout.twig' %}
+{% import 'common/macros.twig' as ui %}
+
+{% block title %}{{ epic.title }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ epic.title }}{% endblock %}
+
+{% block subheading %}
+    <p class="content__sub">
+        Epic in <a href="{{ url('/projects/' ~ project.id) }}">{{ project.name }}</a>
+        {% if epic.is_done %}<span class="badge badge--done">Done</span>{% endif %}
+    </p>
+{% endblock %}
+
+{% block actions %}
+    <a class="button" href="{{ url('/tickets/create?project=' ~ project.id ~ '&epic=' ~ epic.id) }}">New ticket</a>
+    <a class="button" href="{{ url('/epics/' ~ epic.id ~ '/edit') }}">Edit</a>
+{% endblock %}
+
+{% block content %}
+    {% if epic.description %}
+        <section class="card">
+            <p class="card__body prose">{{ epic.description|nl2br }}</p>
+        </section>
+    {% endif %}
+
+    <section class="card card--flush">
+        {% if tickets is empty %}
+            <p class="card__empty">Nothing in this epic yet.</p>
+        {% else %}
+            <table class="table">
+                <thead>
+                <tr>
+                    <th class="table__key">Ticket</th>
+                    <th>Title</th>
+                    <th>Status</th>
+                    <th>Assignee</th>
+                    <th class="table__number">Logged</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for ticket in tickets %}
+                    <tr>
+                        <td>{{ ui.ticket_key(ticket) }}</td>
+                        <td>
+                            <a href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a>
+                            {{ ui.priority(ticket.priority) }}
+                        </td>
+                        <td>{{ ui.status(ticket.status) }}</td>
+                        <td>{{ ui.person(ticket.assignee_name) }}</td>
+                        <td class="table__number">{{ ticket.logged_minutes > 0 ? ticket.logged_minutes|duration : '—' }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </section>
+{% endblock %}

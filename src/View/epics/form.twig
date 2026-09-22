@@ -1,0 +1,52 @@
+{% extends 'layout.twig' %}
+
+{% set editing = epic is not null and epic.id is defined %}
+
+{% block title %}{{ editing ? 'Edit epic' : 'New epic' }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ editing ? 'Edit epic' : 'New epic' }}{% endblock %}
+{% block subheading %}<p class="content__sub">In {{ project.name }} ({{ project.code }})</p>{% endblock %}
+
+{% block content %}
+    {% if error %}<p class="flash flash--danger">{{ error }}</p>{% endif %}
+
+    <section class="card card--narrow">
+        <form method="post"
+              action="{{ editing ? url('/epics/' ~ epic.id) : url('/projects/' ~ project.id ~ '/epics/create') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+
+            <label for="title">Title</label>
+            <input id="title" class="field" type="text" name="title" value="{{ epic.title|default('') }}"
+                   maxlength="200" required autofocus>
+
+            <label for="description">Description</label>
+            <textarea id="description" class="field" name="description" rows="5">{{ epic.description|default('') }}</textarea>
+
+            {% if editing %}
+                <label class="check">
+                    <input type="checkbox" name="is_done" value="1"{{ epic.is_done ? ' checked' : '' }}>
+                    Done — kept for its history, and no longer offered on ticket forms
+                </label>
+            {% endif %}
+
+            <div class="form__actions">
+                <button class="button button--primary" type="submit">{{ editing ? 'Save' : 'Create epic' }}</button>
+                <a class="button" href="{{ editing ? url('/epics/' ~ epic.id) : url('/projects/' ~ project.id) }}">Cancel</a>
+            </div>
+        </form>
+    </section>
+
+    {% if editing %}
+        <section class="card card--narrow">
+            <h2 class="card__title">Delete this epic</h2>
+            <p class="card__body">
+                The tickets stay in the project and lose their epic — nothing that was
+                worked on is deleted.
+            </p>
+            <form method="post" action="{{ url('/epics/' ~ epic.id ~ '/delete') }}"
+                  onsubmit="return confirm('Delete this epic? Its tickets stay in the project.')">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <button class="button button--danger" type="submit">Delete epic</button>
+            </form>
+        </section>
+    {% endif %}
+{% endblock %}

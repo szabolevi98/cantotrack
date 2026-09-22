@@ -1,0 +1,74 @@
+/*
+ * The list tables: tickets, epics, and later the worklogs.
+ *
+ * Flush inside a card (.card--flush) so the rows run the full width, with the
+ * card's own border doing the framing.
+ */
+.table {
+    font-size: 0.93rem;
+}
+
+.table thead th {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--ct-border);
+    background: var(--ct-bg);
+    color: var(--ct-muted);
+    font-size: 0.74rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-align: left;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.table tbody td {
+    padding: 11px 16px;
+    border-bottom: 1px solid var(--ct-border);
+    vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+.table tbody tr:hover {
+    background: var(--ct-primary-soft);
+}
+
+/* The ticket's own name, which is the thing people scan a list by. Monospaced
+   so the letters and the number line up down the column. */
+.table__key {
+    width: 1%;
+    white-space: nowrap;
+}
+
+.ticket-key {
+    font-family: var(--ct-mono);
+    font-size: 0.86rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.ticket-key--plain {
+    color: var(--ct-muted);
+}
+
+/* Numbers align right and share a width, so a column of durations can be
+   compared by looking down it rather than by reading each one. */
+.table__number {
+    width: 1%;
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+
+@media (max-width: 760px) {
+    /* On a phone the estimate and the logged time are what go: the title, who
+       has it and what state it is in are the three that survive the width. */
+    .table th:nth-child(5),
+    .table td:nth-child(5),
+    .table th:nth-child(6),
+    .table td:nth-child(6) {
+        display: none;
+    }
+}

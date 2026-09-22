@@ -1,0 +1,90 @@
+{% extends 'layout.twig' %}
+{% import 'common/macros.twig' as ui %}
+
+{% block title %}{{ ticket.project_code }}-{{ ticket.number }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ ticket.title }}{% endblock %}
+
+{% block subheading %}
+    <p class="content__sub">
+        <span class="ticket-key ticket-key--plain">{{ ticket.project_code }}-{{ ticket.number }}</span>
+        in <a href="{{ url('/projects/' ~ ticket.project_id) }}">{{ ticket.project_name }}</a>
+        {% if ticket.epic_title %}
+            · <a href="{{ url('/epics/' ~ ticket.epic_id) }}">{{ ticket.epic_title }}</a>
+        {% endif %}
+    </p>
+{% endblock %}
+
+{% block actions %}
+    {{ ui.move(ticket, statuses, '/tickets/' ~ ticket.id) }}
+    <a class="button" href="{{ url('/tickets/' ~ ticket.id ~ '/edit') }}">Edit</a>
+{% endblock %}
+
+{% block content %}
+    <div class="split">
+        <div class="split__main">
+            <section class="card">
+                <h2 class="card__title">Description</h2>
+                {% if ticket.description %}
+                    <p class="card__body prose">{{ ticket.description|nl2br }}</p>
+                {% else %}
+                    <p class="card__body muted">Nothing written down yet.</p>
+                {% endif %}
+            </section>
+        </div>
+
+        <aside class="split__side">
+            <section class="card">
+                <dl class="facts">
+                    <dt>Status</dt>
+                    <dd>{{ ui.status(ticket.status) }}</dd>
+
+                    <dt>Priority</dt>
+                    <dd>{{ ticket.priority == 'normal' ? 'Normal' : '' }}{{ ui.priority(ticket.priority) }}</dd>
+
+                    <dt>Assignee</dt>
+                    <dd>{{ ui.person(ticket.assignee_name) }}</dd>
+
+                    <dt>Reporter</dt>
+                    <dd>{{ ui.person(ticket.reporter_name) }}</dd>
+
+                    <dt>Estimate</dt>
+                    <dd>{{ ticket.estimate_minutes ? ticket.estimate_minutes|duration : '—' }}</dd>
+
+                    <dt>Logged</dt>
+                    <dd>
+                        {{ ticket.logged_minutes > 0 ? ticket.logged_minutes|duration : '—' }}
+                        {#
+                            The comparison only means anything when there is
+                            something to compare against, and it is the one
+                            number on this page somebody acts on.
+                        #}
+                        {% if ticket.estimate_minutes and ticket.logged_minutes > ticket.estimate_minutes %}
+                            <span class="badge badge--urgent">over by
+                                {{ (ticket.logged_minutes - ticket.estimate_minutes)|duration }}</span>
+                        {% endif %}
+                    </dd>
+
+                    <dt>Created</dt>
+                    <dd>{{ ticket.created_at|day }}</dd>
+
+                    {% if ticket.closed_at %}
+                        <dt>Finished</dt>
+                        <dd>{{ ticket.closed_at|day }}</dd>
+                    {% endif %}
+                </dl>
+            </section>
+
+            {% if is_admin %}
+                <section class="card">
+                    <h2 class="card__title">Delete</h2>
+                    <p class="card__body">This takes the hours logged against it as well.</p>
+                    <form method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/delete') }}"
+                          onsubmit="return confirm('Delete {{ ticket.project_code }}-{{ ticket.number }} and its worklogs?')">
+                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                        <button class="button button--danger" type="submit">Delete ticket</button>
+                    </form>
+                </section>
+            {% endif %}
+        </aside>
+    </div>
+{% endblock %}

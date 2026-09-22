@@ -29,8 +29,8 @@ to read in an afternoon and to deploy by copying a folder.
 
 ## Running it
 
-Needs PHP 8.4 (it runs on 8.2 as well), MySQL or MariaDB, and a web server whose
-document root is the `web/` folder.
+Needs PHP 8.4, MySQL or MariaDB, and a web server whose document root is the
+`web/` folder.
 
 ```
 composer install

@@ -1,0 +1,105 @@
+/*
+ * The pieces a page is put together from: the two-column split on a detail
+ * page, the filter strip above a list, the fact list beside a ticket, and the
+ * handful of form arrangements that appear on more than one form.
+ */
+.card--narrow {
+    max-width: 680px;
+}
+
+.split {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 320px;
+    gap: var(--ct-gap);
+    align-items: start;
+}
+
+.split__main,
+.split__side {
+    min-width: 0;
+}
+
+/* The filter strip. A form that reads as one row, wrapping on a narrow window
+   rather than scrolling. */
+.filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    padding: 14px 16px;
+}
+
+.filters__search {
+    flex: 1;
+    min-width: 200px;
+}
+
+/* Name and value down the side of a ticket. A definition list, because that is
+   what it is. */
+.facts {
+    display: grid;
+    grid-template-columns: 96px minmax(0, 1fr);
+    gap: 9px 14px;
+    margin: 0;
+}
+
+.facts dt {
+    color: var(--ct-muted);
+    font-size: 0.82rem;
+}
+
+.facts dd {
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+/* Text somebody typed, with its line breaks kept. */
+.prose {
+    color: var(--ct-text);
+    white-space: normal;
+}
+
+.form__row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 0 14px;
+}
+
+.form__actions {
+    display: flex;
+    gap: 8px;
+    margin-top: 6px;
+}
+
+/* A checkbox and its words on one line, aligned on the box rather than on the
+   text's baseline. */
+.check {
+    display: flex;
+    gap: 9px;
+    align-items: flex-start;
+    margin-bottom: 14px;
+    font-weight: 400;
+}
+
+.check input {
+    margin-top: 3px;
+}
+
+.check--inline {
+    margin-bottom: 0;
+    white-space: nowrap;
+}
+
+code {
+    padding: 1px 5px;
+    border-radius: 5px;
+    background: var(--ct-bg);
+    font-family: var(--ct-mono);
+    font-size: 0.86em;
+}
+
+@media (max-width: 980px) {
+    .split {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}

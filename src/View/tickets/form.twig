@@ -1,0 +1,104 @@
+{% extends 'layout.twig' %}
+
+{% set editing = ticket is not null and ticket.id is defined and ticket.id %}
+
+{% block title %}{{ editing ? 'Edit ticket' : 'New ticket' }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ editing ? 'Edit ticket' : 'New ticket' }}{% endblock %}
+
+{% block content %}
+    {% if error %}<p class="flash flash--danger">{{ error }}</p>{% endif %}
+
+    <section class="card card--narrow">
+        <form method="post" action="{{ editing ? url('/tickets/' ~ ticket.id) : url('/tickets/create') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+
+            <label for="title">Title</label>
+            <input id="title" class="field" type="text" name="title" value="{{ ticket.title|default('') }}"
+                   maxlength="250" required autofocus>
+
+            <label for="project_id">Project</label>
+            {% if editing %}
+                {# A ticket cannot move between projects: its number belongs to the
+                   project it was created in, and moving it would either change the
+                   name people know it by or take a number that is already used. #}
+                <input class="field" type="text"
+                       value="{{ ticket.project_code|default('') }} — {{ ticket.project_name|default('') }}" disabled>
+                <input type="hidden" name="project_id" value="{{ ticket.project_id }}">
+            {% else %}
+                <select id="project_id" class="field" name="project_id" required
+                        onchange="this.form.action = '{{ url('/tickets/create') }}'; this.form.method = 'get'; this.form.submit()">
+                    <option value="">Pick a project</option>
+                    {% for project in projects %}
+                        <option value="{{ project.id }}"{{ project_id == project.id ? ' selected' : '' }}>
+                            {{ project.code }} — {{ project.name }}
+                        </option>
+                    {% endfor %}
+                </select>
+                {# Choosing a project reloads the form as a GET, which is how the
+                   epic list below can be the chosen project's. It costs a round
+                   trip and needs no JavaScript to fetch anything. #}
+                <p class="hint">Choosing a project loads its epics.</p>
+            {% endif %}
+
+            <label for="epic_id">Epic</label>
+            <select id="epic_id" class="field" name="epic_id">
+                <option value="">No epic</option>
+                {% for epic in epics %}
+                    <option value="{{ epic.id }}"{{ ticket.epic_id|default(0) == epic.id ? ' selected' : '' }}>{{ epic.title }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="description">Description</label>
+            <textarea id="description" class="field" name="description" rows="6">{{ ticket.description|default('') }}</textarea>
+
+            <div class="form__row">
+                <div>
+                    <label for="priority">Priority</label>
+                    <select id="priority" class="field" name="priority">
+                        {% for value in priorities %}
+                            <option value="{{ value }}"{{ ticket.priority|default('normal') == value ? ' selected' : '' }}>
+                                {{ { low: 'Low', normal: 'Normal', high: 'High', urgent: 'Urgent' }[value] }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="assignee_id">Assignee</label>
+                    <select id="assignee_id" class="field" name="assignee_id">
+                        <option value="">Unassigned</option>
+                        {% for person in people %}
+                            <option value="{{ person.id }}"{{ ticket.assignee_id|default(0) == person.id ? ' selected' : '' }}>
+                                {{ person.name }}
+                            </option>
+                        {% endfor %}
+                    </select>
+                </div>
+
+                <div>
+                    <label for="estimate">Estimate</label>
+                    <input id="estimate" class="field" type="text" name="estimate"
+                           value="{{ ticket.estimate_text is defined ? ticket.estimate_text : (ticket.estimate_minutes|default(0) ? ticket.estimate_minutes|duration : '') }}"
+                           placeholder="3h 30m">
+                </div>
+            </div>
+            <p class="hint">An estimate reads like <code>3h</code>, <code>90m</code>, <code>1h 30m</code> or <code>1:30</code>. A bare number is minutes.</p>
+
+            {% if not editing %}
+                <label for="status">Start in</label>
+                <select id="status" class="field" name="status">
+                    {% for value in statuses %}
+                        <option value="{{ value }}"{{ ticket.status|default('backlog') == value ? ' selected' : '' }}>
+                            {{ { backlog: 'Backlog', todo: 'To do', in_progress: 'In progress', review: 'Review', done: 'Done' }[value] }}
+                        </option>
+                    {% endfor %}
+                </select>
+            {% endif %}
+
+            <div class="form__actions">
+                <button class="button button--primary" type="submit">{{ editing ? 'Save' : 'Create ticket' }}</button>
+                <a class="button" href="{{ editing ? url('/tickets/' ~ ticket.id) : url('/tickets') }}">Cancel</a>
+            </div>
+        </form>
+    </section>
+{% endblock %}

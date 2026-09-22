@@ -21,8 +21,13 @@ $files = [
     'base/variables.css',
     'base/reset.css',
     'layout/shell.css',
+    'layout/page.css',
     'components/card.css',
     'components/form.css',
+    'components/badge.css',
+    'components/table.css',
+    'components/board.css',
+    'components/project.css',
     'pages/auth.css',
 ];
 

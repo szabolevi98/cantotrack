@@ -1,0 +1,73 @@
+/*
+ * The few defaults worth overriding. Not a full reset: a stylesheet that unsets
+ * everything and then puts half of it back is longer than the one that only
+ * changes what it means to change.
+ */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    background: var(--ct-bg);
+    color: var(--ct-text);
+    font-family: var(--ct-font);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+    margin: 0;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+p {
+    margin: 0 0 12px;
+}
+
+a {
+    color: var(--ct-primary);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/*
+ * A visible focus ring on everything that takes focus. The browser default is
+ * removed by so many stylesheets out of habit that keyboard users expect it to
+ * be missing; this one is deliberate and matches the palette.
+ */
+:focus-visible {
+    outline: 2px solid rgba(var(--ct-primary-rgb), 0.55);
+    outline-offset: 2px;
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+/* Form controls do not inherit the page font by default, and a form in the
+   browser's own font next to text in ours is the first thing that looks wrong. */
+input,
+select,
+textarea,
+button {
+    font: inherit;
+    color: inherit;
+}

@@ -1,0 +1,17 @@
+{% extends 'layout.twig' %}
+
+{% block title %}Dashboard — {{ app_name }}{% endblock %}
+{% block heading %}Dashboard{% endblock %}
+{% block subheading %}<p class="content__sub">Signed in as {{ current_user.email }}.</p>{% endblock %}
+
+{% block content %}
+    <section class="card">
+        <h2 class="card__title">Nothing here yet</h2>
+        <p class="card__body">
+            The way through works: the session, the layout, the stylesheet and the
+            database are all in place. What belongs on this page — the tickets
+            assigned to you and the hours you logged this week — arrives with the
+            tables that hold them.
+        </p>
+    </section>
+{% endblock %}

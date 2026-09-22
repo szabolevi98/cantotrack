@@ -1,0 +1,65 @@
+/*
+ * The white surface almost everything sits on, and the small pieces that live
+ * inside it: titles, bodies and the empty state a list shows when it is empty.
+ */
+.card {
+    margin-bottom: var(--ct-gap);
+    padding: 20px 22px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius);
+    background: var(--ct-surface);
+    box-shadow: var(--ct-shadow);
+}
+
+.card--flush {
+    padding: 0;
+    overflow: hidden;
+}
+
+.card__title {
+    margin-bottom: 8px;
+    font-size: 1.05rem;
+}
+
+.card__body {
+    margin: 0;
+    color: var(--ct-muted);
+}
+
+.card__empty {
+    padding: 36px 22px;
+    color: var(--ct-muted);
+    text-align: center;
+}
+
+/* A row of figures above a list: how many tickets, how many hours. The columns
+   size themselves, so three or five of them both fill the row. */
+.stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: var(--ct-gap);
+    margin-bottom: var(--ct-gap);
+}
+
+.stat {
+    padding: 16px 18px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius);
+    background: var(--ct-surface);
+    box-shadow: var(--ct-shadow);
+}
+
+.stat__label {
+    color: var(--ct-muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.stat__value {
+    margin-top: 6px;
+    font-size: 1.7rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}

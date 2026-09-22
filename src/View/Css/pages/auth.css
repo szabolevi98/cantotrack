@@ -1,0 +1,52 @@
+/*
+ * The sign-in page: one card in the middle of a coloured field.
+ *
+ * The background carries the brand gradient rather than the page grey, because
+ * this is the one screen somebody sees before the application has shown them
+ * anything else.
+ */
+.auth {
+    display: grid;
+    place-items: center;
+    min-height: 100vh;
+    padding: 24px;
+    background: linear-gradient(160deg, var(--ct-sidebar-from), var(--ct-sidebar-to));
+}
+
+.auth__card {
+    width: 100%;
+    max-width: 380px;
+    padding: 30px 28px;
+    border-radius: var(--ct-radius);
+    background: var(--ct-surface);
+    box-shadow: var(--ct-shadow-lg);
+    text-align: left;
+}
+
+.auth__mark {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    margin-bottom: 14px;
+    border-radius: 12px;
+    background: var(--ct-primary);
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.auth__card h1 {
+    font-size: 1.35rem;
+}
+
+.auth__lead {
+    margin-bottom: 22px;
+    color: var(--ct-muted);
+    font-size: 0.92rem;
+}
+
+.auth__card .button {
+    margin-top: 6px;
+}

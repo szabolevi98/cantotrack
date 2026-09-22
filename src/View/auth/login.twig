@@ -1,0 +1,40 @@
+{#
+    The login page stands on its own rather than extending the layout: the
+    layout's sidebar needs a signed-in user, and this is the one page there is
+    not one.
+#}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Sign in — {{ app_name }}</title>
+    <link rel="icon" href="{{ url('assets/favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url('assets/css/app.css') }}">
+</head>
+<body class="auth">
+<main class="auth__card">
+    <span class="auth__mark">CT</span>
+    <h1>{{ app_name }}</h1>
+    <p class="auth__lead">Issue tracking, and the hours that went into it.</p>
+
+    {% if error %}
+        <p class="flash flash--danger">{{ error }}</p>
+    {% endif %}
+
+    <form method="post" action="{{ url('/login') }}" novalidate>
+        <input type="hidden" name="_token" value="{{ csrf_token }}">
+
+        <label for="email">Email address</label>
+        <input id="email" class="field" type="email" name="email" value="{{ email }}"
+               autocomplete="username" autofocus required>
+
+        <label for="password">Password</label>
+        <input id="password" class="field" type="password" name="password"
+               autocomplete="current-password" required>
+
+        <button class="button button--primary button--block" type="submit">Sign in</button>
+    </form>
+</main>
+</body>
+</html>

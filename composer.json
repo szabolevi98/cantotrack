@@ -1,0 +1,21 @@
+{
+    "name": "szabolevi98/cantotrack",
+    "description": "An issue tracker with time logging: projects, epics, tickets and timesheets.",
+    "license": "MIT",
+    "require": {
+        "php": ">=8.4",
+        "twig/twig": "^3.21"
+    },
+    "autoload": {
+        "psr-4": {
+            "CantoTrack\\": "src/"
+        }
+    },
+    "config": {
+        "sort-packages": true,
+        "platform": {
+            "php": "8.4.0"
+        },
+        "platform-check": false
+    }
+}

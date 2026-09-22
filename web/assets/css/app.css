@@ -1,0 +1,588 @@
+/* Built by bin/build_css.php — do not edit.
+ * Edit the sources under src/View/Css/ and run the script again. */
+
+/*
+ * The palette the whole interface draws from. Changing the theme should be a
+ * matter of editing this file: every other layer only refers to these.
+ *
+ * The *-rgb variants exist because rgba() cannot take a hex custom property —
+ * without them the focus rings and the shadows would carry a hard-coded colour
+ * that a theme change would leave behind.
+ *
+ * Contrast: every text-on-background pair is at least 4.5:1 (WCAG AA), and the
+ * icons drawn on a colour at least 3:1. The figures below were measured, not
+ * guessed, and they are what fixes the values: the blue is as dark as it is
+ * because white text has to sit on it.
+ */
+:root {
+    --ct-font: "Inter", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    --ct-mono: ui-monospace, "Cascadia Mono", "SF Mono", Menlo, Consolas, monospace;
+
+    --ct-bg: #f4f6fb;
+    --ct-surface: #ffffff;
+    --ct-text: #16202f;
+
+    /* Secondary text: dates, counts, meta lines, all of it small. 5.98:1 on a
+       white card and 5.53:1 on the page background — both comfortably over the
+       4.5:1 that small text needs. */
+    --ct-muted: #5a6474;
+    --ct-border: #e2e8f3;
+
+    /* The brand blue. White text on it is 6.12:1, which is what keeps it this
+       deep: a friendlier, lighter blue drops under 4.5:1 and takes the primary
+       buttons with it. */
+    --ct-primary: #1a5fbf;
+    --ct-primary-dark: #154e9d;
+    --ct-primary-soft: #eef4fd;
+    --ct-primary-border: #d6e4f8;
+    --ct-primary-rgb: 26, 95, 191;
+
+    /* The sidebar runs from near-black blue to the brand's own hue, so the
+       navigation is clearly a different surface from the content. Its text is
+       11.36:1 on the dark end. */
+    --ct-sidebar-from: #0f2038;
+    --ct-sidebar-to: #1c4b86;
+    --ct-sidebar-text: #cdd8e8;
+    --ct-sidebar-text-active: #ffffff;
+    --ct-sidebar-text-rgb: 205, 216, 232;
+
+    /* Status colours. Darker than a pastel would be, because white sits on them
+       in pills and badges. */
+    --ct-success: #2e8b64;
+    --ct-success-soft: #e9f6f0;
+    --ct-warning: #a4701d;
+    --ct-warning-soft: #fdf4e6;
+    --ct-danger: #c14a5f;
+    --ct-danger-soft: #fdeef1;
+
+    --ct-radius: 14px;
+    --ct-radius-sm: 10px;
+
+    /* One vertical rhythm for everything: cards, rows and the gaps between the
+       sections of a page all use it, so nothing drifts a few pixels out. */
+    --ct-gap: 24px;
+
+    /* The shadow is tinted towards the palette's hue rather than grey, which is
+       what keeps it from looking like a drop shadow from another design. */
+    --ct-shadow-rgb: 20, 40, 74;
+    --ct-shadow: 0 8px 24px rgba(var(--ct-shadow-rgb), 0.06);
+    --ct-shadow-lg: 0 20px 45px rgba(var(--ct-shadow-rgb), 0.16);
+}
+
+/*
+ * The few defaults worth overriding. Not a full reset: a stylesheet that unsets
+ * everything and then puts half of it back is longer than the one that only
+ * changes what it means to change.
+ */
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    -webkit-text-size-adjust: 100%;
+}
+
+body {
+    margin: 0;
+    background: var(--ct-bg);
+    color: var(--ct-text);
+    font-family: var(--ct-font);
+    font-size: 15px;
+    line-height: 1.55;
+    -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4 {
+    margin: 0;
+    font-weight: 600;
+    line-height: 1.25;
+}
+
+p {
+    margin: 0 0 12px;
+}
+
+a {
+    color: var(--ct-primary);
+    text-decoration: none;
+}
+
+a:hover {
+    text-decoration: underline;
+}
+
+/*
+ * A visible focus ring on everything that takes focus. The browser default is
+ * removed by so many stylesheets out of habit that keyboard users expect it to
+ * be missing; this one is deliberate and matches the palette.
+ */
+:focus-visible {
+    outline: 2px solid rgba(var(--ct-primary-rgb), 0.55);
+    outline-offset: 2px;
+}
+
+img {
+    max-width: 100%;
+    height: auto;
+}
+
+table {
+    border-collapse: collapse;
+    width: 100%;
+}
+
+/* Form controls do not inherit the page font by default, and a form in the
+   browser's own font next to text in ours is the first thing that looks wrong. */
+input,
+select,
+textarea,
+button {
+    font: inherit;
+    color: inherit;
+}
+
+/*
+ * The frame: a fixed sidebar and a content column that scrolls beside it.
+ *
+ * The sidebar is fixed rather than part of the page flow because a tracker's
+ * pages are long — a board or a timesheet runs well past the fold — and a
+ * navigation that scrolls away has to be scrolled back to.
+ */
+.app {
+    display: flex;
+    min-height: 100vh;
+}
+
+.sidebar {
+    position: sticky;
+    top: 0;
+    align-self: flex-start;
+    display: flex;
+    flex-direction: column;
+    width: 244px;
+    height: 100vh;
+    padding: 22px 16px;
+    background: linear-gradient(170deg, var(--ct-sidebar-from), var(--ct-sidebar-to));
+    color: var(--ct-sidebar-text);
+}
+
+.sidebar__brand {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 26px;
+    color: var(--ct-sidebar-text-active);
+    font-size: 1.05rem;
+    font-weight: 600;
+}
+
+.sidebar__brand:hover {
+    text-decoration: none;
+}
+
+.sidebar__mark {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.14);
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.sidebar__nav {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.sidebar__section {
+    margin: 18px 10px 6px;
+    color: rgba(var(--ct-sidebar-text-rgb), 0.65);
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+}
+
+.sidebar__link {
+    padding: 9px 12px;
+    border-radius: var(--ct-radius-sm);
+    color: var(--ct-sidebar-text);
+    font-size: 0.93rem;
+}
+
+.sidebar__link:hover {
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--ct-sidebar-text-active);
+    text-decoration: none;
+}
+
+.sidebar__link.is-active {
+    background: rgba(255, 255, 255, 0.16);
+    color: var(--ct-sidebar-text-active);
+    font-weight: 600;
+}
+
+.sidebar__foot {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 4px 10px;
+    align-items: center;
+    padding-top: 16px;
+    border-top: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.sidebar__user {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    line-height: 1.3;
+}
+
+.sidebar__user strong {
+    overflow: hidden;
+    color: var(--ct-sidebar-text-active);
+    font-size: 0.9rem;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sidebar__user small {
+    color: rgba(var(--ct-sidebar-text-rgb), 0.75);
+    font-size: 0.76rem;
+}
+
+.sidebar__logout {
+    grid-column: 1 / -1;
+    margin-top: 8px;
+    color: rgba(var(--ct-sidebar-text-rgb), 0.8);
+    font-size: 0.82rem;
+}
+
+.sidebar__logout:hover {
+    color: var(--ct-sidebar-text-active);
+}
+
+.avatar {
+    display: grid;
+    place-items: center;
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.18);
+    color: var(--ct-sidebar-text-active);
+    font-size: 0.78rem;
+    font-weight: 600;
+}
+
+.content {
+    flex: 1;
+    min-width: 0;
+    padding: 28px 32px 56px;
+}
+
+.content__head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: var(--ct-gap);
+}
+
+.content__head h1 {
+    font-size: 1.6rem;
+}
+
+.content__sub {
+    margin: 4px 0 0;
+    color: var(--ct-muted);
+}
+
+.content__actions {
+    display: flex;
+    gap: 8px;
+}
+
+/* The message that follows a redirect. Coloured by kind, with the text dark on
+   a tint rather than white on the colour: these are sentences, not labels. */
+.flash {
+    margin: 0 0 var(--ct-gap);
+    padding: 11px 14px;
+    border: 1px solid var(--ct-primary-border);
+    border-radius: var(--ct-radius-sm);
+    background: var(--ct-primary-soft);
+}
+
+.flash--success {
+    border-color: rgba(46, 139, 100, 0.35);
+    background: var(--ct-success-soft);
+}
+
+.flash--danger {
+    border-color: rgba(193, 74, 95, 0.35);
+    background: var(--ct-danger-soft);
+}
+
+.flash--warning {
+    border-color: rgba(164, 112, 29, 0.35);
+    background: var(--ct-warning-soft);
+}
+
+/*
+ * Under a phone's width the sidebar stops being a column and becomes a strip
+ * along the top, so the content keeps the whole screen.
+ */
+@media (max-width: 760px) {
+    .app {
+        flex-direction: column;
+    }
+
+    .sidebar {
+        position: static;
+        width: auto;
+        height: auto;
+        padding: 14px 16px;
+    }
+
+    .sidebar__nav {
+        flex-direction: row;
+        flex-wrap: wrap;
+    }
+
+    .sidebar__section {
+        display: none;
+    }
+
+    .content {
+        padding: 20px 16px 40px;
+    }
+}
+
+/*
+ * The white surface almost everything sits on, and the small pieces that live
+ * inside it: titles, bodies and the empty state a list shows when it is empty.
+ */
+.card {
+    margin-bottom: var(--ct-gap);
+    padding: 20px 22px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius);
+    background: var(--ct-surface);
+    box-shadow: var(--ct-shadow);
+}
+
+.card--flush {
+    padding: 0;
+    overflow: hidden;
+}
+
+.card__title {
+    margin-bottom: 8px;
+    font-size: 1.05rem;
+}
+
+.card__body {
+    margin: 0;
+    color: var(--ct-muted);
+}
+
+.card__empty {
+    padding: 36px 22px;
+    color: var(--ct-muted);
+    text-align: center;
+}
+
+/* A row of figures above a list: how many tickets, how many hours. The columns
+   size themselves, so three or five of them both fill the row. */
+.stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+    gap: var(--ct-gap);
+    margin-bottom: var(--ct-gap);
+}
+
+.stat {
+    padding: 16px 18px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius);
+    background: var(--ct-surface);
+    box-shadow: var(--ct-shadow);
+}
+
+.stat__label {
+    color: var(--ct-muted);
+    font-size: 0.78rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+}
+
+.stat__value {
+    margin-top: 6px;
+    font-size: 1.7rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Fields and buttons.
+ *
+ * Both are drawn rather than left to the browser, because a form with the
+ * operating system's own controls next to drawn cards looks like two programs in
+ * one window — and because the focus ring has to match the palette.
+ */
+.field {
+    display: block;
+    width: 100%;
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-sm);
+    background: var(--ct-surface);
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.field:focus {
+    border-color: var(--ct-primary);
+    box-shadow: 0 0 0 3px rgba(var(--ct-primary-rgb), 0.16);
+    outline: none;
+}
+
+.field--inline {
+    width: auto;
+    margin-bottom: 0;
+}
+
+textarea.field {
+    min-height: 110px;
+    resize: vertical;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.86rem;
+    font-weight: 600;
+}
+
+.hint {
+    margin: -8px 0 14px;
+    color: var(--ct-muted);
+    font-size: 0.82rem;
+}
+
+.button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 16px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-sm);
+    background: var(--ct-surface);
+    color: var(--ct-text);
+    font-size: 0.92rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.button:hover {
+    border-color: var(--ct-primary-border);
+    background: var(--ct-primary-soft);
+    text-decoration: none;
+}
+
+.button--primary {
+    border-color: var(--ct-primary);
+    background: var(--ct-primary);
+    color: #ffffff;
+}
+
+.button--primary:hover {
+    border-color: var(--ct-primary-dark);
+    background: var(--ct-primary-dark);
+    color: #ffffff;
+}
+
+/* The one destructive button. Outlined rather than filled, so that "Delete" is
+   never the loudest thing on a page. */
+.button--danger {
+    border-color: rgba(193, 74, 95, 0.45);
+    color: var(--ct-danger);
+}
+
+.button--danger:hover {
+    border-color: var(--ct-danger);
+    background: var(--ct-danger-soft);
+}
+
+.button--block {
+    width: 100%;
+    justify-content: center;
+}
+
+.button[disabled] {
+    opacity: 0.55;
+    cursor: not-allowed;
+}
+
+/*
+ * The sign-in page: one card in the middle of a coloured field.
+ *
+ * The background carries the brand gradient rather than the page grey, because
+ * this is the one screen somebody sees before the application has shown them
+ * anything else.
+ */
+.auth {
+    display: grid;
+    place-items: center;
+    min-height: 100vh;
+    padding: 24px;
+    background: linear-gradient(160deg, var(--ct-sidebar-from), var(--ct-sidebar-to));
+}
+
+.auth__card {
+    width: 100%;
+    max-width: 380px;
+    padding: 30px 28px;
+    border-radius: var(--ct-radius);
+    background: var(--ct-surface);
+    box-shadow: var(--ct-shadow-lg);
+    text-align: left;
+}
+
+.auth__mark {
+    display: grid;
+    place-items: center;
+    width: 42px;
+    height: 42px;
+    margin-bottom: 14px;
+    border-radius: 12px;
+    background: var(--ct-primary);
+    color: #ffffff;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+}
+
+.auth__card h1 {
+    font-size: 1.35rem;
+}
+
+.auth__lead {
+    margin-bottom: 22px;
+    color: var(--ct-muted);
+    font-size: 0.92rem;
+}
+
+.auth__card .button {
+    margin-top: 6px;
+}

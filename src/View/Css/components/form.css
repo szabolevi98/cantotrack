@@ -1,0 +1,101 @@
+/*
+ * Fields and buttons.
+ *
+ * Both are drawn rather than left to the browser, because a form with the
+ * operating system's own controls next to drawn cards looks like two programs in
+ * one window — and because the focus ring has to match the palette.
+ */
+.field {
+    display: block;
+    width: 100%;
+    margin-bottom: 14px;
+    padding: 10px 12px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-sm);
+    background: var(--ct-surface);
+    transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+
+.field:focus {
+    border-color: var(--ct-primary);
+    box-shadow: 0 0 0 3px rgba(var(--ct-primary-rgb), 0.16);
+    outline: none;
+}
+
+.field--inline {
+    width: auto;
+    margin-bottom: 0;
+}
+
+textarea.field {
+    min-height: 110px;
+    resize: vertical;
+}
+
+label {
+    display: block;
+    margin-bottom: 5px;
+    font-size: 0.86rem;
+    font-weight: 600;
+}
+
+.hint {
+    margin: -8px 0 14px;
+    color: var(--ct-muted);
+    font-size: 0.82rem;
+}
+
+.button {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 9px 16px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-sm);
+    background: var(--ct-surface);
+    color: var(--ct-text);
+    font-size: 0.92rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.12s ease, border-color 0.12s ease;
+}
+
+.button:hover {
+    border-color: var(--ct-primary-border);
+    background: var(--ct-primary-soft);
+    text-decoration: none;
+}
+
+.button--primary {
+    border-color: var(--ct-primary);
+    background: var(--ct-primary);
+    color: #ffffff;
+}
+
+.button--primary:hover {
+    border-color: var(--ct-primary-dark);
+    background: var(--ct-primary-dark);
+    color: #ffffff;
+}
+
+/* The one destructive button. Outlined rather than filled, so that "Delete" is
+   never the loudest thing on a page. */
+.button--danger {
+    border-color: rgba(193, 74, 95, 0.45);
+    color: var(--ct-danger);
+}
+
+.button--danger:hover {
+    border-color: var(--ct-danger);
+    background: var(--ct-danger-soft);
+}
+
+.button--block {
+    width: 100%;
+    justify-content: center;
+}
+
+.button[disabled] {
+    opacity: 0.55;
+    cursor: not-allowed;
+}

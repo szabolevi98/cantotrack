@@ -1,0 +1,23 @@
+RewriteEngine On
+
+# A real file or folder is served as it is; everything else goes to the front
+# controller.
+RewriteCond %{REQUEST_FILENAME} -f [OR]
+RewriteCond %{REQUEST_FILENAME} -d
+RewriteRule ^ - [L]
+
+RewriteRule ^ index.php [L]
+
+# PHP's own start-up warnings must not reach the response either.
+#
+# These happen BEFORE the script runs, so the ini_set() in index.php cannot
+# catch them. The `<IfModule>` is needed because `php_flag` only means anything
+# under mod_php; under FastCGI the same settings come from a .user.ini.
+<IfModule mod_php.c>
+    php_flag display_startup_errors off
+    php_flag display_errors off
+</IfModule>
+<IfModule mod_php8.c>
+    php_flag display_startup_errors off
+    php_flag display_errors off
+</IfModule>

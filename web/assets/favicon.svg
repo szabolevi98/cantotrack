@@ -1,0 +1,12 @@
+<!--
+    The mark: the brand blue with the two letters the sidebar carries. An SVG so
+    it stays sharp at whatever size a browser asks for, and small enough that it
+    costs nothing to serve.
+-->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="CantoTrack">
+    <rect width="64" height="64" rx="14" fill="#1a5fbf"/>
+    <text x="32" y="41"
+          font-family="system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif"
+          font-size="24" font-weight="700" letter-spacing="0.5"
+          text-anchor="middle" fill="#ffffff">CT</text>
+</svg>

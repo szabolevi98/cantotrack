@@ -1,0 +1,40 @@
+; Copy this file to config/config.ini and fill it in. The real file is never
+; committed: it holds the database password.
+
+[database]
+host = 127.0.0.1
+port = 3306
+name = cantotrack
+user = root
+password =
+charset = utf8mb4
+; The same collation as the schema. Without it the bound string parameters get
+; a different collation from the string columns, and MariaDB answers any
+; expression that mixes the two with "Illegal mix of collations".
+collation = utf8mb4_unicode_ci
+
+[app]
+name = "CantoTrack"
+env = dev
+; `debug` is not only about error messages: with it switched off the Twig cache
+; is used (var/cache/twig), so on a live server that folder MUST be writable or
+; every page answers 500. On a development machine this never comes up, because
+; there the cache is off.
+debug = 1
+base_url = "http://localhost/cantotrack/web"
+timezone = "Europe/Budapest"
+
+[session]
+name = cantotrack_session
+; Lifetime in seconds. Eight hours: a tracker is open all day, and a session
+; that expires over lunch loses a half-written ticket.
+lifetime = 28800
+
+[work]
+; The hours a full working day is taken to be. The timesheet compares what was
+; logged against this, and colours the day accordingly.
+hours_per_day = 8
+; The smallest slice of time that can be logged, in minutes. Anything typed is
+; rounded up to it, because a worklog of eleven seconds is noise rather than
+; data.
+minimum_minutes = 15

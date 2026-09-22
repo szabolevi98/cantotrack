@@ -1,0 +1,74 @@
+{#
+    The frame every signed-in page sits in: the sidebar, the top bar and the
+    content column.
+
+    The sidebar is a list of links rather than a component with state, because
+    which one is current can be worked out from the path — one place, and no
+    controller has to remember to say so.
+#}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{{ app_name }}{% endblock %}</title>
+    <link rel="icon" href="{{ url('assets/favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ url('assets/css/app.css') }}">
+</head>
+<body class="app">
+<aside class="sidebar">
+    <a class="sidebar__brand" href="{{ url('/') }}">
+        <span class="sidebar__mark">CT</span>
+        <span class="sidebar__name">{{ app_name }}</span>
+    </a>
+
+    <nav class="sidebar__nav">
+        {% set items = [
+            { path: '/', label: 'Dashboard' },
+            { path: '/projects', label: 'Projects' },
+            { path: '/tickets', label: 'Tickets' },
+            { path: '/timesheet', label: 'Timesheet' }
+        ] %}
+
+        {% for item in items %}
+            {# The dashboard is the only path that has to match exactly: every
+               other path starts with a slash and a word, so "starts with" would
+               make "/" current on every page. #}
+            {% set active = item.path == '/' ? current_path == '/' : current_path starts with item.path %}
+            <a class="sidebar__link{{ active ? ' is-active' : '' }}" href="{{ url(item.path) }}">{{ item.label }}</a>
+        {% endfor %}
+
+        {% if is_admin %}
+            <span class="sidebar__section">Administration</span>
+            <a class="sidebar__link{{ current_path starts with '/people' ? ' is-active' : '' }}"
+               href="{{ url('/people') }}">People</a>
+        {% endif %}
+    </nav>
+
+    <div class="sidebar__foot">
+        <span class="avatar" title="{{ current_user.name }}">{{ current_user.name|initials }}</span>
+        <span class="sidebar__user">
+            <strong>{{ current_user.name }}</strong>
+            <small>{{ current_user.role == 'admin' ? 'Administrator' : 'Member' }}</small>
+        </span>
+        <a class="sidebar__logout" href="{{ url('/logout') }}" title="Sign out">Sign out</a>
+    </div>
+</aside>
+
+<main class="content">
+    <header class="content__head">
+        <div>
+            <h1>{% block heading %}{% endblock %}</h1>
+            {% block subheading %}{% endblock %}
+        </div>
+        <div class="content__actions">{% block actions %}{% endblock %}</div>
+    </header>
+
+    {% if flash %}
+        <p class="flash flash--{{ flash.kind }}">{{ flash.message }}</p>
+    {% endif %}
+
+    {% block content %}{% endblock %}
+</main>
+</body>
+</html>

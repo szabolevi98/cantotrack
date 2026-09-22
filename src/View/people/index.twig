@@ -1,0 +1,67 @@
+{% extends 'layout.twig' %}
+
+{% block title %}People — {{ app_name }}{% endblock %}
+{% block heading %}People{% endblock %}
+{% block subheading %}<p class="content__sub">Who can sign in, and what they may do.</p>{% endblock %}
+
+{% block actions %}
+    <a class="button button--primary" href="{{ url('/people/create') }}">Add somebody</a>
+{% endblock %}
+
+{% block content %}
+    {#
+        A password is shown here exactly once, on the page after it was made.
+        It lives in the session until this page draws it and not a moment longer,
+        so a reload does not put it back on screen.
+    #}
+    {% if new_password %}
+        <section class="card card--handover">
+            <h2 class="card__title">Hand this over</h2>
+            <p class="card__body">
+                It is not stored in readable form anywhere, so this is the only time
+                it can be read. If it goes missing, make a new one.
+            </p>
+            <dl class="facts">
+                <dt>Signs in with</dt>
+                <dd>{{ new_password.email }}</dd>
+                <dt>Password</dt>
+                <dd><code class="handover">{{ new_password.password }}</code></dd>
+            </dl>
+        </section>
+    {% endif %}
+
+    <section class="card card--flush">
+        <table class="table">
+            <thead>
+            <tr>
+                <th>Name</th>
+                <th>Signs in with</th>
+                <th>Role</th>
+                <th class="table__number">Open</th>
+                <th class="table__number">Logged, 30 days</th>
+                <th>Last seen</th>
+                <th></th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for person in people %}
+                <tr class="{{ person.is_active ? '' : 'row--muted' }}">
+                    <td>
+                        <span class="person"><span class="person__mark">{{ person.name|initials }}</span>{{ person.name }}</span>
+                        {% if not person.is_active %}<span class="badge badge--muted">Deactivated</span>{% endif %}
+                        {% if person.id == current_user.id %}<span class="badge">You</span>{% endif %}
+                    </td>
+                    <td>{{ person.email }}</td>
+                    <td>{{ person.role == 'admin' ? 'Administrator' : 'Member' }}</td>
+                    <td class="table__number">{{ person.open_tickets > 0 ? person.open_tickets : '—' }}</td>
+                    <td class="table__number">{{ person.minutes_30d > 0 ? person.minutes_30d|duration : '—' }}</td>
+                    <td>{{ person.last_login_at ? person.last_login_at|day : 'Never' }}</td>
+                    <td class="table__number">
+                        <a href="{{ url('/people/' ~ person.id ~ '/edit') }}">Edit</a>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </section>
+{% endblock %}

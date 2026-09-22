@@ -10,6 +10,7 @@
 use CantoTrack\Controller\DashboardController;
 use CantoTrack\Controller\EpicController;
 use CantoTrack\Controller\LoginController;
+use CantoTrack\Controller\PeopleController;
 use CantoTrack\Controller\ProjectController;
 use CantoTrack\Controller\TicketController;
 use CantoTrack\Controller\TimesheetController;
@@ -129,5 +130,15 @@ $router->post('/worklogs/{id}', static fn($id) => (new WorklogController())->upd
 $router->post('/worklogs/{id}/delete', static fn($id) => (new WorklogController())->delete((int) $id));
 
 $router->get('/timesheet', static fn() => (new TimesheetController())->index());
+
+// ---------------------------------------------------------------------------
+// The people, for administrators
+// ---------------------------------------------------------------------------
+$router->get('/people', static fn() => (new PeopleController())->index());
+$router->get('/people/create', static fn() => (new PeopleController())->createForm());
+$router->post('/people/create', static fn() => (new PeopleController())->create());
+$router->get('/people/{id}/edit', static fn($id) => (new PeopleController())->editForm((int) $id));
+$router->post('/people/{id}', static fn($id) => (new PeopleController())->update((int) $id));
+$router->post('/people/{id}/password', static fn($id) => (new PeopleController())->resetPassword((int) $id));
 
 $router->dispatch($_SERVER['REQUEST_METHOD'] ?? 'GET', $_SERVER['REQUEST_URI'] ?? '/');

@@ -324,6 +324,102 @@ if ($email === null || $password === null) {
     check('and its ticket is gone with it',
         request($baseUrl . '/tickets/' . $ticketId, [], $jar)['status'] === 404);
 
+    // ---------------------------------------------------------------------
+    // The people. Accounts are never deleted by design, so this leaves a
+    // deactivated one behind on every run — which is the honest cost of
+    // checking the thing that matters: that a colleague can be given an
+    // account and a password.
+    // ---------------------------------------------------------------------
+    $people = request($baseUrl . '/people', [], $jar);
+    check('the people page is there for an administrator', $people['status'] === 200);
+
+    $colleague = 'smoke-' . random_int(1000, 9999) . '@example.test';
+    $added = request($baseUrl . '/people/create', [
+        '_token' => $token,
+        'name' => 'Smoke Test Colleague',
+        'email' => $colleague,
+        'role' => 'member',
+    ], $jar);
+    check('a colleague can be given an account', $added['status'] === 302);
+
+    $afterAdd = request($baseUrl . '/people', [], $jar);
+    check('and the password is shown once, to hand over',
+        str_contains($afterAdd['body'], 'Hand this over') && str_contains($afterAdd['body'], $colleague));
+    check('but not again on the next look',
+        !str_contains(request($baseUrl . '/people', [], $jar)['body'], 'Hand this over'));
+
+    $duplicate = request($baseUrl . '/people/create', [
+        '_token' => $token,
+        'name' => 'The same address',
+        'email' => $colleague,
+        'role' => 'member',
+    ], $jar);
+    check('an address that already signs somebody in is refused',
+        str_contains($duplicate['body'], 'already signs in with that address'));
+
+    /*
+     * Which row is whose. Taken from the row that carries the address rather
+     * than from its position: the table is sorted by name, so the first row is
+     * whoever happens to sort first — which is how the first version of these
+     * checks ended up editing the wrong person.
+     */
+    $rowId = static function (string $html, string $address): int {
+        preg_match('#<tr[^>]*>(?:(?!</tr>).)*?' . preg_quote($address, '#') . '(?:(?!</tr>).)*?/people/(\d+)/edit#s',
+            $html, $found);
+
+        return (int) ($found[1] ?? 0);
+    };
+
+    $listing = request($baseUrl . '/people', [], $jar);
+    $myId = $rowId($listing['body'], $email);
+    $colleagueId = $rowId($listing['body'], $colleague);
+
+    check('each person can be picked out of the list by their address',
+        $myId > 0 && $colleagueId > 0 && $myId !== $colleagueId,
+        'mine ' . $myId . ', theirs ' . $colleagueId);
+
+    // The two ways an administrator could lock themselves out of their own
+    // installation. Both are refused with a sentence rather than by leaving
+    // them to find out.
+    $selfDemote = request($baseUrl . '/people/' . $myId, [
+        '_token' => $token,
+        'name' => 'Still an administrator',
+        'email' => $email,
+        'role' => 'member',
+        'is_active' => '1',
+    ], $jar);
+    check('an administrator cannot take the role off themselves',
+        str_contains($selfDemote['body'], 'cannot take the administrator role off yourself'));
+
+    $selfOff = request($baseUrl . '/people/' . $myId, [
+        '_token' => $token,
+        'name' => 'Still an administrator',
+        'email' => $email,
+        'role' => 'admin',
+    ], $jar);
+    check('nor deactivate their own account',
+        str_contains($selfOff['body'], 'cannot deactivate your own account'));
+
+    // Somebody else, on the other hand, can be deactivated — which is what
+    // happens instead of deleting them.
+    $deactivated = request($baseUrl . '/people/' . $colleagueId, [
+        '_token' => $token,
+        'name' => 'Smoke Test Colleague',
+        'email' => $colleague,
+        'role' => 'member',
+    ], $jar);
+    check('somebody else can be deactivated rather than deleted', $deactivated['status'] === 302);
+    check('and then reads as deactivated',
+        str_contains(request($baseUrl . '/people', [], $jar)['body'], 'Deactivated'));
+
+    // A deactivated colleague is no longer offered as an assignee, which is the
+    // point of deactivating them.
+    // By id rather than by name: an earlier run of this script leaves a
+    // deactivated colleague behind with the same name, and a check that reads
+    // names would be answered by somebody else's leftovers.
+    check('a deactivated person is off the assignee list',
+        !str_contains(request($baseUrl . '/tickets/create', [], $jar)['body'], 'value="' . $colleagueId . '"'));
+
     $out = request($baseUrl . '/logout', [], $jar);
     check('signing out redirects to the login page',
         $out['status'] === 302 && str_contains($out['headers'], '/login'));

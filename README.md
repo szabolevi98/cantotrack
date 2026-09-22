@@ -8,9 +8,8 @@ Written in PHP with Twig and MySQL. No framework: a router, a handful of core
 classes and a stylesheet built by concatenating its own sources — small enough
 to read in an afternoon and to deploy by copying a folder.
 
-> **Being written now.** Projects, epics, tickets and the hours against them all
-> work; what is left is the administration of people, and the pictures for this
-> README.
+> **Being written now.** Everything below works. What is left is the pictures
+> for this README, and whatever the first real week of using it turns up.
 
 ## What it does
 
@@ -28,6 +27,10 @@ to read in an afternoon and to deploy by copying a folder.
   day, totals per project, and how each day compares to a working day.
 - **Two roles**: an administrator sets up projects and people, a member works
   tickets and logs time. A tracker this size does not earn a permission matrix.
+- **Accounts that are never deleted.** People are deactivated instead, because
+  tickets and hours point at them and the history has to keep making sense.
+  Passwords are generated and shown once, so there is no shared default to
+  survive to a live server.
 
 ## Running it
 
@@ -54,8 +57,9 @@ php tests/smoke.php --email=you@example.com --password=…
 ```
 
 It creates a project, an epic and a ticket, logs time against them, reads the
-timesheet, and deletes all of it again — so it can be run against a real
-installation without leaving anything behind.
+timesheet and deletes all of it again. The one thing it leaves behind is a
+deactivated account: the application does not delete people, and the checks do
+not make an exception for themselves.
 
 It walks the application over real HTTP rather than calling the controllers:
 the login page, a post without a CSRF token, a wrong password, a right one, the

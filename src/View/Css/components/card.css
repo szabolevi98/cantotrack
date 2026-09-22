@@ -41,6 +41,20 @@
     color: var(--ct-muted);
 }
 
+/* The card a password is handed over on. Marked in the brand colour because it
+   is the one thing on the page that cannot be read again. */
+.card--handover {
+    border-color: var(--ct-primary-border);
+    background: var(--ct-primary-soft);
+}
+
+.handover {
+    padding: 4px 10px;
+    background: var(--ct-surface);
+    font-size: 1rem;
+    letter-spacing: 0.06em;
+}
+
 .card__empty {
     padding: 36px 22px;
     color: var(--ct-muted);

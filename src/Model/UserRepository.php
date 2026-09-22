@@ -70,6 +70,84 @@ class UserRepository
         return (int) $this->db->lastInsertId();
     }
 
+    /**
+     * Whether an address is already somebody's, ignoring one id — which is what
+     * an edit form needs, since a person keeping their own address is not a
+     * clash.
+     */
+    public function emailTaken(string $email, ?int $exceptId = null): bool
+    {
+        $statement = $this->db->prepare(
+            'SELECT COUNT(*) FROM users WHERE email = :email AND (:except IS NULL OR id <> :except2)'
+        );
+
+        $statement->execute([
+            'email' => mb_strtolower(trim($email)),
+            'except' => $exceptId,
+            'except2' => $exceptId,
+        ]);
+
+        return ((int) $statement->fetchColumn()) > 0;
+    }
+
+    public function update(int $id, string $name, string $email, string $role, bool $isActive): void
+    {
+        $statement = $this->db->prepare(
+            'UPDATE users SET name = :name, email = :email, role = :role, is_active = :active WHERE id = :id'
+        );
+
+        $statement->execute([
+            'name' => trim($name),
+            'email' => mb_strtolower(trim($email)),
+            'role' => $role === 'admin' ? 'admin' : 'member',
+            'active' => $isActive ? 1 : 0,
+            'id' => $id,
+        ]);
+    }
+
+    /**
+     * Sets a new password.
+     *
+     * Every session of that person's is left alone deliberately: this is used to
+     * hand somebody a password they have lost, not to lock them out of the
+     * browser they are sitting at.
+     */
+    public function setPassword(int $id, string $password): void
+    {
+        $statement = $this->db->prepare('UPDATE users SET password_hash = :hash WHERE id = :id');
+        $statement->execute(['hash' => password_hash($password, PASSWORD_DEFAULT), 'id' => $id]);
+    }
+
+    /**
+     * A password to hand over: readable, from an alphabet with no characters
+     * that can be misread, and long enough that it does not matter which twelve
+     * they are.
+     */
+    public static function newPassword(int $length = 12): string
+    {
+        $alphabet = 'abcdefghijkmnopqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789';
+        $password = '';
+
+        for ($i = 0; $i < $length; $i++) {
+            $password .= $alphabet[random_int(0, strlen($alphabet) - 1)];
+        }
+
+        return $password;
+    }
+
+    /** How much each person has open and logged, for the people page. */
+    public function withActivity(): array
+    {
+        return $this->db->query(
+            'SELECT u.*,
+                    (SELECT COUNT(*) FROM tickets t WHERE t.assignee_id = u.id AND t.status <> \'done\') AS open_tickets,
+                    (SELECT COALESCE(SUM(w.minutes), 0) FROM worklogs w
+                     WHERE w.user_id = u.id AND w.work_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)) AS minutes_30d
+             FROM users u
+             ORDER BY u.is_active DESC, u.name'
+        )->fetchAll();
+    }
+
     public function touchLastLogin(int $id): void
     {
         $statement = $this->db->prepare('UPDATE users SET last_login_at = NOW() WHERE id = :id');

@@ -306,9 +306,16 @@ if ($email === null || $password === null) {
 
     // The entries belong to whoever worked them, so this account can remove its
     // own; the timesheet has to lose it with them.
-    preg_match('#/worklogs/(\d+)/delete#', $timesheet['body'], $m);
+    //
+    // The id comes from the ticket page rather than from the first delete link
+    // on the timesheet: the week may well hold other work of this account's,
+    // and a check that takes whichever entry happens to be first deletes
+    // somebody's real afternoon and then passes.
+    preg_match('#/worklogs/(\d+)/delete#', $ticketPage['body'], $m);
     $worklogId = (int) ($m[1] ?? 0);
-    check('the timesheet offers to delete an entry of yours', $worklogId > 0);
+    check('the ticket offers to delete an entry of yours', $worklogId > 0);
+    check('and the timesheet offers the same one',
+        str_contains($timesheet['body'], '/worklogs/' . $worklogId . '/delete'));
 
     $removedLog = request($baseUrl . '/worklogs/' . $worklogId . '/delete', [
         '_token' => $token,

@@ -4,33 +4,54 @@ An issue tracker with time logging: work is broken down into **projects → epic
 → tickets**, and the hours that go into it are logged against the tickets and
 totalled into timesheets.
 
+![The board of a project, a column per status](docs/board.png)
+
 Written in PHP with Twig and MySQL. No framework: a router, a handful of core
 classes and a stylesheet built by concatenating its own sources — small enough
 to read in an afternoon and to deploy by copying a folder.
 
-> **Being written now.** Everything below works. What is left is the pictures
-> for this README, and whatever the first real week of using it turns up.
-
 ## What it does
 
-- **Projects, epics and tickets** — three levels and no more. A project holds
-  epics, an epic holds tickets, and a ticket is the thing somebody works on and
-  logs time against.
-- **A board per project**, a column per status, and a ticket moved along it with
-  one control that works on a phone and without JavaScript.
-- **A ticket list** filtered by project, status, assignee or text, where the
-  filters are the URL — so a filtered list can be bookmarked and sent to
-  somebody.
-- **Worklogs**: hours logged against a ticket, on a day, with a note. Logged
-  from the ticket, because that is where somebody is when they remember.
-- **Timesheets**: one person's week, day by day, with the entries under each
-  day, totals per project, and how each day compares to a working day.
-- **Two roles**: an administrator sets up projects and people, a member works
-  tickets and logs time. A tracker this size does not earn a permission matrix.
-- **Accounts that are never deleted.** People are deactivated instead, because
-  tickets and hours point at them and the history has to keep making sense.
-  Passwords are generated and shown once, so there is no shared default to
-  survive to a live server.
+**Projects, epics and tickets.** Three levels and no more. A project holds
+epics, an epic holds tickets, and a ticket is the thing somebody works on and
+logs time against. Ticket numbers are per project (`CT-4`, `WEB-3`) and come
+from a counter raised in the same transaction as the insert, so two people
+creating a ticket at the same moment cannot end up with the same one.
+
+**A board per project.** A column per status, with the counts in the headers,
+and a ticket moved along with one control — which means it also works on a
+phone and with a keyboard, neither of which can drag a card.
+
+**A ticket list that filters into the URL**, by project, status, assignee or
+text. A filtered list can then be bookmarked, or sent to somebody who gets the
+same list you were looking at.
+
+![The ticket list with its filters](docs/tickets.png)
+
+**Time logged where the work was.** Hours go on the ticket, on the day they
+happened — which is rarely the day they are typed in, so the date is a field
+and not a timestamp. Durations are written the way people say them: `1h 30m`,
+`90m`, `1.5h` or `1:30` all mean the same ninety minutes. The estimate sits
+next to the total, and says so when the total has passed it.
+
+![A ticket, with its worklogs and the form that adds one](docs/ticket.png)
+
+**A week at a time.** One person's timesheet, day by day, with the entries
+under each day and each day measured against a working day. Beside it: where
+the hours went by project, and — for an administrator — what everybody else
+logged that week. Anybody can open anybody's week, because hours are how a
+team's week is understood; changing an entry is a different matter, and stays
+with whoever logged it.
+
+![The timesheet: a week, day by day](docs/timesheet.png)
+
+**Two roles.** An administrator sets up projects and people; a member works
+tickets and logs time. A tracker this size does not earn a permission matrix.
+
+**Accounts that are never deleted.** People are deactivated instead, because
+tickets and hours point at them and the history has to keep making sense.
+Passwords are generated and shown once, so there is no shared default left to
+survive to a live server.
 
 ## Running it
 
@@ -49,6 +70,19 @@ Then open the application and sign in with what the seed printed. On a
 development machine the address is whatever the folder maps to — set the same
 one in `config.ini` as `app.base_url`, because that is what every link is built
 from.
+
+### Something to look at
+
+```
+php database/seed_demo.php
+```
+
+Two projects, five epics, fifteen tickets and a week of hours behind them —
+which is what the pictures above are. It prints the passwords of the three
+colleagues it invents, and takes `--reset` to start them over. It refuses to
+run unless `app.env` is `dev`: it creates accounts that can sign in, and an
+account nobody meant to create is exactly the kind of thing that survives to a
+live server.
 
 ### Checking it
 
@@ -73,7 +107,8 @@ that calls a controller directly.
 ```
 bin/            the CSS build, and whatever else is run by hand
 config/         config.ini.dist — the real config.ini is never committed
-database/       the schema as .sql files, the migration runner and the seed
+database/       the schema as .sql files, the migration runner and the seeds
+docs/           the pictures in this README
 src/Core/       config, router, session, CSRF, auth, logging, formatting
 src/Controller/ one class per area of the application
 src/Model/      repositories: everything that touches the database

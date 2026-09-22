@@ -12,6 +12,8 @@ use CantoTrack\Controller\EpicController;
 use CantoTrack\Controller\LoginController;
 use CantoTrack\Controller\ProjectController;
 use CantoTrack\Controller\TicketController;
+use CantoTrack\Controller\TimesheetController;
+use CantoTrack\Controller\WorklogController;
 use CantoTrack\Core\Config;
 use CantoTrack\Core\Csrf;
 use CantoTrack\Core\Logger;
@@ -118,5 +120,14 @@ $router->get('/tickets/{id}/edit', static fn($id) => (new TicketController())->e
 $router->post('/tickets/{id}', static fn($id) => (new TicketController())->update((int) $id));
 $router->post('/tickets/{id}/status', static fn($id) => (new TicketController())->changeStatus((int) $id));
 $router->post('/tickets/{id}/delete', static fn($id) => (new TicketController())->delete((int) $id));
+
+// ---------------------------------------------------------------------------
+// The hours
+// ---------------------------------------------------------------------------
+$router->post('/tickets/{id}/log', static fn($id) => (new WorklogController())->create((int) $id));
+$router->post('/worklogs/{id}', static fn($id) => (new WorklogController())->update((int) $id));
+$router->post('/worklogs/{id}/delete', static fn($id) => (new WorklogController())->delete((int) $id));
+
+$router->get('/timesheet', static fn() => (new TimesheetController())->index());
 
 $router->dispatch($_SERVER['REQUEST_METHOD'] ?? 'GET', $_SERVER['REQUEST_URI'] ?? '/');

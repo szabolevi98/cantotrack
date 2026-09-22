@@ -8,22 +8,24 @@ Written in PHP with Twig and MySQL. No framework: a router, a handful of core
 classes and a stylesheet built by concatenating its own sources — small enough
 to read in an afternoon and to deploy by copying a folder.
 
-> **Being written now.** The scaffolding stands — sign-in, sessions, the layout,
-> the stylesheet, the migrations and a smoke test that walks the whole thing over
-> HTTP. The tickets and the timesheets are next, and the pictures in this README
-> arrive with them.
+> **Being written now.** Projects, epics, tickets and the hours against them all
+> work; what is left is the administration of people, and the pictures for this
+> README.
 
-## What it will do
+## What it does
 
 - **Projects, epics and tickets** — three levels and no more. A project holds
   epics, an epic holds tickets, and a ticket is the thing somebody works on and
   logs time against.
-- **A board and a list** for each project, with the statuses a ticket moves
-  through, who it is assigned to and what it is worth.
-- **Worklogs**: hours logged against a ticket, on a date, with a note — the
-  record of where the week actually went.
-- **Timesheets**: a week at a glance per person, totalled by day and by project,
-  and the gap between what was logged and what a working day is.
+- **A board per project**, a column per status, and a ticket moved along it with
+  one control that works on a phone and without JavaScript.
+- **A ticket list** filtered by project, status, assignee or text, where the
+  filters are the URL — so a filtered list can be bookmarked and sent to
+  somebody.
+- **Worklogs**: hours logged against a ticket, on a day, with a note. Logged
+  from the ticket, because that is where somebody is when they remember.
+- **Timesheets**: one person's week, day by day, with the entries under each
+  day, totals per project, and how each day compares to a working day.
 - **Two roles**: an administrator sets up projects and people, a member works
   tickets and logs time. A tracker this size does not earn a permission matrix.
 
@@ -50,6 +52,10 @@ from.
 ```
 php tests/smoke.php --email=you@example.com --password=…
 ```
+
+It creates a project, an epic and a ticket, logs time against them, reads the
+timesheet, and deletes all of it again — so it can be run against a real
+installation without leaving anything behind.
 
 It walks the application over real HTTP rather than calling the controllers:
 the login page, a post without a CSRF token, a wrong password, a right one, the

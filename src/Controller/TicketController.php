@@ -11,6 +11,7 @@ use CantoTrack\Model\EpicRepository;
 use CantoTrack\Model\ProjectRepository;
 use CantoTrack\Model\TicketRepository;
 use CantoTrack\Model\UserRepository;
+use CantoTrack\Model\WorklogRepository;
 
 /**
  * Tickets: the list with its filters, one ticket's page, and the forms.
@@ -53,6 +54,8 @@ class TicketController
             'ticket' => $ticket,
             'people' => (new UserRepository())->active(),
             'statuses' => TicketRepository::STATUSES,
+            'worklogs' => (new WorklogRepository())->forTicket($id),
+            'today' => date('Y-m-d'),
         ]);
     }
 

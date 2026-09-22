@@ -28,6 +28,7 @@ $files = [
     'components/table.css',
     'components/board.css',
     'components/project.css',
+    'components/worklog.css',
     'pages/auth.css',
 ];
 

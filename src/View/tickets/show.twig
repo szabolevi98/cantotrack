@@ -30,6 +30,67 @@
                     <p class="card__body muted">Nothing written down yet.</p>
                 {% endif %}
             </section>
+            <section class="card">
+                <h2 class="card__title">Log time</h2>
+                {#
+                    On the ticket rather than on a separate page: the moment
+                    somebody is willing to write down where an hour went is the
+                    moment they are looking at what they did it on.
+                #}
+                <form class="log-form" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/log') }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+
+                    <div>
+                        <label for="time">How long</label>
+                        <input id="time" class="field" type="text" name="time" placeholder="1h 30m" required>
+                    </div>
+
+                    <div>
+                        <label for="work_date">Which day</label>
+                        {# Defaults to today, which it is nine times in ten, and
+                           accepts any past day because Friday's hours are
+                           regularly written down on Monday. #}
+                        <input id="work_date" class="field" type="date" name="work_date"
+                               value="{{ today }}" max="{{ today }}">
+                    </div>
+
+                    <div class="log-form__note">
+                        <label for="note">What you did</label>
+                        <input id="note" class="field" type="text" name="note" maxlength="500"
+                               placeholder="Optional">
+                    </div>
+
+                    <button class="button button--primary" type="submit">Log it</button>
+                </form>
+
+                {% if worklogs is empty %}
+                    <p class="card__body">No hours logged against this ticket yet.</p>
+                {% else %}
+                    <ul class="logs logs--ticket">
+                        {% for entry in worklogs %}
+                            <li class="log">
+                                <div class="log__what">
+                                    <strong>{{ entry.user_name }}</strong>
+                                    <span class="muted">{{ entry.work_date|day }}</span>
+                                    {% if entry.note %}<span class="log__note">{{ entry.note }}</span>{% endif %}
+                                </div>
+
+                                <span class="log__time">{{ entry.minutes|duration }}</span>
+
+                                {% if entry.user_id == current_user.id or is_admin %}
+                                    <form class="log__delete" method="post"
+                                          action="{{ url('/worklogs/' ~ entry.id ~ '/delete') }}"
+                                          onsubmit="return confirm('Delete this {{ entry.minutes|duration }} entry?')">
+                                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                        <input type="hidden" name="back" value="/tickets/{{ ticket.id }}">
+                                        <button class="link-button" type="submit" title="Delete this entry">×</button>
+                                    </form>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </section>
         </div>
 
         <aside class="split__side">

@@ -1076,6 +1076,180 @@ label {
 }
 
 /*
+ * The hours: a day on the timesheet, the entries in it, and the form that adds
+ * one from a ticket.
+ */
+.day {
+    margin-bottom: 12px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius);
+    background: var(--ct-surface);
+    box-shadow: var(--ct-shadow);
+}
+
+/* A weekend and an empty day stay visible but stop asking for attention: what
+   the eye should catch on this page is the day that is short. */
+.day--weekend {
+    background: var(--ct-bg);
+    box-shadow: none;
+}
+
+.day--empty .day__total {
+    color: var(--ct-muted);
+}
+
+.day__head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+}
+
+.day__head strong {
+    margin-right: 8px;
+}
+
+.day__total {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 5px;
+    min-width: 120px;
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+}
+
+.bar--day {
+    width: 120px;
+}
+
+/* A day that reached the working day's length is marked, so a week can be read
+   by its shape rather than by adding the numbers up. */
+.bar__fill--full {
+    background: var(--ct-success);
+}
+
+.day__empty {
+    margin: 0;
+    padding: 0 16px 14px;
+    color: var(--ct-muted);
+    font-size: 0.88rem;
+}
+
+.logs {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--ct-border);
+}
+
+.logs--ticket {
+    margin-top: 16px;
+}
+
+.log {
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--ct-border);
+}
+
+.log:last-child {
+    border-bottom: none;
+}
+
+.log__what {
+    display: flex;
+    flex: 1;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: baseline;
+    min-width: 0;
+}
+
+.log__note {
+    color: var(--ct-muted);
+    font-size: 0.88rem;
+}
+
+.log__time {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.log__delete {
+    display: flex;
+}
+
+/* A button that has to look like a link: deleting one entry is a post, but it
+   should not sit on the row like a button. */
+.link-button {
+    padding: 0 4px;
+    border: none;
+    background: none;
+    color: var(--ct-muted);
+    font-size: 1.05rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.link-button:hover {
+    color: var(--ct-danger);
+}
+
+/* The form on a ticket. One row on a wide card, stacked on a narrow one, with
+   the note taking whatever is left. */
+.log-form {
+    display: grid;
+    grid-template-columns: 120px 170px minmax(0, 1fr) auto;
+    gap: 0 12px;
+    align-items: end;
+}
+
+.log-form .field {
+    margin-bottom: 0;
+}
+
+.log-form .button {
+    height: 40px;
+}
+
+.split-list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.split-list li {
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 4px 8px;
+    align-items: baseline;
+    padding: 9px 0;
+    border-bottom: 1px solid var(--ct-border);
+    font-size: 0.9rem;
+}
+
+.split-list li:last-child {
+    border-bottom: none;
+}
+
+.split-list .bar {
+    grid-column: 1 / -1;
+}
+
+@media (max-width: 760px) {
+    .log-form {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 10px;
+    }
+}
+
+/*
  * The sign-in page: one card in the middle of a coloured field.
  *
  * The background carries the brand gradient rather than the page grey, because

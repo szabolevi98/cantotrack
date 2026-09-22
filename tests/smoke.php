@@ -251,6 +251,73 @@ if ($email === null || $password === null) {
     $list = request($baseUrl . '/tickets?q=' . $code . '-1', [], $jar);
     check('the ticket can be found by its name', str_contains($list['body'], 'Smoke test ticket'));
 
+    // ---------------------------------------------------------------------
+    // The hours
+    // ---------------------------------------------------------------------
+    $logged = request($baseUrl . '/tickets/' . $ticketId . '/log', [
+        '_token' => $token,
+        'time' => '1h 30m',
+        'work_date' => date('Y-m-d'),
+        'note' => 'Logged by tests/smoke.php.',
+    ], $jar);
+    check('time can be logged against a ticket', $logged['status'] === 302, 'status ' . $logged['status']);
+
+    $ticketPage = request($baseUrl . '/tickets/' . $ticketId, [], $jar);
+    check('the ticket shows what was logged on it',
+        str_contains($ticketPage['body'], 'Logged by tests/smoke.php.')
+        && str_contains($ticketPage['body'], '1h 30m'));
+
+    // Two entries on the same ticket have to add up rather than replace each
+    // other, which is the whole point of keeping them as rows.
+    request($baseUrl . '/tickets/' . $ticketId . '/log', [
+        '_token' => $token,
+        'time' => '45m',
+        'work_date' => date('Y-m-d'),
+    ], $jar);
+
+    $ticketPage = request($baseUrl . '/tickets/' . $ticketId, [], $jar);
+    check('a second entry adds to the first', str_contains($ticketPage['body'], '2h 15m'));
+
+    // A time nobody can read, and a day that has not happened, are both refused
+    // — and the refusal says so rather than silently logging nothing.
+    $badTime = request($baseUrl . '/tickets/' . $ticketId . '/log', [
+        '_token' => $token,
+        'time' => 'ages',
+        'work_date' => date('Y-m-d'),
+    ], $jar);
+    check('a time that cannot be read is refused',
+        str_contains(request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'], 'should read like')
+        && $badTime['status'] === 302);
+
+    request($baseUrl . '/tickets/' . $ticketId . '/log', [
+        '_token' => $token,
+        'time' => '1h',
+        'work_date' => (new DateTimeImmutable('+2 days'))->format('Y-m-d'),
+    ], $jar);
+    check('a day that has not happened is refused',
+        str_contains(request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'], 'has not happened'));
+
+    $timesheet = request($baseUrl . '/timesheet', [], $jar);
+    check('the timesheet answers', $timesheet['status'] === 200, 'status ' . $timesheet['status']);
+    check('and this week shows the ticket the time went on',
+        str_contains($timesheet['body'], $code . '-1')
+        && str_contains($timesheet['body'], 'Logged by tests/smoke.php.'));
+    check('with the week totalled', str_contains($timesheet['body'], '2h 15m'));
+
+    // The entries belong to whoever worked them, so this account can remove its
+    // own; the timesheet has to lose it with them.
+    preg_match('#/worklogs/(\d+)/delete#', $timesheet['body'], $m);
+    $worklogId = (int) ($m[1] ?? 0);
+    check('the timesheet offers to delete an entry of yours', $worklogId > 0);
+
+    $removedLog = request($baseUrl . '/worklogs/' . $worklogId . '/delete', [
+        '_token' => $token,
+        'back' => '/timesheet',
+    ], $jar);
+    check('an entry can be deleted', $removedLog['status'] === 302);
+    check('and the ticket total drops with it',
+        !str_contains(request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'], '2h 15m'));
+
     // Tidy up after itself: the project takes the epic and the ticket with it.
     $removed = request($baseUrl . '/projects/' . $projectId . '/delete', ['_token' => $token], $jar);
     check('the project can be deleted again', $removed['status'] === 302);

@@ -1,0 +1,144 @@
+{% extends 'layout.twig' %}
+{% import 'common/macros.twig' as ui %}
+
+{% block title %}Timesheet — {{ app_name }}{% endblock %}
+{% block heading %}{{ is_mine ? 'Your week' : person.name ~ '’s week' }}{% endblock %}
+{% block subheading %}
+    <p class="content__sub">{{ monday|day }} — {{ sunday|day }}</p>
+{% endblock %}
+
+{% block actions %}
+    <a class="button" href="{{ url('/timesheet?week=' ~ previous_week ~ '&user=' ~ person.id) }}">← Previous</a>
+    <a class="button" href="{{ url('/timesheet?user=' ~ person.id) }}">This week</a>
+    {% if has_next %}
+        <a class="button" href="{{ url('/timesheet?week=' ~ next_week ~ '&user=' ~ person.id) }}">Next →</a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    {# Whose week. A form rather than a list of links, because it is one control
+       and the list of people grows. #}
+    <form class="filters card" method="get" action="{{ url('/timesheet') }}">
+        <input type="hidden" name="week" value="{{ monday }}">
+        <label class="check--inline" for="user">Whose week</label>
+        <select id="user" class="field field--inline" name="user" onchange="this.form.submit()">
+            {% for one in people %}
+                <option value="{{ one.id }}"{{ person.id == one.id ? ' selected' : '' }}>{{ one.name }}</option>
+            {% endfor %}
+        </select>
+        <noscript><button class="button" type="submit">Show</button></noscript>
+    </form>
+
+    <div class="stats">
+        <div class="stat">
+            <div class="stat__label">Logged this week</div>
+            <div class="stat__value">{{ total|duration }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat__label">Of a {{ (expected_week / 60)|round }}-hour week</div>
+            <div class="stat__value">{{ expected_week > 0 ? (total / expected_week * 100)|round : 0 }}%</div>
+        </div>
+        <div class="stat">
+            <div class="stat__label">Days with something on them</div>
+            <div class="stat__value">{{ days|filter(d => d.minutes > 0)|length }}</div>
+        </div>
+    </div>
+
+    <div class="split">
+        <div class="split__main">
+            {% for date, day in days %}
+                {% set weekend = date|date('N') > 5 %}
+                <section class="day{{ weekend ? ' day--weekend' : '' }}{{ day.minutes == 0 ? ' day--empty' : '' }}">
+                    <header class="day__head">
+                        <div>
+                            <strong>{{ date|date('l') }}</strong>
+                            <span class="muted">{{ date|day }}</span>
+                        </div>
+                        <div class="day__total">
+                            {{ day.minutes > 0 ? day.minutes|duration : '—' }}
+                            {#
+                                The bar is against a full day, and it is capped at
+                                100% so a ten-hour day does not draw past its box —
+                                the number beside it is what says it was ten.
+                            #}
+                            {% if day.minutes > 0 and not weekend %}
+                                <span class="bar bar--day">
+                                    <span class="bar__fill{{ day.minutes >= expected_per_day ? ' bar__fill--full' : '' }}"
+                                          style="width: {{ min(100, (day.minutes / expected_per_day * 100)|round) }}%"></span>
+                                </span>
+                            {% endif %}
+                        </div>
+                    </header>
+
+                    {% if day.entries is empty %}
+                        <p class="day__empty">{{ weekend ? 'Weekend' : 'Nothing logged' }}</p>
+                    {% else %}
+                        <ul class="logs">
+                            {% for entry in day.entries %}
+                                <li class="log">
+                                    <div class="log__what">
+                                        <a class="ticket-key" href="{{ url('/tickets/' ~ entry.ticket_id) }}">{{ entry.project_code }}-{{ entry.ticket_number }}</a>
+                                        <a href="{{ url('/tickets/' ~ entry.ticket_id) }}">{{ entry.ticket_title }}</a>
+                                        {% if entry.note %}<span class="log__note">{{ entry.note }}</span>{% endif %}
+                                    </div>
+
+                                    <span class="log__time">{{ entry.minutes|duration }}</span>
+
+                                    {% if is_mine or is_admin %}
+                                        <form class="log__delete" method="post"
+                                              action="{{ url('/worklogs/' ~ entry.id ~ '/delete') }}"
+                                              onsubmit="return confirm('Delete this {{ entry.minutes|duration }} entry?')">
+                                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                            <input type="hidden" name="back" value="/timesheet?week={{ monday }}&user={{ person.id }}">
+                                            <button class="link-button" type="submit" title="Delete this entry">×</button>
+                                        </form>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </section>
+            {% endfor %}
+        </div>
+
+        <aside class="split__side">
+            <section class="card">
+                <h2 class="card__title">Where it went</h2>
+                {% if by_project is empty %}
+                    <p class="card__body">Nothing logged this week.</p>
+                {% else %}
+                    <ul class="split-list">
+                        {% for row in by_project %}
+                            <li>
+                                <a href="{{ url('/projects/' ~ row.id) }}">{{ row.code }}</a>
+                                <span class="muted">{{ row.name }}</span>
+                                <strong>{{ row.minutes|duration }}</strong>
+                                <span class="bar">
+                                    <span class="bar__fill" style="width: {{ total > 0 ? (row.minutes / total * 100)|round : 0 }}%"></span>
+                                </span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </section>
+
+            {% if is_admin and team is not empty %}
+                <section class="card">
+                    <h2 class="card__title">The team this week</h2>
+                    <ul class="split-list">
+                        {% for one in people %}
+                            {% set minutes = team[one.id] is defined ? team[one.id]|reduce((sum, m) => sum + m, 0) : 0 %}
+                            <li>
+                                <a href="{{ url('/timesheet?week=' ~ monday ~ '&user=' ~ one.id) }}">{{ one.name }}</a>
+                                <strong>{{ minutes > 0 ? minutes|duration : '—' }}</strong>
+                                <span class="bar">
+                                    <span class="bar__fill" style="width: {{ min(100, expected_week > 0 ? (minutes / expected_week * 100)|round : 0) }}%"></span>
+                                </span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            {% endif %}
+        </aside>
+    </div>
+{% endblock %}

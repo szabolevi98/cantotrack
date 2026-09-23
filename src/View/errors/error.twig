@@ -7,7 +7,10 @@
     the layout's sidebar needs a user.
 #}
 <!DOCTYPE html>
-<html lang="{{ locale }}"{{ theme != 'system' ? ' data-theme="' ~ theme ~ '"' : '' }}>
+{# The attribute written out, and only its value printed: printed whole, the
+   quotes around the value were escaped with it, the browser read the theme as
+   '"light"', and a light choice showed dark on a dark system. #}
+<html lang="{{ locale }}"{% if theme in ['light', 'dark'] %} data-theme="{{ theme }}"{% endif %}>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">

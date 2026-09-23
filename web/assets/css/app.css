@@ -281,7 +281,8 @@ button {
     width: 34px;
     height: 34px;
     border-radius: 10px;
-    background: rgba(255, 255, 255, 0.14);
+    background: var(--ct-primary-fill);
+    color: #ffffff;
     font-size: 0.82rem;
     font-weight: 700;
     letter-spacing: 0.04em;
@@ -3286,8 +3287,8 @@ kbd {
 .auth__mark {
     display: grid;
     place-items: center;
-    width: 42px;
-    height: 42px;
+    width: 48px;
+    height: 48px;
     margin-bottom: 14px;
     border-radius: 12px;
     background: var(--ct-primary-fill);

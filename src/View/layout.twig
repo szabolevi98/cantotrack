@@ -27,7 +27,7 @@
 
 <aside class="sidebar">
     <a class="sidebar__brand" href="{{ url('/') }}">
-        <span class="sidebar__mark">CT</span>
+        <span class="sidebar__mark">{% include 'common/logo.twig' with {size: 22} %}</span>
         <span class="sidebar__name">{{ app_name }}</span>
     </a>
 

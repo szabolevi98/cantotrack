@@ -19,7 +19,7 @@
 </head>
 <body class="auth">
 <main class="auth__card">
-    <span class="auth__mark">CT</span>
+    <span class="auth__mark">{% include 'common/logo.twig' with {size: 30} %}</span>
 
     {% for message in flash %}
         <p class="flash flash--{{ message.kind }}" role="status">{{ message.message }}</p>

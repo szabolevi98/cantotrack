@@ -1,0 +1,20 @@
+{#
+    The mark's drawing: a clock's ring running round into a tick — time, and
+    the work it went into, done. White lines only; whatever holds it (the
+    sidebar's tile, the sign-in card's blue square) gives it its ground. The
+    same drawing, on the brand blue, is web/assets/favicon.svg.
+
+    `size` is the drawn size in pixels; under 32 the quarter marks are left
+    out and the line gets heavier, so it still reads that small.
+#}
+{%- set size = size|default(24) -%}
+{%- set small = size < 32 -%}
+<svg class="logo" width="{{ size }}" height="{{ size }}" viewBox="8 8 48 48" aria-hidden="true" focusable="false">
+    <g fill="none" stroke="currentColor" stroke-width="{{ small ? 4 : 3 }}" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M32 14a18 18 0 1 1-17.1 12.4"/>
+        {%- if not small %}
+        <path d="M32 14v4M50 32h-4M32 50v-4M14 32h4" stroke-width="2.5"/>
+        {%- endif %}
+        <path d="M25 32.5l5 5 9-10"/>
+    </g>
+</svg>

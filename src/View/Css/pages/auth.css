@@ -26,8 +26,8 @@
 .auth__mark {
     display: grid;
     place-items: center;
-    width: 42px;
-    height: 42px;
+    width: 48px;
+    height: 48px;
     margin-bottom: 14px;
     border-radius: 12px;
     background: var(--ct-primary-fill);

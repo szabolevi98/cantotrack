@@ -1,3 +1,5 @@
+<img src="web/assets/favicon.svg" width="72" alt="CantoTrack">
+
 # CantoTrack
 
 An issue tracker with time tracking for a small team: work is broken down into

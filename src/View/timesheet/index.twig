@@ -226,6 +226,7 @@
                             <div>
                                 <strong>{{ date|date('l')|t }}</strong>
                                 <span class="muted">{{ date|day }}</span>
+                                {% if day.planned|default(0) > 0 %}<span class="day__planned">{{ '{time} planned'|t({time: day.planned|duration}) }}</span>{% endif %}
                                 {% if day.holiday %}<span class="badge badge--violet">{{ day.holiday }}</span>{% endif %}
                                 {% if day.absence %}<span class="badge badge--amber">{{ {vacation: 'Day off', sick: 'Ill', other: 'Away'}[day.absence]|t }}</span>{% endif %}
                             </div>

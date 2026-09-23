@@ -832,6 +832,21 @@ if ($email === null || $password === null) {
     @unlink($sheetFile);
     check('and as a spreadsheet', $xlsx['status'] === 200 && str_contains($sheet, $code . '-1'));
 
+    $planned = request($baseUrl . '/planning', [
+        '_token' => $token,
+        'ticket' => $code . '-1',
+        'starts_on' => date('Y-m-d', strtotime('monday next week')),
+        'ends_on' => date('Y-m-d', strtotime('friday next week')),
+        'per_day' => '2h',
+        'note' => 'Planned by tests/smoke.php.',
+        'back' => '/planning?week=' . date('Y-m-d', strtotime('monday next week')),
+    ], $jar);
+    check(
+        'work can be planned ahead',
+        $planned['status'] === 302
+        && str_contains(request($baseUrl . '/planning?week=' . date('Y-m-d', strtotime('monday next week')), [], $jar)['body'], 'Planned by tests/smoke.php.')
+    );
+
     check('the work types answer', str_contains(request($baseUrl . '/settings/work-types', [], $jar)['body'], 'Add a work type'));
     check('and the reports add up by them', request($baseUrl . '/reports?group=type', [], $jar)['status'] === 200);
 

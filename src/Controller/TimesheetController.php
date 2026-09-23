@@ -74,6 +74,13 @@ class TimesheetController extends Controller
             $days[$date] += $info;
         }
 
+        // What was planned for each day, beside what was logged.
+        $planning = new \CantoTrack\Service\Planning();
+        $plannedDays = $planning->perDay($planning->plans($from, $to, $userId), $from, $to)[$userId] ?? [];
+        foreach ($days as $date => $day) {
+            $days[$date]['planned'] = $plannedDays[$date] ?? 0;
+        }
+
         $expected = Config::int('work.hours_per_day', 8) * 60;
         $expectedWeek = array_sum(array_column($days, 'expected'));
         $view = in_array($_GET['view'] ?? '', ['grid', 'calendar'], true) ? (string) $_GET['view'] : 'days';

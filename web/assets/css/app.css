@@ -2545,6 +2545,7 @@ a.label:hover {
 .bi-check2::before { content: "\f272"; }
 .bi-stopwatch::before { content: "\f597"; }
 .bi-tags::before { content: "\f5b2"; }
+.bi-calendar2-range::before { content: "\f207"; }
 
 /*
  * The bar along the top of the content: the light/dark switch, the keyboard
@@ -3509,6 +3510,73 @@ kbd {
 
 .work-type-row .field--inline {
     width: 16rem;
+}
+
+/* Planning: planned against each day's hours. */
+.plan-week td,
+.plan-week th {
+    white-space: nowrap;
+}
+
+.plan-week__cell {
+    font-variant-numeric: tabular-nums;
+}
+
+.plan-week__cell--full {
+    background: var(--ct-success-soft);
+}
+
+.plan-week__cell--part {
+    background: var(--ct-primary-soft);
+}
+
+.plan-week__cell--over {
+    background: var(--ct-danger-soft);
+}
+
+.plan-week__cell--off {
+    background: var(--ct-bg);
+}
+
+.plan-week__logged {
+    display: block;
+    color: var(--ct-muted);
+    font-size: 0.75rem;
+}
+
+.plan-week__plans td {
+    padding-top: 0;
+    border-top: 0;
+}
+
+.plan-week__plans ul {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    padding: 0 0 6px;
+    list-style: none;
+    font-size: 0.85rem;
+    white-space: normal;
+}
+
+.plan-week__plans li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: baseline;
+}
+
+.plan-week__plans form {
+    display: inline;
+}
+
+.bar__fill--over {
+    background: var(--ct-danger);
+}
+
+.day__planned {
+    color: var(--ct-muted);
+    font-size: 0.8rem;
 }
 
 /* The reports page: quick links to the last months, and each row's share. */

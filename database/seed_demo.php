@@ -458,6 +458,19 @@ $review->submit($mark, $lastMonday->format('Y-m-d'));
 $review->submit($julia, $lastMonday->format('Y-m-d'));
 $review->review($julia, $lastMonday->format('Y-m-d'), $me, false, 'Thursday has nothing on it — was that the copy review?');
 
+// What is planned for this week and the next.
+$planning = new CantoTrack\Service\Planning();
+$plan = static function (int $who, string $ticket, int $fromOffset, int $toOffset, string $perDay, string $note = '') use ($planning, $key, $day, $me): void {
+    $planning->add($who, $key($ticket), null, $day($fromOffset), $day($toOffset), $perDay, $note, $me);
+};
+$plan($me, 'approval', 0, 4, '5h', 'Hand-in and approval');
+$plan($me, 'api', 7, 11, '6h');
+$plan($anna, 'keyboard', 0, 3, '6h');
+$plan($anna, 'photos', 7, 8, '4h', 'At the roastery');
+$plan($mark, 'rounding', 0, 2, '3h');
+$plan($mark, 'shop', 0, 11, '4h', 'Subscriptions');
+$plan($julia, 'copy', 0, 11, '5h');
+
 // A filter the whole team shares — once, however often the demo is reset.
 $database->prepare("DELETE FROM saved_filters WHERE user_id = :me AND name = 'Open bugs'")->execute(['me' => $me]);
 (new SavedFilterRepository())->create($me, 'Open bugs', 'type=bug&open=1', true);

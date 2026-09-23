@@ -45,11 +45,12 @@
             { path: '/projects', label: 'Projects', icon: 'kanban' },
             { path: '/tickets', label: 'Tickets', icon: 'card-checklist' },
             { path: '/timesheet', label: 'Timesheet', icon: 'calendar-week' },
+            { path: '/planning', label: 'Planning', icon: 'calendar2-range' },
             { path: '/reports', label: 'Reports', icon: 'bar-chart-line' }
         ] %}
         {# A guest has no hours and no reports to look at. #}
         {% if not can_work %}
-            {% set items = items|filter(item => item.path not in ['/timesheet', '/reports']) %}
+            {% set items = items|filter(item => item.path not in ['/timesheet', '/planning', '/reports']) %}
         {% endif %}
 
         {% for item in items %}

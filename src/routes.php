@@ -25,6 +25,7 @@ use CantoTrack\Controller\LoginController;
 use CantoTrack\Controller\NotificationController;
 use CantoTrack\Controller\PasswordResetController;
 use CantoTrack\Controller\PeopleController;
+use CantoTrack\Controller\PlanningController;
 use CantoTrack\Controller\ProfileController;
 use CantoTrack\Controller\ProjectController;
 use CantoTrack\Controller\ReportController;
@@ -174,6 +175,9 @@ $router->post('/timesheet/grid', static fn() => (new TimesheetController())->sav
 $router->post('/timesheet/submit', static fn() => (new TimesheetController())->submit());
 $router->get('/timesheet/approvals', static fn() => (new TimesheetController())->approvals());
 $router->get('/timesheet/team', static fn() => (new TimesheetController())->team());
+$router->get('/planning', static fn() => (new PlanningController())->index());
+$router->post('/planning', static fn() => (new PlanningController())->create());
+$router->post('/planning/{id}/delete', static fn($id) => (new PlanningController())->delete((int) $id));
 $router->post('/timesheet/review', static fn() => (new TimesheetController())->review());
 $router->post('/absences', static fn() => (new TimesheetController())->addAbsence());
 $router->post('/absences/{id}/delete', static fn($id) => (new TimesheetController())->removeAbsence((int) $id));

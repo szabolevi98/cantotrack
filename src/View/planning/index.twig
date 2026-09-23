@@ -1,0 +1,138 @@
+{% extends 'layout.twig' %}
+
+{% block title %}{{ 'Planning'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Planning'|t }}{% endblock %}
+{% block subheading %}<p class="content__sub">{{ monday|day }} — {{ sunday|day }}</p>{% endblock %}
+
+{% block actions %}
+    <a class="button" href="{{ url('/planning?week=' ~ previous_week) }}">← {{ 'Previous'|t }}</a>
+    <a class="button" href="{{ url('/planning') }}">{{ 'This week'|t }}</a>
+    <a class="button" href="{{ url('/planning?week=' ~ next_week) }}">{{ 'Next'|t }} →</a>
+{% endblock %}
+
+{% block content %}
+    <section class="card card--flush">
+        <div class="table-scroll">
+            <table class="table plan-week">
+                <thead>
+                <tr>
+                    <th>{{ 'Person'|t }}</th>
+                    {% for date in dates %}
+                        <th class="table__number{{ date == today ? ' team-week__today' : '' }}">{{ date|date('D')|t }} <span class="muted">{{ date|date('j') }}</span></th>
+                    {% endfor %}
+                    <th class="table__number">{{ 'Planned'|t }}</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for row in rows %}
+                    <tr>
+                        <td>
+                            <a href="{{ url('/timesheet?week=' ~ monday ~ '&user=' ~ row.person.id) }}">{{ row.person.name }}</a>
+                        </td>
+                        {% for date, cell in row.cells %}
+                            {# Planned against the day's hours: under, full or over
+                               — and what was logged, once the day has come. #}
+                            {% set mood = cell.expected == 0 ? 'off' : (cell.planned > cell.expected ? 'over' : (cell.planned == cell.expected ? 'full' : (cell.planned > 0 ? 'part' : 'free'))) %}
+                            <td class="table__number plan-week__cell plan-week__cell--{{ mood }}" title="{{ cell.why ?: '' }}">
+                                {% if cell.expected == 0 and cell.planned == 0 %}
+                                    <span class="muted">—</span>
+                                {% else %}
+                                    <strong>{{ cell.planned > 0 ? cell.planned|duration : '0m' }}</strong><span class="muted"> / {{ cell.expected|duration }}</span>
+                                {% endif %}
+                                {% if date <= today and (cell.logged > 0 or cell.planned > 0) %}
+                                    <span class="plan-week__logged">{{ 'logged {time}'|t({time: cell.logged|duration}) }}</span>
+                                {% endif %}
+                            </td>
+                        {% endfor %}
+                        <td class="table__number">
+                            <strong>{{ row.planned|duration }}</strong> <span class="muted">/ {{ row.capacity|duration }}</span>
+                            {% if row.capacity > 0 %}
+                                <span class="bar bar--thin"><span class="bar__fill{{ row.planned > row.capacity ? ' bar__fill--over' : '' }}" style="width: {{ min(100, (row.planned / row.capacity * 100)|round) }}%"></span></span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% if row.plans is not empty %}
+                        <tr class="plan-week__plans">
+                            <td></td>
+                            <td colspan="8">
+                                <ul>
+                                    {% for plan in row.plans %}
+                                        <li>
+                                            {% if plan.ticket_id %}
+                                                <a href="{{ url('/tickets/' ~ plan.ticket_id) }}"><strong>{{ plan.project_code }}-{{ plan.ticket_number }}</strong> {{ plan.ticket_title }}</a>
+                                            {% else %}
+                                                <strong>{{ plan.project_code }}</strong> {{ plan.project_name }}
+                                            {% endif %}
+                                            <span class="muted">· {{ '{time} a day'|t({time: plan.minutes_per_day|duration}) }} · {{ plan.starts_on|day }}{% if plan.ends_on != plan.starts_on %} — {{ plan.ends_on|day }}{% endif %}{% if plan.note %} · {{ plan.note }}{% endif %}</span>
+                                            {% if plan.user_id == current_user.id or plan.created_by == current_user.id or is_admin %}
+                                                <form method="post" action="{{ url('/planning/' ~ plan.id ~ '/delete') }}">
+                                                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                                    <input type="hidden" name="back" value="/planning?week={{ monday }}">
+                                                    <button class="link-button" type="submit" aria-label="{{ 'Remove'|t }}">×</button>
+                                                </form>
+                                            {% endif %}
+                                        </li>
+                                    {% endfor %}
+                                </ul>
+                            </td>
+                        </tr>
+                    {% endif %}
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+
+    <section class="card card--narrow">
+        <h2 class="card__title">{{ 'Plan some work'|t }}</h2>
+        <form method="post" action="{{ url('/planning') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <input type="hidden" name="back" value="/planning?week={{ monday }}">
+            <div class="form__row">
+                {% if is_admin %}
+                    <div>
+                        <label for="plan-user">{{ 'Who'|t }}</label>
+                        <select id="plan-user" class="field" name="user">
+                            {% for one in people %}
+                                <option value="{{ one.id }}"{{ one.id == current_user.id ? ' selected' : '' }}>{{ one.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                {% endif %}
+                <div>
+                    <label for="plan-ticket">{{ 'Ticket'|t }}</label>
+                    <input id="plan-ticket" class="field" type="text" name="ticket" placeholder="CT-14">
+                </div>
+                <div>
+                    <label for="plan-project">{{ 'or a project'|t }}</label>
+                    <select id="plan-project" class="field" name="project">
+                        <option value="">—</option>
+                        {% for project in projects %}
+                            <option value="{{ project.id }}">{{ project.code }} — {{ project.name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <div class="form__row">
+                <div>
+                    <label for="plan-from">{{ 'From'|t }}</label>
+                    <input id="plan-from" class="field" type="date" name="starts_on" value="{{ monday }}" required>
+                </div>
+                <div>
+                    <label for="plan-to">{{ 'Until'|t }}</label>
+                    <input id="plan-to" class="field" type="date" name="ends_on" value="{{ dates[4] }}">
+                </div>
+                <div>
+                    <label for="plan-per-day">{{ 'A day'|t }}</label>
+                    <input id="plan-per-day" class="field" type="text" name="per_day" placeholder="4h" required>
+                </div>
+            </div>
+            <label for="plan-note">{{ 'Note'|t }}</label>
+            <input id="plan-note" class="field" type="text" name="note" maxlength="200" placeholder="{{ 'Optional'|t }}">
+            <p class="hint">{{ 'Only the working days in the stretch count: the person’s own week, less holidays and days away.'|t }}</p>
+            <div class="form__actions">
+                <button class="button button--primary" type="submit">{{ 'Plan it'|t }}</button>
+            </div>
+        </form>
+    </section>
+{% endblock %}

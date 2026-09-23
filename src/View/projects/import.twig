@@ -1,0 +1,94 @@
+{% extends 'layout.twig' %}
+
+{% block title %}{{ 'Import tickets'|t }} — {{ project.name }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Import tickets'|t }}{% endblock %}
+{% block subheading %}<p class="content__sub"><a href="{{ url('/projects/' ~ project.id) }}">← {{ project.name }}</a></p>{% endblock %}
+
+{% block content %}
+    {% if preview is null %}
+        <section class="card card--narrow">
+            <h2 class="card__title">{{ 'From a spreadsheet'|t }}</h2>
+            <p class="card__body">{{ 'A CSV file with a header row: one ticket per row. Save it from Excel, Google Sheets or another tracker’s export — commas or semicolons, UTF-8 or the Windows Hungarian encoding, all of them work.'|t }}</p>
+            <form method="post" action="{{ url('/projects/' ~ project.id ~ '/import') }}" enctype="multipart/form-data">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <input class="field" type="file" name="file" accept=".csv,text/csv" required aria-label="{{ 'CSV file'|t }}">
+                <div class="form__actions">
+                    <button class="button button--primary" type="submit">{{ 'Show what would be imported'|t }}</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="card card--narrow">
+            <h2 class="card__title">{{ 'The columns it reads'|t }}</h2>
+            <p class="card__body">{{ 'By their names, in English or in Hungarian. Only the title is needed; columns with other names are left out.'|t }}</p>
+            <table class="table table--compact">
+                <tbody>
+                <tr><td><code>Title</code>, <code>Summary</code>, <code>Cím</code></td><td>{{ 'required'|t }}</td></tr>
+                <tr><td><code>Description</code>, <code>Leírás</code></td><td>{{ 'Markdown'|t }}</td></tr>
+                <tr><td><code>Type</code>, <code>Típus</code></td><td>task, bug, story</td></tr>
+                <tr><td><code>Priority</code>, <code>Prioritás</code></td><td>low, normal, high, urgent</td></tr>
+                <tr><td><code>Status</code>, <code>Állapot</code></td><td>{{ 'a column of the board, by name'|t }}</td></tr>
+                <tr><td><code>Assignee</code>, <code>Felelős</code></td><td>{{ 'an email address or a name'|t }}</td></tr>
+                <tr><td><code>Labels</code>, <code>Címkék</code></td><td>{{ 'separated by commas'|t }}</td></tr>
+                <tr><td><code>Estimate</code>, <code>Becslés</code></td><td>2h, 1d 4h, 90m</td></tr>
+                <tr><td><code>Due date</code>, <code>Határidő</code></td><td>2026-10-01</td></tr>
+                <tr><td><code>Story points</code>, <code>Sztoripont</code></td><td>0–100</td></tr>
+                <tr><td><code>Epic</code></td><td>{{ 'an epic of the project, by title'|t }}</td></tr>
+                </tbody>
+            </table>
+        </section>
+    {% else %}
+        <section class="card card--flush">
+            <header class="card__head">
+                <h2 class="card__title">{{ preview.name }}</h2>
+                <span class="muted">
+                    {{ plural('{count} row', '{count} rows', preview.rows|length) }}
+                    · {{ plural('{count} ready', '{count} ready', preview.good) }}
+                    {% if preview.ignored is not empty %}· {{ 'left out: {columns}'|t({columns: preview.ignored|join(', ')}) }}{% endif %}
+                </span>
+            </header>
+            <div class="table-scroll">
+                <table class="table table--compact">
+                    <thead><tr>
+                        <th class="table__number">{{ 'Line'|t }}</th>
+                        {% set headings = {title: 'Title', description: 'Description', type: 'Type', priority: 'Priority', status: 'Status', assignee: 'Assignee', labels: 'Labels', estimate: 'Estimate', due_on: 'Due', story_points: 'Points', epic: 'Epic'} %}
+                        {% for field in preview.fields %}<th>{{ headings[field]|t }}</th>{% endfor %}
+                        <th></th>
+                    </tr></thead>
+                    <tbody>
+                    {% for row in preview.rows %}
+                        <tr class="{{ row.problems is empty ? '' : 'row--problem' }}">
+                            <td class="table__number muted">{{ row.line }}</td>
+                            {% for field in preview.fields %}<td class="table__clip">{{ row.shown[field]|default('') }}</td>{% endfor %}
+                            <td>
+                                {% if row.problems is empty %}
+                                    <span class="badge badge--green">{{ 'Ready'|t }}</span>
+                                {% else %}
+                                    <span class="badge badge--red">{{ 'Left out'|t }}</span>
+                                    <span class="muted">{{ row.problems|join(' ') }}</span>
+                                {% endif %}
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+
+        <section class="card card--narrow">
+            {% if preview.good > 0 %}
+                <form method="post" action="{{ url('/projects/' ~ project.id ~ '/import/confirm') }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                    <button class="button button--primary" type="submit">{{ plural('Import {count} ticket', 'Import {count} tickets', preview.good) }}</button>
+                </form>
+                {% if preview.good < preview.rows|length %}<p class="hint">{{ 'The rows with a problem are left out. Fix them in the file and import it again, or add them by hand.'|t }}</p>{% endif %}
+            {% else %}
+                <p class="card__body">{{ 'None of the rows can be imported as it is.'|t }}</p>
+            {% endif %}
+            <form method="post" action="{{ url('/projects/' ~ project.id ~ '/import/cancel') }}">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <button class="link-button link-button--text" type="submit">{{ 'Start again with another file'|t }}</button>
+            </form>
+        </section>
+    {% endif %}
+{% endblock %}

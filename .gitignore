@@ -25,6 +25,8 @@
 !/var/uploads/.gitkeep
 /var/mail/*
 !/var/mail/.gitkeep
+/var/imports/*
+!/var/imports/.gitkeep
 
 # JetBrains IDE
 .idea/

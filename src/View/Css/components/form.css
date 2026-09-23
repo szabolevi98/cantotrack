@@ -221,3 +221,13 @@ summary.link-button::-webkit-details-marker {
     flex: 1;
     min-width: 0;
 }
+
+/* A wide table — an import's preview — scrolls sideways inside its card
+   rather than pushing the page wider than the window. */
+.table-scroll {
+    overflow-x: auto;
+}
+
+.row--problem td {
+    background: var(--ct-danger-soft);
+}

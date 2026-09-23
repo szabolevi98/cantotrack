@@ -1123,6 +1123,34 @@ if ($email === null || $password === null) {
     request($baseUrl . '/profile/two-factor/disable', ['_token' => $token, 'password' => $password], $jar);
     check('and it can be turned off with the password', str_contains(request($baseUrl . '/profile/two-factor', [], $jar)['body'], '/profile/two-factor/start'));
 
+    // ---------------------------------------------------------------------
+    // Tickets from a spreadsheet: uploaded, looked at, and imported.
+    // ---------------------------------------------------------------------
+    $csvPath = tempnam(sys_get_temp_dir(), 'ct-csv-');
+    file_put_contents($csvPath, "Cím;Prioritás;Címkék\nImported by tests/smoke.php;magas;smoke\n;;\n");
+    $handle = curl_init($baseUrl . '/projects/' . $projectId . '/import');
+    curl_setopt_array($handle, [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => ['_token' => $token, 'file' => new CURLFile($csvPath, 'text/csv', 'tickets.csv')],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HEADER => true,
+        CURLOPT_COOKIEJAR => $jar,
+        CURLOPT_COOKIEFILE => $jar,
+    ]);
+    $uploaded = (string) curl_exec($handle);
+    curl_close($handle);
+    @unlink($csvPath);
+
+    check('a CSV can be uploaded for import', str_contains($uploaded, '/import/preview'));
+    $importPreview = request($baseUrl . '/projects/' . $projectId . '/import/preview', [], $jar)['body'];
+    check('and is shown before anything is made', str_contains($importPreview, 'Imported by tests/smoke.php') && str_contains($importPreview, 'Import 1 ticket'));
+
+    request($baseUrl . '/projects/' . $projectId . '/import/confirm', ['_token' => $token], $jar);
+    check(
+        'and then becomes tickets',
+        str_contains(request($baseUrl . '/tickets?project=' . $projectId . '&q=Imported+by+tests', [], $jar)['body'], 'Imported by tests/smoke.php')
+    );
+
     // Tidy up after itself: the hours first, one by one — the slow way,
     // deliberately — and then the project takes the epic and the ticket.
     $page = request($baseUrl . '/tickets/' . $ticketId, [], $jar);

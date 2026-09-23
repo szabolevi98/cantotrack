@@ -122,6 +122,7 @@ class TicketController extends Controller
             'ticket' => $ticket,
             'remaining' => TicketRepository::remaining($ticket),
             'watching' => $notifications->isWatching($id, (int) Auth::id()),
+            'favourite' => (new TicketRepository())->isFavourite($id, (int) Auth::id()),
             'watchers' => $notifications->watcherCount($id),
             'labels' => (new LabelRepository())->forTicket($id),
             'attachments' => (new AttachmentRepository())->forTicket($id),
@@ -466,6 +467,20 @@ class TicketController extends Controller
             'labels' => $this->input('labels'),
             'version' => $this->input('version', (string) ($ticket['version'] ?? '')),
         ];
+    }
+
+    /** The star on a ticket: one's own list of the tickets one keeps coming back to. */
+    public function favourite(int $id): void
+    {
+        Auth::require();
+
+        $ticket = $this->ticketOr404($id);
+        $starred = (new TicketRepository())->toggleFavourite((int) $ticket['id'], (int) Auth::id());
+
+        $this->flash($starred
+            ? __('Starred: it has a row in your week’s grid, and comes first when you log time.')
+            : __('The star is off.'));
+        $this->back('/tickets/' . $id);
     }
 
     private function ticketOr404(int $id): array

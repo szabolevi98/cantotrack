@@ -5,6 +5,7 @@
 {% block subheading %}<p class="content__sub">{{ filters.from|day }} — {{ filters.to|day }}</p>{% endblock %}
 
 {% block actions %}
+    <a class="button" href="{{ url('/reports/missing?from=' ~ filters.from ~ '&to=' ~ filters.to) }}"><i class="bi bi-exclamation-circle" aria-hidden="true"></i> {{ 'Missing hours'|t }}</a>
     <a class="button" href="{{ url('/reports/export?format=csv&' ~ query) }}">{{ 'Download CSV'|t }}</a>
     <a class="button button--primary" href="{{ url('/reports/export?format=xlsx&' ~ query) }}">{{ 'Download Excel'|t }}</a>
 {% endblock %}

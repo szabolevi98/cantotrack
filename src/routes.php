@@ -66,6 +66,7 @@ $router->get('/', static fn() => (new DashboardController())->index());
 $router->get('/notifications', static fn() => (new NotificationController())->index());
 $router->post('/notifications/read', static fn() => (new NotificationController())->readAll());
 $router->get('/notifications/{id}', static fn($id) => (new NotificationController())->open((int) $id));
+$router->post('/tickets/{id}/favourite', static fn($id) => (new TicketController())->favourite((int) $id));
 $router->post('/tickets/{id}/watch', static fn($id) => (new NotificationController())->toggleWatch((int) $id));
 
 $router->get('/search', static fn() => (new SearchController())->search());
@@ -184,6 +185,7 @@ $router->post('/absences/{id}/delete', static fn($id) => (new TimesheetControlle
 
 $router->get('/reports', static fn() => (new ReportController())->index());
 $router->get('/reports/export', static fn() => (new ReportController())->export());
+$router->get('/reports/missing', static fn() => (new ReportController())->missing());
 
 $router->post('/tickets/{id}/timer', static fn($id) => (new TimerController())->start((int) $id));
 $router->post('/timer/stop', static fn() => (new TimerController())->stop());

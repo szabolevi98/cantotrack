@@ -139,6 +139,64 @@ class ReportController extends Controller
         return preg_match('/^[=+\-@\t\r]/', $value) === 1 ? "'" . $value : $value;
     }
 
+    /**
+     * Who is behind: for each person, the days in the span that asked for
+     * hours — their own week, less holidays and days away — against what
+     * they logged, with the days short and the days with nothing listed.
+     * Days that have not come yet are left out.
+     */
+    public function missing(): void
+    {
+        Auth::requireMember();
+
+        $filters = $this->filters();
+        $to = min($filters['to'], date('Y-m-d'));
+        $logged = (new \CantoTrack\Model\WorklogRepository())->minutesByUserAndDay($filters['from'], $to);
+        $calendar = new \CantoTrack\Service\Calendar();
+        $rows = [];
+
+        foreach ((new \CantoTrack\Model\UserRepository())->active() as $person) {
+            if ($person['role'] === 'guest' || $to < $filters['from']) {
+                continue;
+            }
+
+            $expected = 0;
+            $got = 0;
+            $empty = [];
+            $short = [];
+
+            foreach ($calendar->days($person, $filters['from'], $to) as $date => $day) {
+                $minutes = $logged[(int) $person['id']][$date] ?? 0;
+                $got += $minutes;
+
+                if ($day['expected'] === 0) {
+                    continue;
+                }
+
+                $expected += $day['expected'];
+
+                if ($minutes === 0) {
+                    $empty[] = $date;
+                } elseif ($minutes < $day['expected']) {
+                    $short[] = ['day' => $date, 'missing' => $day['expected'] - $minutes];
+                }
+            }
+
+            $rows[] = [
+                'person' => $person,
+                'expected' => $expected,
+                'logged' => $got,
+                'missing' => max(0, $expected - $got),
+                'empty' => $empty,
+                'short' => $short,
+            ];
+        }
+
+        usort($rows, static fn(array $a, array $b): int => $b['missing'] <=> $a['missing']);
+
+        $this->render('reports/missing.twig', ['rows' => $rows, 'from' => $filters['from'], 'to' => $to, 'asked_to' => $filters['to']]);
+    }
+
     private function filters(): array
     {
         $from = $this->date((string) ($_GET['from'] ?? '')) ?? date('Y-m-01');

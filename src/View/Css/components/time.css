@@ -388,3 +388,28 @@
     color: var(--ct-muted);
     font-size: 0.8rem;
 }
+
+/* The star on a ticket, and the missing hours. */
+.button--icon {
+    padding-inline: 10px;
+}
+
+.button--icon.is-on .bi {
+    color: var(--ct-warning);
+}
+
+.missing {
+    color: var(--ct-danger);
+}
+
+.missing__days {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    white-space: normal;
+}
+
+.missing__days a:hover {
+    text-decoration: none;
+    filter: brightness(0.96);
+}

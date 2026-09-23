@@ -22,6 +22,14 @@
 {% block actions %}
     {# Following: hearing about its changes and comments. The reporter and
        the assignee always do; anybody else chooses. #}
+    <form method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/favourite') }}">
+        <input type="hidden" name="_token" value="{{ csrf_token }}">
+        <button class="button button--icon{{ favourite ? ' is-on' : '' }}" type="submit" aria-pressed="{{ favourite ? 'true' : 'false' }}"
+                title="{{ favourite ? 'Take the star off'|t : 'Star it: a row in your grid, first when you log time'|t }}"
+                aria-label="{{ favourite ? 'Take the star off'|t : 'Star it'|t }}">
+            <i class="bi {{ favourite ? 'bi-star-fill' : 'bi-star' }}" aria-hidden="true"></i>
+        </button>
+    </form>
     <form method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/watch') }}">
         <input type="hidden" name="_token" value="{{ csrf_token }}">
         <button class="button{{ watching ? ' is-on' : '' }}" type="submit" aria-pressed="{{ watching ? 'true' : 'false' }}"

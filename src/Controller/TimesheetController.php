@@ -95,6 +95,9 @@ class TimesheetController extends Controller
             'can_submit' => $mine && $from <= date('Y-m-d'),
             'grid' => $view === 'grid' ? $this->grid($userId, $entries, array_keys($days)) : [],
             'calendar' => $view === 'calendar' ? self::calendar($days) : null,
+            'last_week_keys' => $view === 'grid'
+                ? (new TicketRepository())->keysLoggedBy($userId, $monday->modify('-7 days')->format('Y-m-d'), $monday->modify('-1 day')->format('Y-m-d'))
+                : [],
             'people' => array_values(array_filter((new UserRepository())->active(), static fn(array $u): bool => $u['role'] !== 'guest')),
             'person' => $person,
             'is_mine' => $userId === (int) Auth::id(),
@@ -156,7 +159,10 @@ class TimesheetController extends Controller
             $rows[$id]['total'] += (int) $entry['minutes'];
         }
 
-        $more = $tickets->search(['assignee_id' => $userId, 'status' => 'in_progress'], 20);
+        $more = array_merge(
+            $tickets->favouritesOf($userId),
+            $tickets->search(['assignee_id' => $userId, 'status' => 'in_progress'], 20)
+        );
 
         foreach (array_filter(array_map('trim', explode(',', (string) ($_GET['add'] ?? '')))) as $key) {
             $ticket = $tickets->findByKey($key);

@@ -2546,6 +2546,9 @@ a.label:hover {
 .bi-stopwatch::before { content: "\f597"; }
 .bi-tags::before { content: "\f5b2"; }
 .bi-calendar2-range::before { content: "\f207"; }
+.bi-star::before { content: "\f588"; }
+.bi-star-fill::before { content: "\f586"; }
+.bi-exclamation-circle::before { content: "\f333"; }
 
 /*
  * The bar along the top of the content: the light/dark switch, the keyboard
@@ -3577,6 +3580,31 @@ kbd {
 .day__planned {
     color: var(--ct-muted);
     font-size: 0.8rem;
+}
+
+/* The star on a ticket, and the missing hours. */
+.button--icon {
+    padding-inline: 10px;
+}
+
+.button--icon.is-on .bi {
+    color: var(--ct-warning);
+}
+
+.missing {
+    color: var(--ct-danger);
+}
+
+.missing__days {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    white-space: normal;
+}
+
+.missing__days a:hover {
+    text-decoration: none;
+    filter: brightness(0.96);
 }
 
 /* The reports page: quick links to the last months, and each row's share. */

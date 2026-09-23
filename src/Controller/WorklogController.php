@@ -102,6 +102,7 @@ class WorklogController extends Controller
 
         if ($q === '') {
             $found = array_merge(
+                $tickets->favouritesOf((int) Auth::id(), 6),
                 $tickets->recentlyLoggedBy((int) Auth::id()),
                 $tickets->search(['assignee_id' => Auth::id(), 'status' => 'in_progress'], 6)
             );

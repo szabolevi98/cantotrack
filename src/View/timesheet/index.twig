@@ -150,6 +150,10 @@
                 <label class="check--inline" for="add">{{ 'Add a row for'|t }}</label>
                 <input id="add" class="field field--inline" type="text" name="add" placeholder="CT-14" required>
                 <button class="button" type="submit">{{ 'Add'|t }}</button>
+                {% if last_week_keys is not empty %}
+                    <a class="button" href="{{ url('/timesheet?view=grid&week=' ~ monday ~ '&user=' ~ person.id ~ '&add=' ~ last_week_keys|join(',')|url_encode) }}"
+                       title="{{ last_week_keys|join(', ') }}">{{ plural('Add last week’s {count} ticket', 'Add last week’s {count} tickets', last_week_keys|length) }}</a>
+                {% endif %}
             </form>
         {% endif %}
     {% elseif view == 'calendar' %}

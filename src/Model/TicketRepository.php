@@ -535,6 +535,65 @@ class TicketRepository
         return $found;
     }
 
+    /** Whether somebody has starred a ticket. */
+    public function isFavourite(int $ticketId, int $userId): bool
+    {
+        $statement = $this->db->prepare('SELECT 1 FROM ticket_favourites WHERE ticket_id = :t AND user_id = :u');
+        $statement->execute(['t' => $ticketId, 'u' => $userId]);
+
+        return $statement->fetchColumn() !== false;
+    }
+
+    /** Stars a ticket, or takes the star off. Returns whether it is starred now. */
+    public function toggleFavourite(int $ticketId, int $userId): bool
+    {
+        if ($this->isFavourite($ticketId, $userId)) {
+            $this->db->prepare('DELETE FROM ticket_favourites WHERE ticket_id = :t AND user_id = :u')->execute(['t' => $ticketId, 'u' => $userId]);
+
+            return false;
+        }
+
+        $this->db->prepare('INSERT INTO ticket_favourites (ticket_id, user_id) VALUES (:t, :u)')->execute(['t' => $ticketId, 'u' => $userId]);
+
+        return true;
+    }
+
+    /**
+     * Somebody's starred tickets that are not finished — the ones they can
+     * see — most recently starred first.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function favouritesOf(int $userId, int $limit = 20): array
+    {
+        $statement = $this->db->prepare(
+            self::SELECT . ' JOIN ticket_favourites f ON f.ticket_id = t.id AND f.user_id = :user
+             WHERE s.category <> \'done\'' . Access::sql('t.project_id') . '
+             ORDER BY f.created_at DESC LIMIT ' . max(1, $limit)
+        );
+        $statement->execute(['user' => $userId]);
+
+        return array_values($statement->fetchAll());
+    }
+
+    /**
+     * The tickets somebody logged time on in a span of days — last week's,
+     * to give this week's grid the same rows.
+     *
+     * @return list<string> their keys
+     */
+    public function keysLoggedBy(int $userId, string $from, string $to): array
+    {
+        $statement = $this->db->prepare(
+            'SELECT DISTINCT CONCAT(p.code, \'-\', t.number) FROM worklogs w
+             JOIN tickets t ON t.id = w.ticket_id JOIN projects p ON p.id = t.project_id
+             WHERE w.user_id = :user AND w.work_date BETWEEN :from AND :to' . Access::sql('t.project_id', 'w.user_id')
+        );
+        $statement->execute(['user' => $userId, 'from' => $from, 'to' => $to]);
+
+        return array_values(array_map('strval', $statement->fetchAll(PDO::FETCH_COLUMN)));
+    }
+
     /** What one person has open, newest first — the dashboard's main list. */
     public function openFor(int $userId, int $limit = 25): array
     {

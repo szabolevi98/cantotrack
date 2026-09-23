@@ -1,0 +1,52 @@
+{% extends 'layout.twig' %}
+
+{% block title %}{{ 'Missing hours'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Missing hours'|t }}{% endblock %}
+{% block subheading %}<p class="content__sub">{{ from|day }} — {{ to|day }}{% if asked_to > to %} · {{ 'the days still to come are left out'|t }}{% endif %}</p>{% endblock %}
+
+{% block actions %}
+    <a class="button" href="{{ url('/reports?from=' ~ from ~ '&to=' ~ asked_to) }}">← {{ 'Reports'|t }}</a>
+{% endblock %}
+
+{% block content %}
+    <form class="filters card" method="get" action="{{ url('/reports/missing') }}">
+        <label class="check--inline" for="from">{{ 'From'|t }}</label>
+        <input id="from" class="field field--inline" type="date" name="from" value="{{ from }}">
+        <label class="check--inline" for="to">{{ 'to'|t }}</label>
+        <input id="to" class="field field--inline" type="date" name="to" value="{{ asked_to }}">
+        <button class="button" type="submit">{{ 'Show'|t }}</button>
+    </form>
+
+    <section class="card card--flush">
+        <table class="table">
+            <thead><tr>
+                <th>{{ 'Person'|t }}</th>
+                <th class="table__number">{{ 'Asked for'|t }}</th>
+                <th class="table__number">{{ 'Logged'|t }}</th>
+                <th class="table__number">{{ 'Missing'|t }}</th>
+                <th>{{ 'Days'|t }}</th>
+            </tr></thead>
+            <tbody>
+            {% for row in rows %}
+                <tr>
+                    <td><a href="{{ url('/timesheet?week=' ~ from ~ '&user=' ~ row.person.id) }}">{{ row.person.name }}</a></td>
+                    <td class="table__number">{{ row.expected|duration }}</td>
+                    <td class="table__number">{{ row.logged|duration }}</td>
+                    <td class="table__number">
+                        {% if row.missing > 0 %}<strong class="missing">{{ row.missing|duration }}</strong>{% else %}<span class="badge badge--green">{{ 'None'|t }}</span>{% endif %}
+                    </td>
+                    <td class="missing__days">
+                        {% for date in row.empty %}
+                            <a class="badge badge--red" href="{{ url('/timesheet?week=' ~ date ~ '&user=' ~ row.person.id) }}" title="{{ 'Nothing logged'|t }}">{{ date|day }}</a>
+                        {% endfor %}
+                        {% for day in row.short %}
+                            <a class="badge badge--amber" href="{{ url('/timesheet?week=' ~ day.day ~ '&user=' ~ row.person.id) }}" title="{{ '{time} short'|t({time: day.missing|duration}) }}">{{ day.day|day }} · −{{ day.missing|duration }}</a>
+                        {% endfor %}
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </section>
+    <p class="hint">{{ 'Each person against their own working week, with holidays and days away counted out. Red: nothing logged; amber: short.'|t }}</p>
+{% endblock %}

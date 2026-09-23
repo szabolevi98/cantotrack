@@ -34,7 +34,27 @@ lifetime = 28800
 ; The hours a full working day is taken to be. The timesheet compares what was
 ; logged against this, and colours the day accordingly.
 hours_per_day = 8
-; The smallest slice of time that can be logged, in minutes. Anything typed is
-; rounded up to it, because a worklog of eleven seconds is noise rather than
-; data.
+; The smallest slice of time that can be logged, in minutes. Anything shorter
+; is stored as this, and the person is told so, because a worklog of eleven
+; seconds is noise rather than data.
 minimum_minutes = 15
+
+[mail]
+; Where email goes: notifications, and the link for a lost password.
+;   smtp://user:password@smtp.example.com:587   a real mail server
+;   file                                         written to var/mail, for development
+;   (empty)                                      no email at all
+dsn =
+from = "cantotrack@example.com"
+
+[uploads]
+; The largest file that can be attached, in megabytes. PHP's own limit
+; (upload_max_filesize, set in web/.htaccess) has to be at least this.
+max_mb = 10
+
+; Behind a CDN or a reverse proxy, the address a visitor really comes from is
+; in a header — believed only from the proxies listed here. For Cloudflare:
+; its published ranges, and HTTP_CF_CONNECTING_IP. Used by the sign-in limit.
+; [app]
+; trusted_proxies = "173.245.48.0/20, 103.21.244.0/22, …"
+; client_ip_header = "HTTP_CF_CONNECTING_IP"

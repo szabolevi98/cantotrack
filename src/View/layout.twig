@@ -53,6 +53,12 @@
                {{ active ? 'aria-current="page"' : '' }}>{{ item.label|t }}</a>
         {% endfor %}
 
+        {% set unread = unread_notifications() %}
+        <a class="sidebar__link{{ current_path starts with '/notifications' ? ' is-active' : '' }}" href="{{ url('/notifications') }}">
+            {{ 'Notifications'|t }}
+            {% if unread > 0 %}<span class="sidebar__count" aria-label="{{ plural('{count} not read', '{count} not read', unread) }}">{{ unread }}</span>{% endif %}
+        </a>
+
         {# Named apart from `filters`, which the list pages use for their own:
            a template and its layout share one set of variables. #}
         {% set sidebar_filters = saved_filters() %}

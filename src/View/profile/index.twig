@@ -40,6 +40,11 @@
                 </div>
             </div>
 
+            <label class="check">
+                <input type="checkbox" name="notify_email" value="1"{{ me.notify_email ? ' checked' : '' }}>
+                {{ 'Email me what I am notified about — tickets given to me, mentions, and changes to what I follow'|t }}
+            </label>
+
             <div class="form__actions">
                 <button class="button button--primary" type="submit">{{ 'Save'|t }}</button>
             </div>

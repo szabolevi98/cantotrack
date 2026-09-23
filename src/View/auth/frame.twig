@@ -1,0 +1,28 @@
+{#
+    The pages somebody sees before they are signed in: signing in, a lost
+    password, the second step of a sign-in. They stand on their own rather
+    than extending the layout: the layout's sidebar needs a signed-in user,
+    and these are the pages where there is not one yet.
+#}
+<!DOCTYPE html>
+<html lang="{{ locale }}">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{% block title %}{% endblock %} — {{ app_name }}</title>
+    <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <script src="{{ asset('js/app.js') }}" defer></script>
+</head>
+<body class="auth">
+<main class="auth__card">
+    <span class="auth__mark">CT</span>
+
+    {% for message in flash %}
+        <p class="flash flash--{{ message.kind }}" role="status">{{ message.message }}</p>
+    {% endfor %}
+
+    {% block card %}{% endblock %}
+</main>
+</body>
+</html>

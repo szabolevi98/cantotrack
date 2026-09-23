@@ -114,8 +114,14 @@ class TicketController extends Controller
         $ticket = $this->ticketOr404($id);
         $showing = in_array($_GET['activity'] ?? '', ['comments', 'history'], true) ? $_GET['activity'] : 'all';
 
+        // Looking at the ticket is reading what was said about it.
+        $notifications = new \CantoTrack\Model\NotificationRepository();
+        $notifications->markTicketRead((int) Auth::id(), $id);
+
         $this->render('tickets/show.twig', [
             'ticket' => $ticket,
+            'watching' => $notifications->isWatching($id, (int) Auth::id()),
+            'watchers' => $notifications->watcherCount($id),
             'labels' => (new LabelRepository())->forTicket($id),
             'attachments' => (new AttachmentRepository())->forTicket($id),
             'links' => (new LinkRepository())->forTicket($id),

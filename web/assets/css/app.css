@@ -2471,6 +2471,98 @@ kbd {
 }
 
 /*
+ * Notifications: the count in the sidebar, the list of them, following a
+ * ticket, and the small links under the sign-in card.
+ */
+.sidebar__link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+.sidebar__count {
+    min-width: 20px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--ct-danger);
+    color: #ffffff;
+    font-size: 0.72rem;
+    font-weight: 700;
+    line-height: 1.6;
+    text-align: center;
+}
+
+.notifications {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.notification {
+    display: flex;
+    gap: 12px;
+    align-items: baseline;
+    justify-content: space-between;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--ct-border);
+}
+
+.notification:last-child {
+    border-bottom: none;
+}
+
+/* Not yet read: a mark on the left, and the words in full strength. */
+.notification--unread {
+    box-shadow: inset 3px 0 0 var(--ct-primary);
+    background: var(--ct-primary-soft);
+}
+
+.notification__link {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+    color: var(--ct-text);
+}
+
+.notification__link:hover {
+    text-decoration: none;
+}
+
+.notification__link:hover .notification__title {
+    text-decoration: underline;
+}
+
+.notification__what {
+    font-size: 0.92rem;
+    overflow-wrap: anywhere;
+}
+
+.notification__title {
+    color: var(--ct-muted);
+    font-size: 0.84rem;
+}
+
+.notification__when {
+    flex: none;
+    font-size: 0.78rem;
+}
+
+/* A button that is switched on: following a ticket. */
+.button.is-on {
+    border-color: var(--ct-primary-border);
+    background: var(--ct-primary-soft);
+    color: var(--ct-primary);
+}
+
+.auth__back {
+    margin: 16px 0 0;
+    font-size: 0.88rem;
+    text-align: center;
+}
+
+/*
  * The sign-in page: one card in the middle of a coloured field.
  *
  * The background carries the brand gradient rather than the page grey, because

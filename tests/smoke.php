@@ -192,6 +192,20 @@ check(
     str_contains($login['body'], 'assets/js/app.js?v=')
 );
 
+// A lost password: the same answer whether or not the address has an account,
+// and a made-up link that leads nowhere.
+$forgot = request($baseUrl . '/password/forgot', [], $jar);
+check('the lost-password page answers', $forgot['status'] === 200);
+$asked = request($baseUrl . '/password/forgot', ['_token' => $token, 'email' => 'nobody-' . random_int(1000, 9999) . '@example.test'], $jar);
+check(
+    'and says the same thing about an address nobody has',
+    $asked['status'] === 200 && (str_contains($asked['body'], 'a link to choose a new password is on its way') || str_contains($asked['body'], 'does not send email'))
+);
+check(
+    'a reset link that was never sent opens nothing',
+    !str_contains(request($baseUrl . '/password/reset/' . str_repeat('ab', 32), [], $jar)['body'], 'name="new_password"')
+);
+
 if ($email === null || $password === null) {
     printf('%sSkipping the sign-in checks: pass --email= and --password= to run them.%s', PHP_EOL, PHP_EOL);
 } else {
@@ -221,6 +235,7 @@ if ($email === null || $password === null) {
 
     $dashboard = request($baseUrl . '/', [], $jar);
     check('and lands on the dashboard', $dashboard['status'] === 200, 'status ' . $dashboard['status']);
+    check('with the notifications a click away', request($baseUrl . '/notifications', [], $jar)['status'] === 200);
     // The signed-in shell rather than the greeting itself: the heading says
     // hello by first name, which this script does not know.
     check(

@@ -79,6 +79,8 @@ class View
         // sidebar is drawn — the login page and the error page do not ask.
         $twig->addFunction(new TwigFunction('saved_filters', static fn(): array =>
             Auth::check() ? (new \CantoTrack\Model\SavedFilterRepository())->visibleTo((int) Auth::id()) : []));
+        $twig->addFunction(new TwigFunction('unread_notifications', static fn(): int =>
+            Auth::check() ? (new \CantoTrack\Model\NotificationRepository())->unreadCount((int) Auth::id()) : 0));
         $twig->addFunction(new TwigFunction('burndown_chart', [Chart::class, 'burndown'], ['is_safe' => ['html']]));
         $twig->addFunction(new TwigFunction('velocity_chart', [Chart::class, 'velocity'], ['is_safe' => ['html']]));
         $twig->addFilter(new TwigFilter('bytes', static fn(?int $bytes): string => Format::bytes((int) $bytes)));

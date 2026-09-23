@@ -1,0 +1,30 @@
+{% extends 'auth/frame.twig' %}
+
+{% block title %}{{ 'Forgot your password?'|t }}{% endblock %}
+
+{% block card %}
+    <h1>{{ 'Forgot your password?'|t }}</h1>
+
+    {% if not mail %}
+        <p class="auth__lead">
+            {{ 'This installation does not send email, so there is no link to send. Ask an administrator: they can give you a new password from the people page.'|t }}
+        </p>
+    {% elseif sent %}
+        {# The same answer whether or not the address has an account: a
+           different one would tell anybody which addresses do. #}
+        <p class="flash flash--success">
+            {{ 'If {email} has an account here, a link to choose a new password is on its way. It works for an hour.'|t({email: email}) }}
+        </p>
+    {% else %}
+        <p class="auth__lead">{{ 'Type the address you sign in with, and a link to choose a new password is sent to it.'|t }}</p>
+
+        <form method="post" action="{{ url('/password/forgot') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <label for="email">{{ 'Email address'|t }}</label>
+            <input id="email" class="field" type="email" name="email" autocomplete="username" required autofocus>
+            <button class="button button--primary button--block" type="submit">{{ 'Send the link'|t }}</button>
+        </form>
+    {% endif %}
+
+    <p class="auth__back"><a href="{{ url('/login') }}">← {{ 'Back to signing in'|t }}</a></p>
+{% endblock %}

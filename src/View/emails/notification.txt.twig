@@ -1,0 +1,23 @@
+{% autoescape false %}{% import 'common/macros.twig' as ui %}
+{%- set event = notification|merge({user_name: notification.user_name}) -%}
+{%- if notification.reason == 'mentioned' -%}
+{{ '{who} mentioned you on {key}:'|t({who: notification.user_name, key: key}) }}
+{%- elseif notification.reason == 'assigned' -%}
+{{ '{who} gave you {key}.'|t({who: notification.user_name ?: 'Somebody'|t, key: key}) }}
+{%- elseif notification.kind == 'commented' -%}
+{{ '{who} commented on {key}:'|t({who: notification.user_name, key: key}) }}
+{%- else -%}
+{{ ui.event_line(event)|striptags|trim }} ({{ key }})
+{%- endif %}
+
+{{ ticket.title }}
+{% if notification.kind == 'commented' %}
+
+{{ notification.new_value }}
+{% endif %}
+
+{{ link }}
+
+--
+{{ 'You get this because you follow {key}. Turn email off on your profile: {url}'|t({key: key, url: link|split('/tickets/')|first ~ '/profile'}) }}
+{% endautoescape %}

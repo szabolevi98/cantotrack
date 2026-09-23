@@ -1,0 +1,59 @@
+{% extends 'layout.twig' %}
+{% import 'common/macros.twig' as ui %}
+
+{% block title %}{{ 'Notifications'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Notifications'|t }}{% endblock %}
+{% block subheading %}
+    <p class="content__sub">{{ unread > 0 ? plural('{count} not read yet', '{count} not read yet', unread) : 'All read.'|t }}</p>
+{% endblock %}
+
+{% block actions %}
+    {% if unread > 0 %}
+        <form method="post" action="{{ url('/notifications/read') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <button class="button" type="submit">{{ 'Mark everything read'|t }}</button>
+        </form>
+    {% endif %}
+    <a class="button" href="{{ url('/profile') }}">{{ 'Email settings'|t }}</a>
+{% endblock %}
+
+{% block content %}
+    <section class="card card--flush">
+        {% if notifications is empty %}
+            <p class="card__empty">
+                {{ 'Nothing yet. You hear about the tickets you report, are given, comment on, follow or are mentioned in.'|t }}
+            </p>
+        {% else %}
+            <ol class="notifications">
+                {% for n in notifications %}
+                    <li class="notification{{ n.read_at ? '' : ' notification--unread' }}">
+                        <a class="notification__link" href="{{ url('/notifications/' ~ n.id) }}">
+                            <span class="notification__what">
+                                <span class="ticket-key">{{ n.project_code }}-{{ n.ticket_number }}</span>
+                                {% if n.reason == 'mentioned' %}
+                                    {{ '{who} mentioned you'|t({who: n.user_name}) }}:
+                                    <span class="muted">{{ n.new_value|slice(0, 140) }}</span>
+                                {% elseif n.reason == 'assigned' %}
+                                    {{ '{who} gave it to you'|t({who: n.user_name ?: 'Somebody'|t}) }}
+                                {% elseif n.kind == 'commented' %}
+                                    {{ '{who} commented'|t({who: n.user_name}) }}:
+                                    <span class="muted">{{ n.new_value|slice(0, 140) }}</span>
+                                {% else %}
+                                    {{ ui.event_line(n) }}
+                                {% endif %}
+                            </span>
+                            <span class="notification__title">{{ n.ticket_title }}</span>
+                        </a>
+                        <time class="notification__when muted" datetime="{{ n.created_at }}">{{ n.created_at|day }} {{ n.created_at|date('H:i') }}</time>
+                    </li>
+                {% endfor %}
+            </ol>
+        {% endif %}
+    </section>
+
+    {% if notifications|length == 50 %}
+        <nav class="pager">
+            <a class="button button--small" href="{{ url('/notifications?page=' ~ (page + 1)) }}">{{ 'Older'|t }} →</a>
+        </nav>
+    {% endif %}
+{% endblock %}

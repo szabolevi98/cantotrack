@@ -15,6 +15,7 @@ use CantoTrack\Core\HttpError;
 use CantoTrack\Core\Logger;
 use CantoTrack\Core\Router;
 use CantoTrack\Core\Session;
+use CantoTrack\Service\Notifier;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
@@ -100,6 +101,10 @@ header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: same-origin');
 
 Session::start();
+
+// Whoever has to hear about a change is told by the Notifier, which listens
+// to every change the services make.
+Notifier::register();
 
 /*
  * One CSRF gate for every post, rather than a check in each controller. A check

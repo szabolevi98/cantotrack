@@ -1,0 +1,24 @@
+{% extends 'auth/frame.twig' %}
+
+{% block title %}{{ 'Choose a new password'|t }}{% endblock %}
+
+{% block card %}
+    <h1>{{ 'Choose a new password'|t }}</h1>
+
+    {% if not valid %}
+        <p class="auth__lead">{{ 'This link has been used already, or it is more than an hour old. Ask for a new one.'|t }}</p>
+        <p><a class="button button--primary" href="{{ url('/password/forgot') }}">{{ 'Ask for a new link'|t }}</a></p>
+    {% else %}
+        {% if error %}<p class="flash flash--danger">{{ error }}</p>{% endif %}
+
+        <form method="post" action="{{ url('/password/reset/' ~ token) }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <label for="new_password">{{ 'New password'|t }}</label>
+            <input id="new_password" class="field" type="password" name="new_password" autocomplete="new-password" minlength="10" required autofocus>
+            <label for="new_password_again">{{ 'The new one again'|t }}</label>
+            <input id="new_password_again" class="field" type="password" name="new_password_again" autocomplete="new-password" minlength="10" required>
+            <p class="hint">{{ 'At least 10 characters.'|t }}</p>
+            <button class="button button--primary button--block" type="submit">{{ 'Save the new password'|t }}</button>
+        </form>
+    {% endif %}
+{% endblock %}

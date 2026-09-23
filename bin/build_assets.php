@@ -38,6 +38,7 @@ $bundles = [
             'components/activity.css',
             'components/planning.css',
             'components/navigation.css',
+            'components/notifications.css',
             'pages/auth.css',
         ],
     ],

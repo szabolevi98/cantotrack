@@ -63,18 +63,41 @@ class UserRepository
     public function create(string $name, string $email, string $password, string $role = 'member'): int
     {
         $statement = $this->db->prepare(
-            'INSERT INTO users (name, email, password_hash, role, created_at, updated_at)
-             VALUES (:name, :email, :hash, :role, NOW(), NOW())'
+            'INSERT INTO users (name, handle, email, password_hash, role, created_at, updated_at)
+             VALUES (:name, :handle, :email, :hash, :role, NOW(), NOW())'
         );
 
         $statement->execute([
             'name' => trim($name),
+            'handle' => $this->freeHandle($email),
             'email' => mb_strtolower(trim($email)),
             'hash' => Password::hash($password),
             'role' => self::role($role),
         ]);
 
         return (int) $this->db->lastInsertId();
+    }
+
+    /**
+     * The name somebody is @mentioned by: the part of their address before
+     * the @, letters and digits only — the same rule the migration used for
+     * the accounts that existed then — with a number added if it is taken.
+     */
+    public function freeHandle(string $email): string
+    {
+        $base = substr((string) preg_replace('/[^a-z0-9]/', '', mb_strtolower(strstr(trim($email), '@', true) ?: $email)), 0, 30);
+        $base = strlen($base) < 2 ? 'user' . $base : $base;
+
+        $taken = $this->db->prepare('SELECT EXISTS (SELECT 1 FROM users WHERE handle = :handle)');
+
+        for ($suffix = 0; ; $suffix++) {
+            $handle = $suffix === 0 ? $base : $base . ($suffix + 1);
+            $taken->execute(['handle' => $handle]);
+
+            if (!(bool) $taken->fetchColumn()) {
+                return $handle;
+            }
+        }
     }
 
     /**
@@ -113,13 +136,15 @@ class UserRepository
     }
 
     /** What a person may change about themselves on their profile. */
-    public function updateProfile(int $id, string $name, ?string $shortName, ?string $locale, string $theme): void
+    public function updateProfile(int $id, string $name, ?string $shortName, ?string $locale, string $theme, bool $notifyEmail = true): void
     {
         $statement = $this->db->prepare(
-            'UPDATE users SET name = :name, short_name = :short_name, locale = :locale, theme = :theme WHERE id = :id'
+            'UPDATE users SET name = :name, short_name = :short_name, locale = :locale, theme = :theme,
+                 notify_email = :notify WHERE id = :id'
         );
 
         $statement->execute([
+            'notify' => $notifyEmail ? 1 : 0,
             'name' => trim($name),
             'short_name' => trim((string) $shortName) ?: null,
             'locale' => $locale ?: null,

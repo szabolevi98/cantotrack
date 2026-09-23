@@ -16,6 +16,8 @@ use CantoTrack\Controller\DashboardController;
 use CantoTrack\Controller\EpicController;
 use CantoTrack\Controller\LinkController;
 use CantoTrack\Controller\LoginController;
+use CantoTrack\Controller\NotificationController;
+use CantoTrack\Controller\PasswordResetController;
 use CantoTrack\Controller\PeopleController;
 use CantoTrack\Controller\ProfileController;
 use CantoTrack\Controller\ProjectController;
@@ -34,10 +36,20 @@ $router->post('/login', static fn() => (new LoginController())->submit());
 // internet can trigger with an <img> pointing at it.
 $router->post('/logout', static fn() => (new LoginController())->logout());
 
+$router->get('/password/forgot', static fn() => (new PasswordResetController())->form());
+$router->post('/password/forgot', static fn() => (new PasswordResetController())->send());
+$router->get('/password/reset/{token}', static fn($token) => (new PasswordResetController())->resetForm((string) $token));
+$router->post('/password/reset/{token}', static fn($token) => (new PasswordResetController())->reset((string) $token));
+
 // ---------------------------------------------------------------------------
 // The application
 // ---------------------------------------------------------------------------
 $router->get('/', static fn() => (new DashboardController())->index());
+
+$router->get('/notifications', static fn() => (new NotificationController())->index());
+$router->post('/notifications/read', static fn() => (new NotificationController())->readAll());
+$router->get('/notifications/{id}', static fn($id) => (new NotificationController())->open((int) $id));
+$router->post('/tickets/{id}/watch', static fn($id) => (new NotificationController())->toggleWatch((int) $id));
 
 $router->get('/search', static fn() => (new SearchController())->search());
 $router->post('/filters', static fn() => (new SearchController())->saveFilter());

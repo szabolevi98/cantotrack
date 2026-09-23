@@ -55,7 +55,8 @@ class ProfileController extends Controller
             $name,
             $this->input('short_name'),
             array_key_exists($locale, I18n::LOCALES) ? $locale : null,
-            $theme
+            $theme,
+            isset($_POST['notify_email'])
         );
 
         // The flash is written in the language just chosen, not the one the

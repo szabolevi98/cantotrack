@@ -65,33 +65,44 @@ class EpicRepository
         return $statement->fetch() ?: null;
     }
 
-    public function create(int $projectId, string $title, ?string $description): int
+    public function create(int $projectId, string $title, ?string $description, ?string $startsOn = null, ?string $endsOn = null): int
     {
         $statement = $this->db->prepare(
-            'INSERT INTO epics (project_id, title, description) VALUES (:project, :title, :description)'
+            'INSERT INTO epics (project_id, title, description, starts_on, ends_on) VALUES (:project, :title, :description, :starts, :ends)'
         );
 
         $statement->execute([
             'project' => $projectId,
             'title' => trim($title),
             'description' => $this->emptyToNull($description),
+            'starts' => $startsOn,
+            'ends' => $endsOn,
         ]);
 
         return (int) $this->db->lastInsertId();
     }
 
-    public function update(int $id, string $title, ?string $description, bool $isDone): void
+    public function update(int $id, string $title, ?string $description, bool $isDone, ?string $startsOn = null, ?string $endsOn = null): void
     {
         $statement = $this->db->prepare(
-            'UPDATE epics SET title = :title, description = :description, is_done = :done WHERE id = :id'
+            'UPDATE epics SET title = :title, description = :description, is_done = :done, starts_on = :starts, ends_on = :ends WHERE id = :id'
         );
 
         $statement->execute([
             'title' => trim($title),
             'description' => $this->emptyToNull($description),
             'done' => $isDone ? 1 : 0,
+            'starts' => $startsOn,
+            'ends' => $endsOn,
             'id' => $id,
         ]);
+    }
+
+    /** Only the days, from the roadmap: a bar dragged or stretched. */
+    public function setDays(int $id, ?string $startsOn, ?string $endsOn): void
+    {
+        $this->db->prepare('UPDATE epics SET starts_on = :starts, ends_on = :ends WHERE id = :id')
+            ->execute(['starts' => $startsOn, 'ends' => $endsOn, 'id' => $id]);
     }
 
     /** Removing an epic leaves its tickets in the project, without one. */

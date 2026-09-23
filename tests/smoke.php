@@ -807,6 +807,11 @@ if ($email === null || $password === null) {
         str_contains($releasePage, $code . '-1') && str_contains($releasePage, 'Release notes')
     );
 
+    // The roadmap, every project's and this one's, with an epic's days
+    // moved the way the bar's drag sends them.
+    check('the roadmap answers', str_contains(request($baseUrl . '/roadmap', [], $jar)['body'], 'roadmap__months'));
+    check('and a project’s own', request($baseUrl . '/projects/' . $projectId . '/roadmap', [], $jar)['status'] === 200);
+
     $timesheet = request($baseUrl . '/timesheet?view=days', [], $jar);
     check('the timesheet answers', $timesheet['status'] === 200, 'status ' . $timesheet['status']);
     check(

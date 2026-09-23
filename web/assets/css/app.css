@@ -2788,6 +2788,7 @@ a.family:hover {
 .bi-stopwatch::before { content: "\f597"; }
 .bi-tags::before { content: "\f5b2"; }
 .bi-calendar2-range::before { content: "\f207"; }
+.bi-signpost-split::before { content: "\f549"; }
 .bi-star::before { content: "\f588"; }
 .bi-star-fill::before { content: "\f586"; }
 .bi-exclamation-circle::before { content: "\f333"; }
@@ -4159,6 +4160,317 @@ kbd {
 .calendar__meeting:disabled {
     cursor: default;
     opacity: 0.6;
+}
+
+/* ---------------------------------------------------------------------------
+ * The roadmap: months across, a row an epic, the bars placed in percent of
+ * the six months shown. The label column stays where it is; the months take
+ * the rest, and scroll sideways on a narrow screen rather than squeeze.
+ * ------------------------------------------------------------------------- */
+.roadmap__scroll {
+    overflow-x: auto;
+}
+
+.roadmap__grid {
+    min-width: 860px;
+}
+
+.roadmap__head,
+.roadmap__row {
+    display: grid;
+    grid-template-columns: 240px minmax(0, 1fr);
+}
+
+.roadmap__head {
+    border-bottom: 1px solid var(--ct-border);
+    background: var(--ct-bg);
+}
+
+.roadmap__label {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    min-width: 0;
+    padding: 6px 14px;
+    border-right: 1px solid var(--ct-border);
+    font-size: 0.85rem;
+}
+
+.roadmap__label a {
+    overflow: hidden;
+    color: var(--ct-text);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.roadmap__count {
+    margin-left: auto;
+    font-size: 0.75rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.roadmap__track {
+    position: relative;
+    min-height: 34px;
+}
+
+.roadmap__months {
+    min-height: 34px;
+}
+
+.roadmap__month {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    display: flex;
+    align-items: center;
+    padding-left: 8px;
+    overflow: hidden;
+    color: var(--ct-muted);
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    white-space: nowrap;
+}
+
+.roadmap__body {
+    position: relative;
+}
+
+/* The month lines and today's line, laid over every row. */
+.roadmap__overlay {
+    position: absolute;
+    top: 0;
+    right: 0;
+    bottom: 0;
+    left: 240px;
+    pointer-events: none;
+}
+
+.roadmap__line {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    border-left: 1px solid var(--ct-border);
+}
+
+.roadmap__today {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    z-index: 2;
+    border-left: 2px solid var(--ct-danger);
+}
+
+.roadmap__row {
+    border-bottom: 1px solid color-mix(in srgb, var(--ct-border) 60%, transparent);
+}
+
+.roadmap__row--project {
+    background: var(--ct-bg);
+}
+
+.roadmap__row--project .roadmap__label {
+    padding-top: 10px;
+    padding-bottom: 10px;
+}
+
+.roadmap__bar {
+    position: absolute;
+    top: 6px;
+    bottom: 6px;
+    display: flex;
+    align-items: center;
+    overflow: hidden;
+    border: 1px solid color-mix(in srgb, var(--ct-primary) 45%, transparent);
+    border-radius: 6px;
+    background: var(--ct-primary-soft);
+    color: var(--ct-text);
+    font-size: 0.75rem;
+}
+
+.roadmap__bar:hover {
+    z-index: 1;
+    box-shadow: var(--ct-shadow);
+    text-decoration: none;
+}
+
+.roadmap__fill {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    background: color-mix(in srgb, var(--ct-primary) 32%, transparent);
+}
+
+.roadmap__bar-label {
+    position: relative;
+    overflow: hidden;
+    padding: 0 8px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+[data-roadmap] [data-epic] {
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+[data-roadmap] [data-epic].is-dragging {
+    z-index: 3;
+    cursor: grabbing;
+    opacity: 0.85;
+    box-shadow: var(--ct-shadow);
+}
+
+/* The ends of a bar, taken to start or finish it on another day. */
+.roadmap__edge {
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 8px;
+    cursor: ew-resize;
+}
+
+.roadmap__edge--start {
+    left: 0;
+}
+
+.roadmap__edge--end {
+    right: 0;
+}
+
+/* Drawn from its tickets: the roadmap is guessing, and shows it. */
+.roadmap__bar--guessed {
+    border-style: dashed;
+    background-image: repeating-linear-gradient(135deg, transparent 0 6px, color-mix(in srgb, var(--ct-primary) 10%, transparent) 6px 12px);
+}
+
+.roadmap__bar--done {
+    border-color: color-mix(in srgb, var(--ct-success) 45%, transparent);
+    background: var(--ct-success-soft);
+}
+
+.roadmap__bar--done .roadmap__fill {
+    background: color-mix(in srgb, var(--ct-success) 28%, transparent);
+}
+
+/* Running on before or after the months shown. */
+.roadmap__bar--before {
+    border-left-style: none;
+    border-top-left-radius: 0;
+    border-bottom-left-radius: 0;
+}
+
+.roadmap__bar--after {
+    border-right-style: none;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+}
+
+.roadmap__sprint {
+    position: absolute;
+    top: 8px;
+    bottom: 8px;
+    overflow: hidden;
+    padding: 0 6px;
+    border-radius: 4px;
+    background: var(--ct-badge-slate-bg);
+    color: var(--ct-badge-slate-text);
+    font-size: 0.7rem;
+    line-height: 18px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.roadmap__sprint + .roadmap__sprint {
+    margin-left: 2px;
+}
+
+.roadmap__sprint--active {
+    background: color-mix(in srgb, var(--ct-primary) 22%, transparent);
+    color: var(--ct-primary);
+    font-weight: 600;
+}
+
+.roadmap__sprint:hover {
+    text-decoration: none;
+    filter: brightness(0.96);
+}
+
+.roadmap__release {
+    position: absolute;
+    top: 50%;
+    z-index: 1;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    color: var(--ct-text);
+    font-size: 0.72rem;
+    font-weight: 600;
+    white-space: nowrap;
+    transform: translate(-6px, -50%);
+}
+
+.roadmap__release:hover {
+    text-decoration: none;
+}
+
+.roadmap__diamond {
+    display: inline-block;
+    flex: 0 0 auto;
+    width: 10px;
+    height: 10px;
+    border: 2px solid var(--ct-violet);
+    background: var(--ct-surface);
+    transform: rotate(45deg);
+}
+
+.roadmap__release--out .roadmap__diamond {
+    background: var(--ct-violet);
+}
+
+.roadmap__none {
+    display: flex;
+    align-items: center;
+    height: 100%;
+    padding-left: 10px;
+    font-size: 0.75rem;
+}
+
+.roadmap__legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 14px;
+}
+
+.roadmap__key {
+    display: inline-block;
+    width: 22px;
+    height: 10px;
+    margin-right: -8px;
+    border-radius: 3px;
+    vertical-align: -1px;
+}
+
+.roadmap__key--bar {
+    border: 1px solid color-mix(in srgb, var(--ct-primary) 45%, transparent);
+    background: linear-gradient(90deg, color-mix(in srgb, var(--ct-primary) 32%, transparent) 50%, var(--ct-primary-soft) 50%);
+}
+
+.roadmap__key--guessed {
+    border: 1px dashed color-mix(in srgb, var(--ct-primary) 45%, transparent);
+    background-image: repeating-linear-gradient(135deg, transparent 0 3px, color-mix(in srgb, var(--ct-primary) 18%, transparent) 3px 6px);
+}
+
+.roadmap__key--today {
+    width: 2px;
+    height: 14px;
+    border-radius: 0;
+    background: var(--ct-danger);
 }
 
 /*

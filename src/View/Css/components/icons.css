@@ -50,6 +50,7 @@
 .bi-stopwatch::before { content: "\f597"; }
 .bi-tags::before { content: "\f5b2"; }
 .bi-calendar2-range::before { content: "\f207"; }
+.bi-signpost-split::before { content: "\f549"; }
 .bi-star::before { content: "\f588"; }
 .bi-star-fill::before { content: "\f586"; }
 .bi-exclamation-circle::before { content: "\f333"; }

@@ -60,7 +60,19 @@ class EpicController extends Controller
             return;
         }
 
-        $id = (new EpicRepository())->create($projectId, $title, (string) ($_POST['description'] ?? ''));
+        $days = $this->days();
+
+        if (is_string($days)) {
+            View::render('epics/form.twig', [
+                'project' => $project,
+                'epic' => ['title' => $title, 'description' => $_POST['description'] ?? '', 'is_done' => 0, 'starts_on' => $_POST['starts_on'] ?? '', 'ends_on' => $_POST['ends_on'] ?? ''],
+                'error' => $days,
+            ]);
+
+            return;
+        }
+
+        $id = (new EpicRepository())->create($projectId, $title, (string) ($_POST['description'] ?? ''), $days[0], $days[1]);
 
         Session::flash(__('Epic created.'));
         $this->redirect('/epics/' . $id);
@@ -96,7 +108,19 @@ class EpicController extends Controller
             return;
         }
 
-        (new EpicRepository())->update($id, $title, (string) ($_POST['description'] ?? ''), isset($_POST['is_done']));
+        $days = $this->days();
+
+        if (is_string($days)) {
+            View::render('epics/form.twig', [
+                'project' => (new ProjectRepository())->find((int) $epic['project_id']),
+                'epic' => ['starts_on' => $_POST['starts_on'] ?? '', 'ends_on' => $_POST['ends_on'] ?? ''] + $epic,
+                'error' => $days,
+            ]);
+
+            return;
+        }
+
+        (new EpicRepository())->update($id, $title, (string) ($_POST['description'] ?? ''), isset($_POST['is_done']), $days[0], $days[1]);
 
         Session::flash(__('Epic saved.'));
         $this->redirect('/epics/' . $id);
@@ -113,6 +137,53 @@ class EpicController extends Controller
         // does: the work stays, only the grouping is gone.
         Session::flash(__('Epic deleted. Its tickets are still in the project, without an epic.'), 'warning');
         $this->redirect('/projects/' . $epic['project_id']);
+    }
+
+    /**
+     * The epic's days from the roadmap's drag: its new first and last day,
+     * answered in JSON for the script that moved the bar.
+     */
+    public function moveDays(int $id): void
+    {
+        Auth::requireMember();
+
+        $this->epicOr404($id);
+        $days = $this->days();
+
+        if (is_string($days)) {
+            $this->json(['ok' => false, 'error' => $days], 422);
+        }
+
+        (new EpicRepository())->setDays($id, $days[0], $days[1]);
+        $this->json(['ok' => true]);
+    }
+
+    /**
+     * The first and last day from the form: both optional, real dates, and
+     * the end not before the start — or what is wrong with them.
+     *
+     * @return array{0: ?string, 1: ?string}|string
+     */
+    private function days(): array|string
+    {
+        $out = [];
+
+        foreach (['starts_on', 'ends_on'] as $field) {
+            $given = trim((string) ($_POST[$field] ?? ''));
+            $date = $given === '' ? null : \DateTimeImmutable::createFromFormat('!Y-m-d', $given);
+
+            if ($date === false || ($date !== null && $date->format('Y-m-d') !== $given)) {
+                return __('“{value}” is not a date.', ['value' => $given]);
+            }
+
+            $out[] = $date?->format('Y-m-d');
+        }
+
+        if ($out[0] !== null && $out[1] !== null && $out[1] < $out[0]) {
+            return __('An epic cannot end before it starts.');
+        }
+
+        return [$out[0], $out[1]];
     }
 
     private function epicOr404(int $id): array

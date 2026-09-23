@@ -21,6 +21,18 @@
             <label for="description">{{ 'Description'|t }}</label>
             <textarea id="description" class="field" name="description" rows="5">{{ epic.description|default('') }}</textarea>
 
+            <div class="form__row">
+                <div>
+                    <label for="starts_on">{{ 'Starts'|t }}</label>
+                    <input id="starts_on" class="field" type="date" name="starts_on" value="{{ epic.starts_on|default('') }}">
+                </div>
+                <div>
+                    <label for="ends_on">{{ 'Ends'|t }}</label>
+                    <input id="ends_on" class="field" type="date" name="ends_on" value="{{ epic.ends_on|default('') }}">
+                </div>
+            </div>
+            <p class="hint">{{ 'Where it sits on the roadmap. Left empty, the roadmap draws it from its tickets.'|t }}</p>
+
             {% if editing %}
                 <label class="check">
                     <input type="checkbox" name="is_done" value="1"{{ epic.is_done ? ' checked' : '' }}>

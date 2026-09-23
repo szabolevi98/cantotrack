@@ -40,6 +40,11 @@ deploy with `git pull`.
   how much of it is done; sending one out moves what is unfinished on to the
   next, and its release notes — what was finished, as new, fixed and changed —
   are written from the tickets, ready to be copied.
+- **A roadmap**, one project's or every project's at once: the epics as bars
+  across six months, filled as far as their tickets are done, with the
+  releases and the sprints above them. A bar is dragged to move an epic, or by
+  an end to change when it starts or finishes; an epic without days of its own
+  is drawn from its tickets, and says so.
 - **Links between tickets** — blocks, relates to, duplicates. A ticket blocked by
   an unfinished one says so on the board.
 - **Private projects and guests.** A project is open to the team, or private to

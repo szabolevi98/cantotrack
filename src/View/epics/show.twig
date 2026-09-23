@@ -8,6 +8,8 @@
     <p class="content__sub">
         {{ 'Epic in'|t }} <a href="{{ url('/projects/' ~ project.id) }}">{{ project.name }}</a>
         {% if epic.is_done %}<span class="badge badge--done">{{ 'Done'|t }}</span>{% endif %}
+        {% if epic.starts_on or epic.ends_on %}· {{ epic.starts_on ? epic.starts_on|day : '…' }} — {{ epic.ends_on ? epic.ends_on|day : '…' }}{% endif %}
+        · <a href="{{ url('/projects/' ~ project.id ~ '/roadmap') }}">{{ 'On the roadmap'|t }}</a>
     </p>
 {% endblock %}
 

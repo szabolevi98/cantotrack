@@ -1,0 +1,135 @@
+{% extends 'layout.twig' %}
+{% if project %}{% set search_project = {id: project.id, code: project.code} %}{% endif %}
+{% set base = project ? '/projects/' ~ project.id ~ '/roadmap' : '/roadmap' %}
+
+{% block title %}{{ 'Roadmap'|t }}{{ project ? ' — ' ~ project.code : '' }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ project ? project.name : 'Roadmap'|t }}{% endblock %}
+{% block subheading %}
+    <p class="content__sub">
+        {% if project %}<span class="project__code">{{ project.code }}</span>{% endif %}
+        {{ from|day }} — {{ to|day }}
+    </p>
+{% endblock %}
+
+{% block actions %}
+    <a class="button week-picker__step" href="{{ url(base ~ '?from=' ~ earlier) }}" title="{{ 'Three months earlier'|t }}" aria-label="{{ 'Three months earlier'|t }}">←</a>
+    <a class="button" href="{{ url(base) }}">{{ 'Now'|t }}</a>
+    <a class="button week-picker__step" href="{{ url(base ~ '?from=' ~ later) }}" title="{{ 'Three months later'|t }}" aria-label="{{ 'Three months later'|t }}">→</a>
+{% endblock %}
+
+{#
+    The roadmap: the months across, a lane a project, and in each lane its
+    sprints, its releases and its epics. Every bar is placed by the server in
+    percent of the six months shown, so it draws without a script and prints
+    the way it looks.
+
+    A bar drawn from the epic's tickets — it has no days of its own — is
+    hatched: the roadmap is guessing, and says so.
+#}
+{% block content %}
+    {% if project %}{% include 'common/project_tabs.twig' with {project: project, active: 'roadmap'} only %}{% endif %}
+
+    <section class="card card--flush roadmap"
+             {% if can_work %}data-roadmap data-from="{{ from }}" data-days="{{ days }}" data-days-url="{{ url('/epics/{id}/days') }}" data-failed="{{ 'The change did not go through.'|t }}"{% endif %}>
+        <div class="roadmap__scroll">
+            <div class="roadmap__grid">
+                <div class="roadmap__head">
+                    <div class="roadmap__label"></div>
+                    <div class="roadmap__track roadmap__months">
+                        {% for month in months %}
+                            <span class="roadmap__month" style="left: {{ month.left }}%; width: {{ month.width }}%;">{{ month.month|date('M')|t }} {{ month.month|date('Y') }}</span>
+                        {% endfor %}
+                    </div>
+                </div>
+
+                <div class="roadmap__body">
+                    {# The month lines and today's, over every lane. #}
+                    <div class="roadmap__overlay" aria-hidden="true">
+                        {% for month in months %}<span class="roadmap__line" style="left: {{ month.left }}%;"></span>{% endfor %}
+                        {% if today_at is not null %}<span class="roadmap__today" style="left: {{ today_at }}%;" title="{{ 'Today'|t }}"></span>{% endif %}
+                    </div>
+
+                    {% for lane in lanes %}
+                        {% if not project %}
+                            <div class="roadmap__row roadmap__row--project">
+                                <div class="roadmap__label">
+                                    <a href="{{ url('/projects/' ~ lane.project.id ~ '/roadmap?from=' ~ from|slice(0, 7)) }}"><strong>{{ lane.project.name }}</strong></a>
+                                    <span class="project__code">{{ lane.project.code }}</span>
+                                </div>
+                                <div class="roadmap__track"></div>
+                            </div>
+                        {% endif %}
+
+                        {% if lane.sprints is not empty %}
+                            <div class="roadmap__row roadmap__row--sprints">
+                                <div class="roadmap__label muted">{{ 'Sprints'|t }}</div>
+                                <div class="roadmap__track">
+                                    {% for sprint in lane.sprints %}
+                                        <a class="roadmap__sprint roadmap__sprint--{{ sprint.state }}" href="{{ url('/sprints/' ~ sprint.id) }}"
+                                           style="left: {{ sprint.bar.left }}%; width: {{ sprint.bar.width }}%;"
+                                           title="{{ sprint.name }}: {{ sprint.starts_on|day }} — {{ sprint.ends_on|day }}">{{ sprint.name }}</a>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        {% if lane.releases is not empty %}
+                            <div class="roadmap__row roadmap__row--releases">
+                                <div class="roadmap__label muted">{{ 'Releases'|t }}</div>
+                                <div class="roadmap__track">
+                                    {% for release in lane.releases %}
+                                        <a class="roadmap__release{{ release.released_at ? ' roadmap__release--out' : '' }}" href="{{ url('/releases/' ~ release.id) }}"
+                                           style="left: {{ release.at }}%;"
+                                           title="{{ release.name }} — {{ release.released_at ? 'Out {day}'|t({day: release.day|day}) : 'Due {day}'|t({day: release.day|day}) }}">
+                                            <span class="roadmap__diamond" aria-hidden="true"></span>{{ release.name }}
+                                        </a>
+                                    {% endfor %}
+                                </div>
+                            </div>
+                        {% endif %}
+
+                        {% for epic in lane.epics %}
+                            <div class="roadmap__row">
+                                <div class="roadmap__label">
+                                    <a href="{{ url('/epics/' ~ epic.id) }}">{{ epic.title }}</a>
+                                    <span class="muted roadmap__count">{{ epic.done_count }}/{{ epic.ticket_count }}</span>
+                                </div>
+                                <div class="roadmap__track">
+                                    {% if epic.bar %}
+                                        <a class="roadmap__bar{{ epic.guessed ? ' roadmap__bar--guessed' : '' }}{{ epic.is_done ? ' roadmap__bar--done' : '' }}{{ epic.bar.before ? ' roadmap__bar--before' : '' }}{{ epic.bar.after ? ' roadmap__bar--after' : '' }}"
+                                           href="{{ url('/epics/' ~ epic.id) }}" draggable="false"
+                                           {% if can_work %}data-epic="{{ epic.id }}" data-start="{{ epic.start }}" data-end="{{ epic.end }}"{% endif %}
+                                           style="left: {{ epic.bar.left }}%; width: {{ epic.bar.width }}%;"
+                                           title="{{ epic.title }}: {{ epic.start|day }} — {{ epic.end|day }} · {{ '{done} of {count} done'|t({done: epic.done_count, count: epic.ticket_count}) }}{{ epic.guessed ? ' · ' ~ 'drawn from its tickets'|t : '' }}">
+                                            <span class="roadmap__fill" style="width: {{ epic.share }}%"></span>
+                                            <span class="roadmap__bar-label">{{ epic.title }}</span>
+                                            {% if can_work %}
+                                                {% if not epic.bar.before %}<span class="roadmap__edge roadmap__edge--start" data-edge="start" aria-hidden="true"></span>{% endif %}
+                                                {% if not epic.bar.after %}<span class="roadmap__edge roadmap__edge--end" data-edge="end" aria-hidden="true"></span>{% endif %}
+                                            {% endif %}
+                                        </a>
+                                    {% elseif epic.start is null %}
+                                        <span class="roadmap__none muted">{{ 'No days, and no tickets to go by'|t }}</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        {% else %}
+                            <div class="roadmap__row">
+                                <div class="roadmap__label muted">{{ 'No epics yet'|t }}</div>
+                                <div class="roadmap__track"></div>
+                            </div>
+                        {% endfor %}
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <p class="hint roadmap__legend">
+        <span class="roadmap__key roadmap__key--bar"></span> {{ 'an epic, filled as far as its tickets are done'|t }}
+        <span class="roadmap__key roadmap__key--guessed"></span> {{ 'drawn from its tickets, with no days of its own'|t }}
+        <span class="roadmap__diamond" aria-hidden="true"></span> {{ 'a release'|t }}
+        <span class="roadmap__key roadmap__key--today"></span> {{ 'today'|t }}
+        {% if can_work %}· {{ 'Drag a bar to move an epic, or one of its ends to change when it starts or finishes.'|t }}{% endif %}
+    </p>
+{% endblock %}

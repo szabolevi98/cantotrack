@@ -30,6 +30,7 @@ use CantoTrack\Controller\ProfileController;
 use CantoTrack\Controller\ProjectController;
 use CantoTrack\Controller\ReleaseController;
 use CantoTrack\Controller\ReportController;
+use CantoTrack\Controller\RoadmapController;
 use CantoTrack\Controller\SearchController;
 use CantoTrack\Controller\SettingsController;
 use CantoTrack\Controller\SprintController;
@@ -130,6 +131,9 @@ $router->post('/statuses/{id}/delete', static fn($id) => (new ProjectController(
 $router->get('/projects/{id}/epics/create', static fn($id) => (new EpicController())->createForm((int) $id));
 $router->post('/projects/{id}/epics/create', static fn($id) => (new EpicController())->create((int) $id));
 $router->get('/epics/{id}', static fn($id) => (new EpicController())->show((int) $id));
+$router->get('/roadmap', static fn() => (new RoadmapController())->all());
+$router->get('/projects/{id}/roadmap', static fn($id) => (new RoadmapController())->project((int) $id));
+$router->post('/epics/{id}/days', static fn($id) => (new EpicController())->moveDays((int) $id));
 $router->get('/projects/{id}/releases', static fn($id) => (new ReleaseController())->index((int) $id));
 $router->post('/projects/{id}/releases', static fn($id) => (new ReleaseController())->create((int) $id));
 $router->get('/releases/{id}', static fn($id) => (new ReleaseController())->show((int) $id));

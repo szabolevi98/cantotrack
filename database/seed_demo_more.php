@@ -916,6 +916,23 @@ foreach ($weekStates as [$userId, $monday]) {
     ]);
 }
 
+// The epics' days, as a team would have set them: from the first hour
+// worked on them to the last ticket finished — or, while any is open, a few weeks on.
+// One epic in every project is left without, and drawn from its tickets.
+$database->exec(
+    "UPDATE epics e
+     JOIN (SELECT t.epic_id,
+                  COALESCE(MIN((SELECT MIN(w.work_date) FROM worklogs w WHERE w.ticket_id = t.id)), MIN(DATE(t.created_at))) AS first_day,
+                  MAX(DATE(t.closed_at)) AS last_done, SUM(t.closed_at IS NULL) AS open_count
+           FROM tickets t WHERE t.epic_id IS NOT NULL AND t.parent_id IS NULL GROUP BY t.epic_id) x ON x.epic_id = e.id
+     JOIN projects p ON p.id = e.project_id
+     SET e.starts_on = x.first_day,
+         e.ends_on = CASE WHEN x.open_count > 0 THEN GREATEST(CURDATE(), COALESCE(x.last_done, CURDATE())) + INTERVAL (14 + (e.id % 4) * 10) DAY ELSE x.last_done END,
+         e.is_done = x.open_count = 0
+     WHERE p.code IN ('CT', 'WEB', 'BIKE', 'CLINIC', 'WINE', 'OPS', 'HELP')
+       AND e.id <> (SELECT MAX(e2.id) FROM epics e2 WHERE e2.project_id = e.project_id)"
+);
+
 $moreSummary = [
     'projects' => count($catalogue),
     'tickets' => count($made2),

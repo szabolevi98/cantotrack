@@ -64,21 +64,30 @@
                     {% for ticket in board[status.id] %}
                         <article class="ticket-card">
                             <div class="ticket-card__top">
-                                {{ ui.ticket_key(ticket) }}
+                                <span class="ticket-card__key">{{ ui.type_icon(ticket.type) }} {{ ui.ticket_key(ticket) }}</span>
                                 {{ ui.priority(ticket.priority) }}
                             </div>
 
                             <a class="ticket-card__title" href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a>
 
-                            {% if ticket.epic_title %}
-                                <span class="ticket-card__epic">{{ ticket.epic_title }}</span>
+                            {% if ticket.epic_title or ticket.label_names %}
+                                <div class="ticket-card__tags">
+                                    {% if ticket.epic_title %}<span class="ticket-card__epic">{{ ticket.epic_title }}</span>{% endif %}
+                                    {{ ui.labels(ticket.label_names|lines, false) }}
+                                </div>
                             {% endif %}
 
                             <div class="ticket-card__foot">
                                 {{ ui.person(ticket.assignee_name) }}
-                                {% if ticket.logged_minutes > 0 %}
-                                    <span class="muted">{{ ticket.logged_minutes|duration }}</span>
-                                {% endif %}
+                                <span class="ticket-card__meta">
+                                    {{ ui.due(ticket.due_on, ticket.status_category == 'done') }}
+                                    {% if ticket.story_points is not null %}
+                                        <span class="points" title="{{ 'Story points'|t }}">{{ ticket.story_points }}</span>
+                                    {% endif %}
+                                    {% if ticket.logged_minutes > 0 %}
+                                        <span class="muted">{{ ticket.logged_minutes|duration }}</span>
+                                    {% endif %}
+                                </span>
                             </div>
 
                             {{ ui.move(ticket, statuses, '/projects/' ~ project.id) }}

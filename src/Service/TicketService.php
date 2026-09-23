@@ -7,6 +7,7 @@ use CantoTrack\Core\DatabaseConnection;
 use CantoTrack\Core\Format;
 use CantoTrack\Core\ValidationError;
 use CantoTrack\Model\EpicRepository;
+use CantoTrack\Model\LabelRepository;
 use CantoTrack\Model\ProjectRepository;
 use CantoTrack\Model\StatusRepository;
 use CantoTrack\Model\TicketRepository;
@@ -31,6 +32,8 @@ class TicketService
     private EpicRepository $epics;
     private UserRepository $users;
     private StatusRepository $statuses;
+    private LabelRepository $labels;
+    private Activity $activity;
 
     public function __construct(?PDO $db = null)
     {
@@ -41,6 +44,8 @@ class TicketService
         $this->epics = new EpicRepository($db);
         $this->users = new UserRepository($db);
         $this->statuses = new StatusRepository($db);
+        $this->labels = new LabelRepository($db);
+        $this->activity = new Activity($db);
     }
 
     /**
@@ -61,9 +66,11 @@ class TicketService
 
         $projectId = (int) $project['id'];
         $status = $this->status($projectId, $input['status'] ?? '');
+        $labels = LabelRepository::parse($input['labels'] ?? '');
 
-        return $this->tickets->create([
+        $id = $this->tickets->create([
             'project_id' => $projectId,
+            'type' => $this->type($input['type'] ?? 'task'),
             'epic_id' => $this->epic($input['epic_id'] ?? null, $projectId, null),
             'title' => $this->title($input['title'] ?? ''),
             'description' => (string) ($input['description'] ?? ''),
@@ -75,17 +82,31 @@ class TicketService
             // the past, not a field.
             'reporter_id' => $reporterId,
             'estimate_minutes' => $this->estimate($input),
+            'due_on' => $this->due($input['due_on'] ?? ''),
+            'story_points' => $this->points($input['story_points'] ?? ''),
         ]);
+
+        if ($labels !== []) {
+            $this->labels->sync($id, $labels);
+        }
+
+        $this->activity->happened((array) $this->tickets->find($id), $reporterId, 'created');
+
+        return $id;
     }
 
     /**
      * Saves an edit made against a particular version of the ticket.
      *
+     * A field that is not in the input keeps the value it has: the form sends
+     * every field, and an API client changing only the priority sends only the
+     * priority.
+     *
      * @param array<string, mixed> $input
      * @throws ValidationError when something in it does not make sense
      * @throws ConflictError when somebody else saved the ticket in between
      */
-    public function update(int $id, array $input): void
+    public function update(int $id, array $input, ?int $actorId = null): void
     {
         $ticket = $this->tickets->find($id);
 
@@ -93,15 +114,23 @@ class TicketService
             throw new ValidationError(__('There is no such ticket.'));
         }
 
+        $has = static fn(string $key): bool => array_key_exists($key, $input);
         $projectId = (int) $ticket['project_id'];
+
         $data = [
-            'epic_id' => $this->epic($input['epic_id'] ?? null, $projectId, $ticket['epic_id']),
-            'title' => $this->title($input['title'] ?? ''),
-            'description' => (string) ($input['description'] ?? ''),
-            'priority' => $this->priority($input['priority'] ?? 'normal'),
-            'assignee_id' => $this->assignee($input['assignee_id'] ?? null, $ticket['assignee_id']),
-            'estimate_minutes' => $this->estimate($input),
+            'type' => $has('type') ? $this->type($input['type']) : $ticket['type'],
+            'epic_id' => $has('epic_id') ? $this->epic($input['epic_id'], $projectId, $ticket['epic_id']) : $ticket['epic_id'],
+            'title' => $has('title') ? $this->title($input['title']) : $ticket['title'],
+            'description' => $has('description') ? (string) $input['description'] : (string) $ticket['description'],
+            'priority' => $has('priority') ? $this->priority($input['priority']) : $ticket['priority'],
+            'assignee_id' => $has('assignee_id') ? $this->assignee($input['assignee_id'], $ticket['assignee_id']) : $ticket['assignee_id'],
+            'estimate_minutes' => $has('estimate') || $has('estimate_minutes') ? $this->estimate($input) : $ticket['estimate_minutes'],
+            'due_on' => $has('due_on') ? $this->due($input['due_on']) : $ticket['due_on'],
+            'story_points' => $has('story_points') ? $this->points($input['story_points']) : $ticket['story_points'],
         ];
+
+        $oldLabels = $this->labels->forTicket($id);
+        $newLabels = $has('labels') ? LabelRepository::parse($input['labels']) : $oldLabels;
 
         // No version given (an API client that does not care) means "whatever
         // is there now" — the last-write-wins it asked for by leaving it out.
@@ -115,10 +144,16 @@ class TicketService
                 (array) $this->tickets->find($id)
             );
         }
+
+        if ($newLabels !== $oldLabels) {
+            $this->labels->sync($id, $newLabels);
+        }
+
+        $this->recordChanges($ticket, (array) $this->tickets->find($id), $oldLabels, $newLabels, $actorId);
     }
 
     /** @throws ValidationError */
-    public function changeStatus(int $id, string $status): void
+    public function changeStatus(int $id, string $status, ?int $actorId = null): void
     {
         $ticket = $this->tickets->find($id);
 
@@ -128,7 +163,60 @@ class TicketService
 
         $column = $this->status((int) $ticket['project_id'], $status);
 
+        if ((int) $column['id'] === (int) $ticket['status_id']) {
+            return;
+        }
+
         $this->tickets->changeStatus($id, (int) $column['id'], (string) $column['category']);
+
+        $this->activity->happened(
+            (array) $this->tickets->find($id),
+            $actorId,
+            'status',
+            'status',
+            (string) $ticket['status_name'],
+            (string) $column['name']
+        );
+    }
+
+    /**
+     * One history row per field that actually changed, with the values in the
+     * words people saw — see the 0007 migration for why.
+     *
+     * @param list<string> $oldLabels
+     * @param list<string> $newLabels
+     */
+    private function recordChanges(array $before, array $after, array $oldLabels, array $newLabels, ?int $actorId): void
+    {
+        $shown = [
+            'title' => static fn(array $t): string => (string) $t['title'],
+            'type' => static fn(array $t): string => ucfirst((string) $t['type']),
+            'priority' => static fn(array $t): string => ucfirst((string) $t['priority']),
+            'assignee' => static fn(array $t): string => (string) ($t['assignee_name'] ?? ''),
+            'epic' => static fn(array $t): string => (string) ($t['epic_title'] ?? ''),
+            'estimate' => static fn(array $t): string => $t['estimate_minutes'] ? Format::duration((int) $t['estimate_minutes']) : '',
+            'due' => static fn(array $t): string => (string) ($t['due_on'] ?? ''),
+            'points' => static fn(array $t): string => $t['story_points'] === null ? '' : (string) $t['story_points'],
+        ];
+
+        foreach ($shown as $field => $value) {
+            $old = $value($before);
+            $new = $value($after);
+
+            if ($old !== $new) {
+                $this->activity->happened($after, $actorId, 'changed', $field, $old ?: null, $new ?: null);
+            }
+        }
+
+        // The description is long; the history says that it changed, not what
+        // it said — the ticket itself shows what it says now.
+        if (trim((string) $before['description']) !== trim((string) $after['description'])) {
+            $this->activity->happened($after, $actorId, 'changed', 'description');
+        }
+
+        if ($oldLabels !== $newLabels) {
+            $this->activity->happened($after, $actorId, 'changed', 'labels', implode(', ', $oldLabels) ?: null, implode(', ', $newLabels) ?: null);
+        }
     }
 
     /**
@@ -264,6 +352,50 @@ class TicketService
         }
 
         return $status;
+    }
+
+    private function type(mixed $given): string
+    {
+        $type = (string) $given;
+
+        return in_array($type, TicketRepository::TYPES, true) ? $type : 'task';
+    }
+
+    /** A due day: a real date, or none. */
+    private function due(mixed $given): ?string
+    {
+        $given = trim((string) $given);
+
+        if ($given === '') {
+            return null;
+        }
+
+        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $given);
+
+        if ($date === false || $date->format('Y-m-d') !== $given) {
+            throw new ValidationError(__('The due date does not look like a date.'));
+        }
+
+        return $given;
+    }
+
+    /**
+     * Story points: a whole number, and a small one. Anything over 100 is a
+     * ticket that should be several.
+     */
+    private function points(mixed $given): ?int
+    {
+        $given = trim((string) $given);
+
+        if ($given === '') {
+            return null;
+        }
+
+        if (!ctype_digit($given) || (int) $given > 100) {
+            throw new ValidationError(__('Story points are a whole number from 0 to 100.'));
+        }
+
+        return (int) $given;
     }
 
     private function priority(mixed $given): string

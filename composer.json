@@ -4,6 +4,7 @@
     "license": "MIT",
     "require": {
         "php": ">=8.4",
+        "league/commonmark": "^2.6",
         "twig/twig": "^3.21"
     },
     "autoload": {

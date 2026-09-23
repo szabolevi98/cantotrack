@@ -396,6 +396,76 @@ if ($email === null || $password === null) {
     );
 
     // ---------------------------------------------------------------------
+    // The details and the conversation: a kind, labels, a due day, points,
+    // comments in Markdown, and the history of all of it.
+    // ---------------------------------------------------------------------
+    $editForm = request($baseUrl . '/tickets/' . $ticketId . '/edit', [], $jar);
+    preg_match('/name="version" value="(\d+)"/', $editForm['body'], $m);
+    $detailed = request($baseUrl . '/tickets/' . $ticketId, [
+        '_token' => $token,
+        'version' => $m[1] ?? '',
+        'type' => 'bug',
+        'title' => 'Smoke test ticket',
+        'description' => 'The first person’s edit.',
+        'priority' => 'high',
+        'epic_id' => $epicId,
+        'labels' => 'smoke, Second Label, smoke',
+        'due_on' => date('Y-m-d', strtotime('-1 day')),
+        'story_points' => '5',
+    ], $jar);
+    $ticketPage = request($baseUrl . '/tickets/' . $ticketId, [], $jar);
+    check(
+        'a ticket takes a kind, labels, a due day and points',
+        $detailed['status'] === 302
+        && str_contains($ticketPage['body'], 'type-icon--bug')
+        && str_contains($ticketPage['body'], '>smoke</a>')
+        && str_contains($ticketPage['body'], 'Second Label'),
+        'status ' . $detailed['status']
+    );
+    check('and a label given twice is one label', substr_count($ticketPage['body'], '>smoke</a>') === 1);
+    // It was moved to done above, and something finished is never late.
+    check('a finished ticket is not shown as overdue', !str_contains($ticketPage['body'], 'due--late'));
+
+    $labelled = request($baseUrl . '/tickets?label=smoke&project=' . $projectId, [], $jar);
+    check('tickets can be listed by label', str_contains($labelled['body'], 'Smoke test ticket'));
+
+    $commented = request($baseUrl . '/tickets/' . $ticketId . '/comments', [
+        '_token' => $token,
+        'body' => "This is **important** — see $code-1.\n\n<script>alert('comment')</script>",
+    ], $jar);
+    $ticketPage = request($baseUrl . '/tickets/' . $ticketId, [], $jar);
+    check('a comment can be added', $commented['status'] === 302 && str_contains($commented['headers'], '#comment-'));
+    check(
+        'and its Markdown is rendered, with the ticket name as a link',
+        str_contains($ticketPage['body'], '<strong>important</strong>')
+        && str_contains($ticketPage['body'], '/t/' . $code . '-1')
+    );
+    check(
+        'but HTML in it is shown, not run',
+        str_contains($ticketPage['body'], '&lt;script&gt;') && !str_contains($ticketPage['body'], "<script>alert('comment')")
+    );
+
+    $byKey = request($baseUrl . '/t/' . $code . '-1', [], $jar);
+    check(
+        'a ticket’s name as an address leads to the ticket',
+        $byKey['status'] === 302 && str_contains($byKey['headers'], '/tickets/' . $ticketId)
+    );
+
+    $history = request($baseUrl . '/tickets/' . $ticketId . '?activity=history', [], $jar);
+    check(
+        'the history says what happened, in words',
+        str_contains($history['body'], 'created the ticket')
+        && str_contains($history['body'], 'moved it from')
+        && str_contains($history['body'], 'changed the type from')
+    );
+
+    $dashboard = request($baseUrl . '/', [], $jar);
+    check(
+        'and the dashboard shows it among what happened lately',
+        str_contains($dashboard['body'], 'commented') && str_contains($dashboard['body'], $code . '-1')
+    );
+
+    // ---------------------------------------------------------------------
     // The hours
     // ---------------------------------------------------------------------
     $logged = request($baseUrl . '/tickets/' . $ticketId . '/log', [

@@ -117,3 +117,8 @@ code {
     color: var(--ct-muted);
     font-size: 0.86rem;
 }
+
+/* The type beside the title: a narrow select, then the title taking the rest. */
+.form__row--title {
+    grid-template-columns: 130px minmax(0, 1fr);
+}

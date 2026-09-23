@@ -18,6 +18,8 @@ class TicketRepository
 {
     public const PRIORITIES = ['low', 'normal', 'high', 'urgent'];
 
+    public const TYPES = ['task', 'bug', 'story'];
+
     /** A ticket name as people type it: CT-14. */
     public const KEY_PATTERN = '/^([A-Z][A-Z0-9]{1,9})-(\d+)$/';
 
@@ -46,7 +48,10 @@ class TicketRepository
                    e.title AS epic_title,
                    a.name AS assignee_name,
                    r.name AS reporter_name,
-                   (SELECT COALESCE(SUM(w.minutes), 0) FROM worklogs w WHERE w.ticket_id = t.id) AS logged_minutes
+                   (SELECT COALESCE(SUM(w.minutes), 0) FROM worklogs w WHERE w.ticket_id = t.id) AS logged_minutes,
+                   (SELECT GROUP_CONCAT(l.name ORDER BY l.name SEPARATOR \'\n\')
+                      FROM ticket_labels tl JOIN labels l ON l.id = tl.label_id
+                     WHERE tl.ticket_id = t.id) AS label_names
             FROM tickets t
             JOIN projects p ON p.id = t.project_id
             JOIN statuses s ON s.id = t.status_id
@@ -149,6 +154,25 @@ class TicketRepository
             $parameters['assignee_id'] = (int) $filters['assignee_id'];
         }
 
+        if (!empty($filters['type']) && in_array($filters['type'], self::TYPES, true)) {
+            $where[] = 't.type = :type';
+            $parameters['type'] = $filters['type'];
+        }
+
+        if (!empty($filters['label'])) {
+            $where[] = 'EXISTS (SELECT 1 FROM ticket_labels tl JOIN labels l ON l.id = tl.label_id
+                                WHERE tl.ticket_id = t.id AND l.name = :label)';
+            $parameters['label'] = (string) $filters['label'];
+        }
+
+        // Due: already late, or due within the week. Only open tickets can be
+        // either — something finished is not late.
+        if (($filters['due'] ?? '') === 'overdue') {
+            $where[] = 't.due_on < CURDATE() AND s.category <> \'done\'';
+        } elseif (($filters['due'] ?? '') === 'week') {
+            $where[] = 't.due_on BETWEEN CURDATE() AND CURDATE() + INTERVAL 7 DAY AND s.category <> \'done\'';
+        }
+
         // "Anything not finished" is what people mean by "open", and it is the
         // view a tracker spends most of its life showing.
         if (!empty($filters['open_only'])) {
@@ -240,16 +264,19 @@ class TicketRepository
 
             $statement = $this->db->prepare(
                 'INSERT INTO tickets
-                    (project_id, number, epic_id, title, description, status_id, priority,
-                     assignee_id, reporter_id, estimate_minutes, closed_at)
+                    (project_id, number, type, epic_id, title, description, status_id, priority,
+                     assignee_id, reporter_id, estimate_minutes, due_on, story_points, closed_at)
                  VALUES
-                    (:project_id, :number, :epic_id, :title, :description, :status_id, :priority,
-                     :assignee_id, :reporter_id, :estimate_minutes, :closed_at)'
+                    (:project_id, :number, :type, :epic_id, :title, :description, :status_id, :priority,
+                     :assignee_id, :reporter_id, :estimate_minutes, :due_on, :story_points, :closed_at)'
             );
 
             $statement->execute([
                 'project_id' => (int) $data['project_id'],
                 'number' => $number,
+                'type' => in_array($data['type'] ?? '', self::TYPES, true) ? $data['type'] : 'task',
+                'due_on' => ($data['due_on'] ?? null) ?: null,
+                'story_points' => $data['story_points'] ?? null,
                 'epic_id' => $data['epic_id'] ?: null,
                 'title' => trim((string) $data['title']),
                 'description' => trim((string) ($data['description'] ?? '')) ?: null,
@@ -284,17 +311,23 @@ class TicketRepository
     {
         $statement = $this->db->prepare(
             'UPDATE tickets SET
+                type = :type,
                 epic_id = :epic_id,
                 title = :title,
                 description = :description,
                 priority = :priority,
                 assignee_id = :assignee_id,
                 estimate_minutes = :estimate_minutes,
+                due_on = :due_on,
+                story_points = :story_points,
                 version = version + 1
              WHERE id = :id AND version = :version'
         );
 
         $statement->execute([
+            'type' => in_array($data['type'] ?? '', self::TYPES, true) ? $data['type'] : 'task',
+            'due_on' => ($data['due_on'] ?? null) ?: null,
+            'story_points' => $data['story_points'] ?? null,
             'epic_id' => $data['epic_id'] ?: null,
             'title' => trim((string) $data['title']),
             'description' => trim((string) ($data['description'] ?? '')) ?: null,

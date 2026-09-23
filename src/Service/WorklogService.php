@@ -25,6 +25,7 @@ class WorklogService
 
     private WorklogRepository $worklogs;
     private TicketRepository $tickets;
+    private Activity $activity;
 
     public function __construct(?PDO $db = null)
     {
@@ -32,6 +33,7 @@ class WorklogService
 
         $this->worklogs = new WorklogRepository($db);
         $this->tickets = new TicketRepository($db);
+        $this->activity = new Activity($db);
     }
 
     /**
@@ -43,7 +45,9 @@ class WorklogService
      */
     public function log(int $ticketId, int $userId, string $time, string $date, ?string $note): array
     {
-        if ($this->tickets->find($ticketId) === null) {
+        $ticket = $this->tickets->find($ticketId);
+
+        if ($ticket === null) {
             throw new ValidationError(__('There is no such ticket.'));
         }
 
@@ -51,6 +55,8 @@ class WorklogService
         $day = $this->day($date);
 
         $id = $this->worklogs->create($ticketId, $userId, $day, $minutes, $this->note($note));
+
+        $this->activity->happened($ticket, $userId, 'logged', 'time', $day, Format::duration($minutes));
 
         return ['id' => $id, 'minutes' => $minutes, 'rounded' => $rounded];
     }

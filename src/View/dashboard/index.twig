@@ -1,73 +1,109 @@
 {% extends 'layout.twig' %}
 {% import 'common/macros.twig' as ui %}
 
-{% block title %}Dashboard — {{ app_name }}{% endblock %}
+{% block title %}{{ 'Dashboard'|t }} — {{ app_name }}{% endblock %}
 {# Greeted by what they asked to be called, or by their whole name — never by
    the first word of it, which in a Hungarian name is the surname. #}
 {% block heading %}{{ 'Hello, {name}'|t({name: current_user.short_name ?: current_user.name}) }}{% endblock %}
-{% block subheading %}<p class="content__sub">What is on your plate today.</p>{% endblock %}
+{% block subheading %}<p class="content__sub">{{ 'What is on your plate today.'|t }}</p>{% endblock %}
 
 {% block actions %}
-    <a class="button button--primary" href="{{ url('/tickets/create') }}">New ticket</a>
+    <a class="button button--primary" href="{{ url('/tickets/create') }}">{{ 'New ticket'|t }}</a>
 {% endblock %}
 
 {% block content %}
     <div class="stats">
-        <div class="stat">
-            <div class="stat__label">Assigned to you</div>
+        <a class="stat stat--link" href="{{ url('/tickets?assignee=' ~ current_user.id ~ '&open=1') }}">
+            <div class="stat__label">{{ 'Assigned to you'|t }}</div>
             <div class="stat__value">{{ mine|length }}</div>
-        </div>
+        </a>
         <div class="stat">
-            <div class="stat__label">In progress</div>
+            <div class="stat__label">{{ 'In progress'|t }}</div>
             <div class="stat__value">{{ in_progress }}</div>
         </div>
-        <div class="stat">
-            <div class="stat__label">Projects</div>
+        <a class="stat stat--link{{ overdue > 0 ? ' stat--alert' : '' }}" href="{{ url('/tickets?assignee=' ~ current_user.id ~ '&due=overdue') }}">
+            <div class="stat__label">{{ 'Overdue'|t }}</div>
+            <div class="stat__value">{{ overdue }}</div>
+        </a>
+        <a class="stat stat--link" href="{{ url('/projects') }}">
+            <div class="stat__label">{{ 'Projects'|t }}</div>
             <div class="stat__value">{{ projects|length }}</div>
-        </div>
+        </a>
     </div>
 
-    <section class="card card--flush">
-        <header class="card__head">
-            <h2 class="card__title">Your open tickets</h2>
-            <a href="{{ url('/tickets?assignee=' ~ current_user.id ~ '&open=1') }}">See all</a>
-        </header>
+    <div class="split">
+        <div class="split__main">
+            <section class="card card--flush">
+                <header class="card__head">
+                    <h2 class="card__title">{{ 'Your open tickets'|t }}</h2>
+                    <a href="{{ url('/tickets?assignee=' ~ current_user.id ~ '&open=1') }}">{{ 'See all'|t }}</a>
+                </header>
 
-        {% if mine is empty %}
-            <p class="card__empty">
-                Nothing is assigned to you.
-                {% if projects is empty %}
-                    There are no projects yet either.
+                {% if mine is empty %}
+                    <p class="card__empty">
+                        {{ 'Nothing is assigned to you.'|t }}
+                        {% if projects is empty %}
+                            {{ 'There are no projects yet either.'|t }}
+                        {% else %}
+                            <a href="{{ url('/projects') }}">{{ 'Pick something up from a project board.'|t }}</a>
+                        {% endif %}
+                    </p>
                 {% else %}
-                    Pick something up from a <a href="{{ url('/projects') }}">project board</a>.
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th class="table__key">{{ 'Ticket'|t }}</th>
+                            <th>{{ 'Title'|t }}</th>
+                            <th>{{ 'Status'|t }}</th>
+                            <th>{{ 'Due'|t }}</th>
+                            <th class="table__number">{{ 'Logged'|t }}</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for ticket in mine %}
+                            <tr>
+                                <td class="table__key">{{ ui.type_icon(ticket.type) }} {{ ui.ticket_key(ticket) }}</td>
+                                <td>
+                                    <a href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a>
+                                    {{ ui.priority(ticket.priority) }}
+                                </td>
+                                <td>{{ ui.status(ticket.status_name, ticket.status_colour) }}</td>
+                                <td>{{ ui.due(ticket.due_on, false) }}</td>
+                                <td class="table__number">{{ ticket.logged_minutes > 0 ? ticket.logged_minutes|duration : '—' }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
                 {% endif %}
-            </p>
-        {% else %}
-            <table class="table">
-                <thead>
-                <tr>
-                    <th class="table__key">Ticket</th>
-                    <th>Title</th>
-                    <th>Status</th>
-                    <th class="table__number">Est.</th>
-                    <th class="table__number">Logged</th>
-                </tr>
-                </thead>
-                <tbody>
-                {% for ticket in mine %}
-                    <tr>
-                        <td>{{ ui.ticket_key(ticket) }}</td>
-                        <td>
-                            <a href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a>
-                            {{ ui.priority(ticket.priority) }}
-                        </td>
-                        <td>{{ ui.status(ticket.status_name, ticket.status_colour) }}</td>
-                        <td class="table__number">{{ ticket.estimate_minutes ? ticket.estimate_minutes|duration : '—' }}</td>
-                        <td class="table__number">{{ ticket.logged_minutes > 0 ? ticket.logged_minutes|duration : '—' }}</td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-        {% endif %}
-    </section>
+            </section>
+        </div>
+
+        {# What happened lately, across the projects: the thing somebody back
+           from a day off wants to read first. #}
+        <aside class="split__side">
+            <section class="card">
+                <h2 class="card__title">{{ 'Lately'|t }}</h2>
+                {% if recent is empty %}
+                    <p class="card__body muted">{{ 'Nothing has happened yet.'|t }}</p>
+                {% else %}
+                    <ol class="feed">
+                        {% for item in recent %}
+                            <li class="feed__item">
+                                <a class="ticket-key" href="{{ url('/tickets/' ~ item.ticket_id ~ (item.comment_id ? '#comment-' ~ item.comment_id : '')) }}">{{ item.project_code }}-{{ item.ticket_number }}</a>
+                                <span class="feed__what">
+                                    {% if item.kind == 'commented' %}
+                                        {{ '{who} commented'|t({who: item.user_name}) }}:
+                                        <span class="muted">{{ item.body|striptags|slice(0, 90) }}{{ item.body|length > 90 ? '…' }}</span>
+                                    {% else %}
+                                        {{ ui.event_line(item) }}
+                                    {% endif %}
+                                </span>
+                                <time class="feed__when muted" datetime="{{ item.created_at }}">{{ item.created_at|day }}</time>
+                            </li>
+                        {% endfor %}
+                    </ol>
+                {% endif %}
+            </section>
+        </aside>
+    </div>
 {% endblock %}

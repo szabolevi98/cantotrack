@@ -129,3 +129,26 @@
 .board__column--over .board__head {
     border-bottom-color: rgba(193, 74, 95, 0.35);
 }
+
+.ticket-card__key {
+    display: inline-flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.ticket-card__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+}
+
+.ticket-card__tags .label {
+    margin: 0;
+}
+
+.ticket-card__meta {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+}

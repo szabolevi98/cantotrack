@@ -50,6 +50,28 @@
             {% endfor %}
         </select>
 
+        <select class="field field--inline" name="type" aria-label="{{ 'Type'|t }}">
+            <option value="">{{ 'Any type'|t }}</option>
+            {% for value in types %}
+                <option value="{{ value }}"{{ filters.type == value ? ' selected' : '' }}>{{ ui.type_label(value) }}</option>
+            {% endfor %}
+        </select>
+
+        {% if labels is not empty %}
+            <select class="field field--inline" name="label" aria-label="{{ 'Label'|t }}">
+                <option value="">{{ 'Any label'|t }}</option>
+                {% for label in labels %}
+                    <option value="{{ label.name }}"{{ filters.label == label.name ? ' selected' : '' }}>{{ label.name }}</option>
+                {% endfor %}
+            </select>
+        {% endif %}
+
+        <select class="field field--inline" name="due" aria-label="{{ 'Due'|t }}">
+            <option value="">{{ 'Any due date'|t }}</option>
+            <option value="overdue"{{ filters.due == 'overdue' ? ' selected' : '' }}>{{ 'Overdue'|t }}</option>
+            <option value="week"{{ filters.due == 'week' ? ' selected' : '' }}>{{ 'Due this week'|t }}</option>
+        </select>
+
         <label class="check check--inline">
             <input type="checkbox" name="open" value="1"{{ filters.open_only ? ' checked' : '' }}>
             {{ 'Open only'|t }}
@@ -81,6 +103,7 @@
                     <th>{{ 'Title'|t }}</th>
                     <th>{{ 'Status'|t }}</th>
                     <th>{{ 'Assignee'|t }}</th>
+                    <th>{{ 'Due'|t }}</th>
                     <th class="table__number">{{ 'Est.'|t }}</th>
                     <th class="table__number">{{ 'Logged'|t }}</th>
                 </tr>
@@ -88,14 +111,16 @@
                 <tbody>
                 {% for ticket in tickets %}
                     <tr>
-                        <td>{{ ui.ticket_key(ticket) }}</td>
+                        <td class="table__key">{{ ui.type_icon(ticket.type) }} {{ ui.ticket_key(ticket) }}</td>
                         <td>
                             <a href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a>
                             {{ ui.priority(ticket.priority) }}
                             {% if ticket.epic_title %}<span class="tag">{{ ticket.epic_title }}</span>{% endif %}
+                            {{ ui.labels(ticket.label_names|lines, false) }}
                         </td>
                         <td>{{ ui.status(ticket.status_name, ticket.status_colour) }}</td>
                         <td>{{ ui.person(ticket.assignee_name) }}</td>
+                        <td>{{ ui.due(ticket.due_on, ticket.status_category == 'done') }}</td>
                         <td class="table__number">{{ ticket.estimate_minutes ? ticket.estimate_minutes|duration : '—' }}</td>
                         <td class="table__number">{{ ticket.logged_minutes > 0 ? ticket.logged_minutes|duration : '—' }}</td>
                     </tr>

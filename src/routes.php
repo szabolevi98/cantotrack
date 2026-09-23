@@ -10,6 +10,7 @@
  * @var \CantoTrack\Core\Router $router
  */
 
+use CantoTrack\Controller\CommentController;
 use CantoTrack\Controller\DashboardController;
 use CantoTrack\Controller\EpicController;
 use CantoTrack\Controller\LoginController;
@@ -74,6 +75,13 @@ $router->get('/tickets/{id}/edit', static fn($id) => (new TicketController())->e
 $router->post('/tickets/{id}', static fn($id) => (new TicketController())->update((int) $id));
 $router->post('/tickets/{id}/status', static fn($id) => (new TicketController())->changeStatus((int) $id));
 $router->post('/tickets/{id}/delete', static fn($id) => (new TicketController())->delete((int) $id));
+
+// A ticket by its name, which is where "CT-14" in a comment links to.
+$router->get('/t/{key}', static fn($key) => (new TicketController())->byKey((string) $key));
+
+$router->post('/tickets/{id}/comments', static fn($id) => (new CommentController())->create((int) $id));
+$router->post('/comments/{id}', static fn($id) => (new CommentController())->update((int) $id));
+$router->post('/comments/{id}/delete', static fn($id) => (new CommentController())->delete((int) $id));
 
 // ---------------------------------------------------------------------------
 // The hours

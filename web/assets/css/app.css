@@ -519,6 +519,11 @@ code {
     font-size: 0.86rem;
 }
 
+/* The type beside the title: a narrow select, then the title taking the rest. */
+.form__row--title {
+    grid-template-columns: 130px minmax(0, 1fr);
+}
+
 /*
  * The white surface almost everything sits on, and the small pieces that live
  * inside it: titles, bodies and the empty state a list shows when it is empty.
@@ -1136,6 +1141,29 @@ summary.link-button::-webkit-details-marker {
     border-bottom-color: rgba(193, 74, 95, 0.35);
 }
 
+.ticket-card__key {
+    display: inline-flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.ticket-card__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+}
+
+.ticket-card__tags .label {
+    margin: 0;
+}
+
+.ticket-card__meta {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
+}
+
 /*
  * The project cards on the index, and the epic strip on a project's page.
  */
@@ -1504,6 +1532,377 @@ summary.link-button::-webkit-details-marker {
 
 .link-button--text:hover {
     color: var(--ct-primary);
+}
+
+/*
+ * What surrounds a ticket's text: its kind, its labels, when it is due — and
+ * the conversation and history under it.
+ */
+
+/* The kind of ticket, as a small square icon. The colours are the palette's
+   own, so a bug reads red wherever the palette puts red. */
+.type-icon {
+    display: inline-flex;
+    flex: none;
+    vertical-align: -2px;
+}
+
+.type-icon svg {
+    display: block;
+}
+
+.type-icon--task {
+    color: var(--ct-primary);
+    fill: var(--ct-primary);
+}
+
+.type-icon--bug {
+    fill: var(--ct-danger);
+}
+
+.type-icon--story {
+    fill: var(--ct-success);
+}
+
+/* Labels share the six column colours; which one is worked out from the name,
+   so the same word is always the same colour. */
+.label {
+    display: inline-block;
+    margin: 2px 4px 2px 0;
+    padding: 0 8px;
+    border-radius: 999px;
+    font-size: 0.74rem;
+    font-weight: 600;
+    line-height: 1.7;
+    white-space: nowrap;
+}
+
+a.label:hover {
+    text-decoration: none;
+    filter: brightness(0.96);
+}
+
+.label--slate {
+    background: var(--ct-badge-slate-bg);
+    color: var(--ct-badge-slate-text);
+}
+
+.label--blue {
+    background: var(--ct-primary-soft);
+    color: var(--ct-primary);
+}
+
+.label--amber {
+    background: var(--ct-warning-soft);
+    color: var(--ct-warning);
+}
+
+.label--green {
+    background: var(--ct-success-soft);
+    color: var(--ct-success);
+}
+
+.label--violet {
+    background: var(--ct-violet-soft);
+    color: var(--ct-violet);
+}
+
+.label--red {
+    background: var(--ct-danger-soft);
+    color: var(--ct-danger);
+}
+
+.labels {
+    margin: -2px 0 10px;
+}
+
+/* A due date, and whether it is a problem. */
+.due {
+    color: var(--ct-muted);
+    font-size: 0.82rem;
+    white-space: nowrap;
+}
+
+.due--soon {
+    color: var(--ct-warning);
+    font-weight: 600;
+}
+
+.due--late {
+    color: var(--ct-danger);
+    font-weight: 700;
+}
+
+.points {
+    display: inline-grid;
+    place-items: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: var(--ct-bg);
+    color: var(--ct-muted);
+    font-size: 0.74rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.facts__with-icon {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+/* ---------------------------------------------------------------------------
+ * Text somebody wrote in Markdown.
+ * ------------------------------------------------------------------------- */
+.markdown {
+    color: var(--ct-text);
+    overflow-wrap: anywhere;
+}
+
+.markdown > :last-child {
+    margin-bottom: 0;
+}
+
+.markdown p,
+.markdown ul,
+.markdown ol,
+.markdown pre,
+.markdown table,
+.markdown blockquote {
+    margin: 0 0 10px;
+}
+
+.markdown ul,
+.markdown ol {
+    padding-left: 22px;
+}
+
+.markdown li > input[type="checkbox"] {
+    margin: 0 6px 0 -18px;
+    vertical-align: -1px;
+}
+
+.markdown h1,
+.markdown h2,
+.markdown h3 {
+    margin: 14px 0 8px;
+    font-size: 1rem;
+}
+
+.markdown pre {
+    padding: 10px 12px;
+    overflow-x: auto;
+    border-radius: var(--ct-radius-sm);
+    background: var(--ct-bg);
+}
+
+.markdown pre code {
+    padding: 0;
+    background: none;
+}
+
+.markdown blockquote {
+    padding-left: 12px;
+    border-left: 3px solid var(--ct-border);
+    color: var(--ct-muted);
+}
+
+.markdown table {
+    width: auto;
+    font-size: 0.9rem;
+}
+
+.markdown th,
+.markdown td {
+    padding: 5px 10px;
+    border: 1px solid var(--ct-border);
+    text-align: left;
+}
+
+.markdown img {
+    border-radius: var(--ct-radius-sm);
+}
+
+.mention {
+    padding: 0 3px;
+    border-radius: 4px;
+    background: var(--ct-primary-soft);
+    font-weight: 600;
+}
+
+/* ---------------------------------------------------------------------------
+ * The activity stream on a ticket: comments as cards, history as quiet lines.
+ * ------------------------------------------------------------------------- */
+.activity__head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.activity__head .card__title {
+    margin: 0;
+}
+
+.segmented {
+    display: inline-flex;
+    padding: 3px;
+    border: 1px solid var(--ct-border);
+    border-radius: 999px;
+    background: var(--ct-bg);
+}
+
+.segmented__item {
+    padding: 3px 12px;
+    border-radius: 999px;
+    color: var(--ct-muted);
+    font-size: 0.82rem;
+    font-weight: 600;
+}
+
+.segmented__item:hover {
+    color: var(--ct-text);
+    text-decoration: none;
+}
+
+.segmented__item.is-active {
+    background: var(--ct-surface);
+    color: var(--ct-text);
+    box-shadow: var(--ct-shadow);
+}
+
+.timeline {
+    margin: 0 0 16px;
+    padding: 0;
+    list-style: none;
+}
+
+.timeline__comment {
+    display: flex;
+    gap: 10px;
+    padding: 8px 0;
+}
+
+.comment {
+    flex: 1;
+    min-width: 0;
+    padding: 10px 14px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-sm);
+    background: var(--ct-surface);
+}
+
+.comment__head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: baseline;
+    margin-bottom: 4px;
+    font-size: 0.86rem;
+}
+
+.comment__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: flex-start;
+    margin-top: 6px;
+}
+
+.comment__edit[open] {
+    flex-basis: 100%;
+}
+
+.comment__edit form {
+    margin-top: 6px;
+}
+
+.timeline__event {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    align-items: baseline;
+    padding: 5px 0 5px 12px;
+    color: var(--ct-muted);
+    font-size: 0.86rem;
+}
+
+.timeline__dot {
+    flex: none;
+    width: 7px;
+    height: 7px;
+    margin-right: 2px;
+    border-radius: 50%;
+    background: var(--ct-border);
+    transform: translateY(-1px);
+}
+
+.timeline__event time {
+    font-size: 0.78rem;
+}
+
+.comment-form .button {
+    margin-top: -4px;
+}
+
+.avatar--small {
+    width: 30px;
+    height: 30px;
+    background: var(--ct-primary-soft);
+    color: var(--ct-primary);
+    font-size: 0.72rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * The dashboard's feed of what happened lately.
+ * ------------------------------------------------------------------------- */
+.feed {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.feed__item {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    gap: 2px 8px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--ct-border);
+    font-size: 0.86rem;
+}
+
+.feed__item:last-child {
+    border-bottom: none;
+}
+
+.feed__what {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.feed__when {
+    grid-column: 2;
+    font-size: 0.76rem;
+}
+
+/* A figure on the dashboard that leads somewhere, and one that wants
+   attention. */
+.stat--link {
+    color: var(--ct-text);
+    transition: border-color 0.12s ease;
+}
+
+.stat--link:hover {
+    border-color: var(--ct-primary-border);
+    text-decoration: none;
+}
+
+.stat--alert .stat__value {
+    color: var(--ct-danger);
 }
 
 /*

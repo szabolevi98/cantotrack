@@ -158,3 +158,103 @@
         {% endif %}
     </li>
 {% endmacro %}
+
+{#
+    What kind of ticket: a task, a bug or a story. An icon with its name for
+    screen readers and a tooltip, drawn inline so it needs no image request and
+    takes the colour of its class.
+#}
+{% macro type_label(type) %}
+    {%- set labels = { task: 'Task', bug: 'Bug', story: 'Story' } -%}
+    {{- (labels[type]|default('Task'))|t -}}
+{% endmacro %}
+
+{% macro type_icon(type) %}
+    <span class="type-icon type-icon--{{ type|default('task') }}" title="{{ _self.type_label(type) }}" role="img"
+          aria-label="{{ _self.type_label(type) }}">
+        {%- if type == 'bug' -%}
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect width="16" height="16" rx="3"/><circle cx="8" cy="8" r="3.2" fill="#fff"/></svg>
+        {%- elseif type == 'story' -%}
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect width="16" height="16" rx="3"/><path d="M5 3.5h6v9l-3-2.2-3 2.2z" fill="#fff"/></svg>
+        {%- else -%}
+            <svg viewBox="0 0 16 16" width="14" height="14" aria-hidden="true"><rect width="16" height="16" rx="3"/><path d="M4.3 8.3l2.4 2.4 5-5.2" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        {%- endif -%}
+    </span>
+{% endmacro %}
+
+{# A ticket's labels, each in the colour its name gives it. #}
+{% macro labels(names, link) %}
+    {% for name in names %}
+        {% if link %}
+            <a class="label label--{{ name|label_colour }}" href="{{ url('/tickets?label=' ~ name|url_encode) }}">{{ name }}</a>
+        {% else %}
+            <span class="label label--{{ name|label_colour }}">{{ name }}</span>
+        {% endif %}
+    {% endfor %}
+{% endmacro %}
+
+{#
+    When a ticket is due, and whether that is a problem: late (red), within
+    three days (amber), or simply a date. A finished ticket is never late.
+#}
+{% macro due(date, finished) %}
+    {% if date %}
+        {% set today = 'now'|date('Y-m-d') %}
+        {% set soon = 'now'|date_modify('+3 days')|date('Y-m-d') %}
+        {% if not finished and date < today %}
+            <span class="due due--late" title="{{ 'Overdue'|t }}">{{ date|day }}</span>
+        {% elseif not finished and date <= soon %}
+            <span class="due due--soon" title="{{ 'Due soon'|t }}">{{ date|day }}</span>
+        {% else %}
+            <span class="due">{{ date|day }}</span>
+        {% endif %}
+    {% endif %}
+{% endmacro %}
+
+{#
+    One line of a ticket's history, in words. The values are the words people
+    saw at the time; the ones that are the application's own (a priority, a
+    type, the five default columns) are translated, anything typed is not.
+#}
+{% macro event_line(event) %}
+    {%- set who = event.user_name ?: 'Somebody'|t -%}
+    {%- set fields = {
+        title: 'title', type: 'type', priority: 'priority', assignee: 'assignee', epic: 'epic',
+        estimate: 'estimate', due: 'due date', points: 'story points', labels: 'labels', description: 'description'
+    } -%}
+    {%- set field = (fields[event.field]|default(event.field))|t -%}
+    {%- set old = event.field in ['priority', 'type', 'status'] ? event.old_value|t : event.old_value -%}
+    {%- set new = event.field in ['priority', 'type', 'status'] ? event.new_value|t : event.new_value -%}
+    {%- if event.field == 'due' -%}
+        {%- set old = event.old_value ? event.old_value|day : null -%}
+        {%- set new = event.new_value ? event.new_value|day : null -%}
+    {%- endif -%}
+
+    {%- if event.kind == 'created' -%}
+        {{ '{who} created the ticket'|t({who: who}) }}
+    {%- elseif event.kind == 'status' -%}
+        {{ '{who} moved it from {old} to {new}'|t({who: who, old: old, new: new}) }}
+    {%- elseif event.kind == 'logged' -%}
+        {{ '{who} logged {duration} on {day}'|t({who: who, duration: event.new_value, day: event.old_value|day}) }}
+    {%- elseif event.kind == 'attached' -%}
+        {{ '{who} attached {name}'|t({who: who, name: event.new_value}) }}
+    {%- elseif event.kind == 'detached' -%}
+        {{ '{who} removed the attachment {name}'|t({who: who, name: event.old_value}) }}
+    {%- elseif event.kind == 'linked' -%}
+        {{ '{who} linked {key}'|t({who: who, key: event.new_value}) }} <span class="muted">({{ event.field|t }})</span>
+    {%- elseif event.kind == 'unlinked' -%}
+        {{ '{who} removed the link to {key}'|t({who: who, key: event.old_value}) }}
+    {%- elseif event.kind == 'commit' -%}
+        {{ '{who} mentioned it in a commit'|t({who: who}) }} <code>{{ event.old_value|slice(0, 7) }}</code> {{ event.new_value }}
+    {%- elseif event.kind == 'sprint' -%}
+        {% if event.new_value %}{{ '{who} put it in {sprint}'|t({who: who, sprint: event.new_value}) }}{% else %}{{ '{who} took it out of {sprint}'|t({who: who, sprint: event.old_value}) }}{% endif %}
+    {%- elseif event.field == 'description' -%}
+        {{ '{who} edited the description'|t({who: who}) }}
+    {%- elseif event.old_value and event.new_value -%}
+        {{ '{who} changed the {field} from {old} to {new}'|t({who: who, field: field, old: old, new: new}) }}
+    {%- elseif event.new_value -%}
+        {{ '{who} set the {field} to {new}'|t({who: who, field: field, new: new}) }}
+    {%- else -%}
+        {{ '{who} cleared the {field}'|t({who: who, field: field}) }}
+    {%- endif -%}
+{% endmacro %}

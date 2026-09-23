@@ -35,6 +35,7 @@ $bundles = [
             'components/board.css',
             'components/project.css',
             'components/worklog.css',
+            'components/activity.css',
             'pages/auth.css',
         ],
     ],

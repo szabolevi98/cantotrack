@@ -1,12 +1,16 @@
 {% extends 'layout.twig' %}
 {% import 'common/macros.twig' as ui %}
 
-{% block title %}{{ ticket.project_code }}-{{ ticket.number }} — {{ app_name }}{% endblock %}
+{% set key = ticket.project_code ~ '-' ~ ticket.number %}
+{% set finished = ticket.status_category == 'done' %}
+
+{% block title %}{{ key }} {{ ticket.title }} — {{ app_name }}{% endblock %}
 {% block heading %}{{ ticket.title }}{% endblock %}
 
 {% block subheading %}
     <p class="content__sub">
-        <span class="ticket-key ticket-key--plain">{{ ticket.project_code }}-{{ ticket.number }}</span>
+        {{ ui.type_icon(ticket.type) }}
+        <span class="ticket-key ticket-key--plain">{{ key }}</span>
         {{ 'in'|t }} <a href="{{ url('/projects/' ~ ticket.project_id) }}">{{ ticket.project_name }}</a>
         {% if ticket.epic_title %}
             · <a href="{{ url('/epics/' ~ ticket.epic_id) }}">{{ ticket.epic_title }}</a>
@@ -24,10 +28,89 @@
         <div class="split__main">
             <section class="card">
                 <h2 class="card__title">{{ 'Description'|t }}</h2>
+                {% if labels is not empty %}
+                    <p class="labels">{{ ui.labels(labels, true) }}</p>
+                {% endif %}
                 {% if ticket.description %}
-                    <p class="card__body prose">{{ ticket.description|nl2br }}</p>
+                    <div class="card__body prose markdown">{{ ticket.description|markdown }}</div>
                 {% else %}
                     <p class="card__body muted">{{ 'Nothing written down yet.'|t }}</p>
+                {% endif %}
+            </section>
+
+            {#
+                What was said and what happened, in one stream — see
+                TicketController::timeline for why they are read together.
+            #}
+            <section class="card" id="activity">
+                <header class="activity__head">
+                    <h2 class="card__title">{{ 'Activity'|t }}</h2>
+                    <nav class="segmented" aria-label="{{ 'Show'|t }}">
+                        {% for value, label in {all: 'Everything', comments: 'Comments', history: 'History'} %}
+                            <a class="segmented__item{{ showing == value ? ' is-active' : '' }}"
+                               href="{{ url('/tickets/' ~ ticket.id ~ (value == 'all' ? '' : '?activity=' ~ value)) }}#activity"
+                               {{ showing == value ? 'aria-current="true"' : '' }}>{{ label|t }}</a>
+                        {% endfor %}
+                    </nav>
+                </header>
+
+                {% if timeline is empty %}
+                    <p class="card__body muted">{{ showing == 'history' ? 'Nothing has happened to it yet.'|t : 'Nobody has said anything yet.'|t }}</p>
+                {% else %}
+                    <ol class="timeline">
+                        {% for item in timeline %}
+                            {% if item.kind == 'comment' %}
+                                {% set comment = item.comment %}
+                                <li class="timeline__comment" id="comment-{{ comment.id }}">
+                                    <span class="avatar avatar--small" aria-hidden="true">{{ comment.user_name|initials }}</span>
+                                    <div class="comment">
+                                        <header class="comment__head">
+                                            <strong>{{ comment.user_name }}</strong>
+                                            <time class="muted" datetime="{{ comment.created_at }}">{{ comment.created_at|day }} {{ comment.created_at|date('H:i') }}</time>
+                                            {% if comment.edited_at %}<span class="muted" title="{{ comment.edited_at }}">· {{ 'edited'|t }}</span>{% endif %}
+                                        </header>
+                                        <div class="comment__body markdown">{{ comment.body|markdown }}</div>
+
+                                        {% if comment.user_id == current_user.id or is_admin %}
+                                            <div class="comment__actions">
+                                                {% if comment.user_id == current_user.id %}
+                                                    <details class="comment__edit">
+                                                        <summary class="link-button link-button--text">{{ 'Edit'|t }}</summary>
+                                                        <form method="post" action="{{ url('/comments/' ~ comment.id) }}">
+                                                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                                            <textarea class="field" name="body" rows="4" required>{{ comment.body }}</textarea>
+                                                            <button class="button button--small button--primary" type="submit">{{ 'Save'|t }}</button>
+                                                        </form>
+                                                    </details>
+                                                {% endif %}
+                                                <form method="post" action="{{ url('/comments/' ~ comment.id ~ '/delete') }}"
+                                                      data-confirm="{{ 'Delete this comment?'|t }}">
+                                                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                                    <button class="link-button link-button--text" type="submit">{{ 'Delete'|t }}</button>
+                                                </form>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </li>
+                            {% else %}
+                                <li class="timeline__event">
+                                    <span class="timeline__dot" aria-hidden="true"></span>
+                                    <span>{{ ui.event_line(item.event) }}</span>
+                                    <time class="muted" datetime="{{ item.event.created_at }}">{{ item.event.created_at|day }} {{ item.event.created_at|date('H:i') }}</time>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                    </ol>
+                {% endif %}
+
+                {% if showing != 'history' %}
+                    <form class="comment-form" id="comment-form" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/comments') }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                        <label for="body">{{ 'Add a comment'|t }}</label>
+                        <textarea id="body" class="field" name="body" rows="4" required data-paste-upload="{{ url('/tickets/' ~ ticket.id ~ '/attachments') }}"
+                                  placeholder="{{ 'Markdown works. CT-14 links to that ticket, @name tells somebody.'|t }}"></textarea>
+                        <button class="button button--primary" type="submit">{{ 'Comment'|t }}</button>
+                    </form>
                 {% endif %}
             </section>
 
@@ -82,6 +165,9 @@
                     <dt>{{ 'Status'|t }}</dt>
                     <dd>{{ ui.status(ticket.status_name, ticket.status_colour) }}</dd>
 
+                    <dt>{{ 'Type'|t }}</dt>
+                    <dd class="facts__with-icon">{{ ui.type_icon(ticket.type) }} {{ ui.type_label(ticket.type) }}</dd>
+
                     <dt>{{ 'Priority'|t }}</dt>
                     <dd>{{ ticket.priority == 'normal' ? ui.priority_label('normal') : ui.priority(ticket.priority) }}</dd>
 
@@ -90,6 +176,12 @@
 
                     <dt>{{ 'Reporter'|t }}</dt>
                     <dd>{{ ui.person(ticket.reporter_name) }}</dd>
+
+                    <dt>{{ 'Due'|t }}</dt>
+                    <dd>{{ ticket.due_on ? ui.due(ticket.due_on, finished) : '—' }}</dd>
+
+                    <dt>{{ 'Points'|t }}</dt>
+                    <dd>{{ ticket.story_points is not null ? ticket.story_points : '—' }}</dd>
 
                     <dt>{{ 'Estimate'|t }}</dt>
                     <dd>{{ ticket.estimate_minutes ? ticket.estimate_minutes|duration : '—' }}</dd>
@@ -122,7 +214,7 @@
                     <h2 class="card__title">{{ 'Delete'|t }}</h2>
                     {% if worklogs is empty %}
                         <form method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/delete') }}"
-                              data-confirm="{{ 'Delete {key}?'|t({key: ticket.project_code ~ '-' ~ ticket.number}) }}">
+                              data-confirm="{{ 'Delete {key}?'|t({key: key}) }}">
                             <input type="hidden" name="_token" value="{{ csrf_token }}">
                             <button class="button button--danger" type="submit">{{ 'Delete ticket'|t }}</button>
                         </form>

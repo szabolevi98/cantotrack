@@ -8,7 +8,10 @@ use CantoTrack\Core\Controller;
 use CantoTrack\Core\Format;
 use CantoTrack\Core\ValidationError;
 use CantoTrack\Core\View;
+use CantoTrack\Model\CommentRepository;
 use CantoTrack\Model\EpicRepository;
+use CantoTrack\Model\EventRepository;
+use CantoTrack\Model\LabelRepository;
 use CantoTrack\Model\ProjectRepository;
 use CantoTrack\Model\StatusRepository;
 use CantoTrack\Model\TicketRepository;
@@ -36,13 +39,7 @@ class TicketController extends Controller
     {
         Auth::require();
 
-        $filters = [
-            'project_id' => $this->idQuery('project'),
-            'status' => $_GET['status'] ?? null,
-            'assignee_id' => $this->idQuery('assignee'),
-            'q' => trim((string) ($_GET['q'] ?? '')) ?: null,
-            'open_only' => ($_GET['open'] ?? '') === '1',
-        ];
+        $filters = $this->filters();
 
         $tickets = new TicketRepository();
         $total = $tickets->count($filters);
@@ -64,7 +61,27 @@ class TicketController extends Controller
             // A project's own columns once one project is picked; across
             // projects only the three kinds of column mean the same thing.
             'statuses' => $filters['project_id'] ? (new StatusRepository())->forProject($filters['project_id']) : [],
+            'labels' => (new LabelRepository())->all(),
+            'types' => TicketRepository::TYPES,
         ]);
+    }
+
+    /**
+     * The list's filters, from the query string. One place, because the list,
+     * the bulk edit and a saved filter all have to read them the same way.
+     */
+    private function filters(): array
+    {
+        return [
+            'project_id' => $this->idQuery('project'),
+            'status' => $_GET['status'] ?? null,
+            'assignee_id' => $this->idQuery('assignee'),
+            'type' => $_GET['type'] ?? null,
+            'label' => trim((string) ($_GET['label'] ?? '')) ?: null,
+            'due' => $_GET['due'] ?? null,
+            'q' => trim((string) ($_GET['q'] ?? '')) ?: null,
+            'open_only' => ($_GET['open'] ?? '') === '1',
+        ];
     }
 
     public function show(int $id): void
@@ -72,14 +89,62 @@ class TicketController extends Controller
         Auth::require();
 
         $ticket = $this->ticketOr404($id);
+        $showing = in_array($_GET['activity'] ?? '', ['comments', 'history'], true) ? $_GET['activity'] : 'all';
 
-        View::render('tickets/show.twig', [
+        $this->render('tickets/show.twig', [
             'ticket' => $ticket,
+            'labels' => (new LabelRepository())->forTicket($id),
             'people' => (new UserRepository())->active(),
             'statuses' => (new StatusRepository())->forProject((int) $ticket['project_id']),
             'worklogs' => (new WorklogRepository())->forTicket($id),
+            'timeline' => $this->timeline($id, $showing),
+            'showing' => $showing,
             'today' => date('Y-m-d'),
         ]);
+    }
+
+    /** "CT-14" as an address: what the links in comments point at. */
+    public function byKey(string $key): void
+    {
+        Auth::require();
+
+        $ticket = (new TicketRepository())->findByKey($key);
+
+        if ($ticket === null) {
+            $this->notFound(__('There is no ticket called {key}.', ['key' => strtoupper($key)]));
+        }
+
+        $this->redirect('/tickets/' . $ticket['id']);
+    }
+
+    /**
+     * What was said and what happened, in the order it happened.
+     *
+     * Two tables, one stream: the comments, and the history rows that are not
+     * themselves comments. Reading them side by side is the point — "moved to
+     * review" means something different right after "this is broken again".
+     */
+    private function timeline(int $ticketId, string $showing): array
+    {
+        $items = [];
+
+        if ($showing !== 'history') {
+            foreach ((new CommentRepository())->forTicket($ticketId) as $comment) {
+                $items[] = ['kind' => 'comment', 'at' => $comment['created_at'], 'order' => (int) $comment['id'], 'comment' => $comment];
+            }
+        }
+
+        if ($showing !== 'comments') {
+            foreach ((new EventRepository())->forTicket($ticketId) as $event) {
+                if ($event['kind'] !== 'commented') {
+                    $items[] = ['kind' => 'event', 'at' => $event['created_at'], 'order' => (int) $event['id'], 'event' => $event];
+                }
+            }
+        }
+
+        usort($items, static fn(array $a, array $b): int => [$a['at'], $a['order']] <=> [$b['at'], $b['order']]);
+
+        return $items;
     }
 
     public function createForm(): void
@@ -114,6 +179,7 @@ class TicketController extends Controller
         Auth::require();
 
         $ticket = $this->ticketOr404($id);
+        $ticket['labels'] = implode(', ', (new LabelRepository())->forTicket($id));
 
         $this->renderForm($ticket, (int) $ticket['project_id'], $ticket);
     }
@@ -125,7 +191,7 @@ class TicketController extends Controller
         $ticket = $this->ticketOr404($id);
 
         try {
-            (new TicketService())->update($id, $_POST);
+            (new TicketService())->update($id, $_POST, Auth::id());
         } catch (ValidationError $e) {
             $this->renderForm($ticket, (int) $ticket['project_id'], $this->typed($ticket), $e->getMessage(), 422);
 
@@ -154,7 +220,7 @@ class TicketController extends Controller
         $this->ticketOr404($id);
 
         try {
-            (new TicketService())->changeStatus($id, $this->input('status'));
+            (new TicketService())->changeStatus($id, $this->input('status'), Auth::id());
         } catch (ValidationError $e) {
             $this->flash($e->getMessage(), 'danger');
         }
@@ -213,7 +279,9 @@ class TicketController extends Controller
             'epics' => $projectId > 0 ? (new EpicRepository())->openForProject($projectId) : [],
             'people' => (new UserRepository())->active(),
             'priorities' => TicketRepository::PRIORITIES,
+            'types' => TicketRepository::TYPES,
             'statuses' => $projectId > 0 ? (new StatusRepository())->forProject($projectId) : [],
+            'all_labels' => (new LabelRepository())->all(),
             'error' => $error,
             'theirs' => $theirs,
         ], $status);
@@ -229,13 +297,17 @@ class TicketController extends Controller
     private function typed(?array $ticket = null): array
     {
         return [
+            'type' => $this->input('type', 'task'),
             'epic_id' => $this->idInput('epic_id'),
             'title' => $this->input('title'),
             'description' => $this->input('description'),
-            'status' => $this->input('status', 'backlog'),
+            'status' => $this->input('status'),
             'priority' => $this->input('priority', 'normal'),
             'assignee_id' => $this->idInput('assignee_id'),
             'estimate_text' => $this->input('estimate'),
+            'due_on' => $this->input('due_on'),
+            'story_points' => $this->input('story_points'),
+            'labels' => $this->input('labels'),
             'version' => $this->input('version', (string) ($ticket['version'] ?? '')),
         ];
     }

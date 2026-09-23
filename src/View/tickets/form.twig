@@ -45,9 +45,21 @@
                 <input type="hidden" name="version" value="{{ values.version|default(ticket.version) }}">
             {% endif %}
 
-            <label for="title">{{ 'Title'|t }}</label>
-            <input id="title" class="field" type="text" name="title" value="{{ values.title|default('') }}"
-                   maxlength="250" required autofocus>
+            <div class="form__row form__row--title">
+                <div>
+                    <label for="type">{{ 'Type'|t }}</label>
+                    <select id="type" class="field" name="type">
+                        {% for value in types %}
+                            <option value="{{ value }}"{{ values.type|default('task') == value ? ' selected' : '' }}>{{ ui.type_label(value) }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div>
+                    <label for="title">{{ 'Title'|t }}</label>
+                    <input id="title" class="field" type="text" name="title" value="{{ values.title|default('') }}"
+                           maxlength="250" required autofocus>
+                </div>
+            </div>
 
             <label for="project_id">{{ 'Project'|t }}</label>
             {% if editing %}
@@ -90,7 +102,8 @@
             </select>
 
             <label for="description">{{ 'Description'|t }}</label>
-            <textarea id="description" class="field" name="description" rows="6">{{ values.description|default('') }}</textarea>
+            <textarea id="description" class="field" name="description" rows="8">{{ values.description|default('') }}</textarea>
+            <p class="hint">{{ 'Markdown works: **bold**, lists, `code`, tables. CT-14 links to that ticket.'|t }}</p>
 
             <div class="form__row">
                 <div>
@@ -130,6 +143,29 @@
                 </div>
             </div>
             <p class="hint">{{ 'An estimate reads like 3h, 90m, 1h 30m or 1:30. A bare number is minutes.'|t }}</p>
+
+            <div class="form__row">
+                <div>
+                    <label for="due_on">{{ 'Due'|t }}</label>
+                    <input id="due_on" class="field" type="date" name="due_on" value="{{ values.due_on|default('') }}">
+                </div>
+                <div>
+                    <label for="story_points">{{ 'Story points'|t }}</label>
+                    <input id="story_points" class="field" type="number" name="story_points" min="0" max="100"
+                           value="{{ values.story_points|default('') }}">
+                </div>
+            </div>
+
+            {# Typed rather than picked from a list: a label exists the first time
+               somebody writes it. The list below only offers what is already
+               in use, so the same word is not spelled three ways. #}
+            <label for="labels">{{ 'Labels'|t }}</label>
+            <input id="labels" class="field" type="text" name="labels" value="{{ values.labels|default('') }}"
+                   list="known-labels" autocomplete="off" placeholder="{{ 'security, customer'|t }}">
+            <datalist id="known-labels">
+                {% for label in all_labels %}<option value="{{ label.name }}">{% endfor %}
+            </datalist>
+            <p class="hint">{{ 'Separated by commas.'|t }}</p>
 
             {% if not editing %}
                 <label for="status">{{ 'Start in'|t }}</label>

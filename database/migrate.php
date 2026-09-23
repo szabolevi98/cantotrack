@@ -92,7 +92,9 @@ $server->exec(
 );
 
 $ran = [];
-foreach ($server->query('SELECT name, checksum FROM schema_migrations') as $row) {
+$recorded = $server->prepare('SELECT name, checksum FROM schema_migrations');
+$recorded->execute();
+foreach ($recorded->fetchAll(PDO::FETCH_ASSOC) as $row) {
     $ran[$row['name']] = $row['checksum'];
 }
 
@@ -109,8 +111,8 @@ foreach ($files as $file) {
     if (isset($ran[$name])) {
         if (!hash_equals($ran[$name], $checksum)) {
             fwrite(STDERR, sprintf(
-                "  warning: %s was edited after it ran here. It is not run again —%s"
-                . "  a change to the schema belongs in a new migration.%s",
+                '  warning: %s was edited after it ran here. It is not run again —%s'
+                . '  a change to the schema belongs in a new migration.%s',
                 $name,
                 PHP_EOL,
                 PHP_EOL
@@ -118,7 +120,7 @@ foreach ($files as $file) {
         }
 
         if ($statusOnly) {
-            printf("  ran      %s%s", $name, PHP_EOL);
+            printf('  ran      %s%s', $name, PHP_EOL);
         }
 
         continue;
@@ -127,7 +129,7 @@ foreach ($files as $file) {
     $pending++;
 
     if ($statusOnly) {
-        printf("  waiting  %s%s", $name, PHP_EOL);
+        printf('  waiting  %s%s', $name, PHP_EOL);
         continue;
     }
 
@@ -136,7 +138,7 @@ foreach ($files as $file) {
             $server->exec($statement);
         } catch (PDOException $e) {
             fwrite(STDERR, sprintf(
-                "Failed in %s, statement %d: %s%s%s%s",
+                'Failed in %s, statement %d: %s%s%s%s',
                 $name,
                 $number + 1,
                 $e->getMessage(),
@@ -151,7 +153,7 @@ foreach ($files as $file) {
     $server->prepare('INSERT INTO schema_migrations (name, checksum) VALUES (:name, :checksum)')
         ->execute(['name' => $name, 'checksum' => $checksum]);
 
-    printf("  ran %s%s", $name, PHP_EOL);
+    printf('  ran %s%s', $name, PHP_EOL);
 }
 
 if ($statusOnly) {

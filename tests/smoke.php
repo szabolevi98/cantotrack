@@ -56,13 +56,13 @@ function check(string $name, bool $ok, string $detail = ''): void
 
     if ($ok) {
         $passed++;
-        printf("PASS  %s%s", $name, PHP_EOL);
+        printf('PASS  %s%s', $name, PHP_EOL);
 
         return;
     }
 
     $failed++;
-    printf("FAIL  %s%s%s", $name, $detail === '' ? '' : ' (' . $detail . ')', PHP_EOL);
+    printf('FAIL  %s%s%s', $name, $detail === '' ? '' : ' (' . $detail . ')', PHP_EOL);
 }
 
 /** One request. Returns the status, the headers and the body; follows nothing. */
@@ -125,22 +125,30 @@ check('a post without a token is refused', $noToken['status'] === 403, 'status '
 // Signed out, the application sends you to the login page rather than showing
 // anything.
 $guest = request($baseUrl . '/', [], tempnam(sys_get_temp_dir(), 'ct-smoke-'));
-check('a signed-out visitor is sent to the login page',
+check(
+    'a signed-out visitor is sent to the login page',
     $guest['status'] === 302 && str_contains($guest['headers'], '/login'),
-    'status ' . $guest['status']);
+    'status ' . $guest['status']
+);
 
 // An address that does not exist.
 $missing = request($baseUrl . '/nothing-here', [], $jar);
 check('an unknown address answers 404', $missing['status'] === 404, 'status ' . $missing['status']);
-check('with the error page rather than a line of text',
-    str_contains($missing['body'], 'error-page') && str_contains($missing['body'], 'assets/css/app.css'));
+check(
+    'with the error page rather than a line of text',
+    str_contains($missing['body'], 'error-page') && str_contains($missing['body'], 'assets/css/app.css')
+);
 
 // No page runs a script it did not ship: that is what makes an escaping
 // mistake survivable.
-check('every page says it runs only its own scripts',
-    str_contains($login['headers'], "script-src 'self'"));
-check('and the login page links the script it does ship',
-    str_contains($login['body'], 'assets/js/app.js?v='));
+check(
+    'every page says it runs only its own scripts',
+    str_contains($login['headers'], "script-src 'self'")
+);
+check(
+    'and the login page links the script it does ship',
+    str_contains($login['body'], 'assets/js/app.js?v=')
+);
 
 if ($email === null || $password === null) {
     printf('%sSkipping the sign-in checks: pass --email= and --password= to run them.%s', PHP_EOL, PHP_EOL);
@@ -152,8 +160,10 @@ if ($email === null || $password === null) {
     ], $jar);
 
     check('a wrong password is refused', $wrong['status'] === 401, 'status ' . $wrong['status']);
-    check('and the page does not say which half was wrong',
-        !str_contains($wrong['body'], 'No such') && str_contains($wrong['body'], 'do not match'));
+    check(
+        'and the page does not say which half was wrong',
+        !str_contains($wrong['body'], 'No such') && str_contains($wrong['body'], 'do not match')
+    );
 
     $right = request($baseUrl . '/login', [
         '_token' => $token,
@@ -161,18 +171,22 @@ if ($email === null || $password === null) {
         'password' => $password,
     ], $jar);
 
-    check('the right password signs in',
+    check(
+        'the right password signs in',
         $right['status'] === 302 && !str_contains($right['headers'], '/login'),
-        'status ' . $right['status']);
+        'status ' . $right['status']
+    );
 
     $dashboard = request($baseUrl . '/', [], $jar);
     check('and lands on the dashboard', $dashboard['status'] === 200, 'status ' . $dashboard['status']);
     // The signed-in shell rather than the greeting itself: the heading says
     // hello by first name, which this script does not know.
-    check('which is the signed-in shell',
+    check(
+        'which is the signed-in shell',
         str_contains($dashboard['body'], '<title>Dashboard')
         && str_contains($dashboard['body'], 'Sign out')
-        && str_contains($dashboard['body'], 'Timesheet'));
+        && str_contains($dashboard['body'], 'Timesheet')
+    );
 
     // ---------------------------------------------------------------------
     // The work: a project, an epic in it, a ticket in the epic, and the moves
@@ -192,8 +206,11 @@ if ($email === null || $password === null) {
         'description' => 'Created by tests/smoke.php.',
     ], $jar);
 
-    check('a project can be created',
-        $madeProject['status'] === 302, 'status ' . $madeProject['status']);
+    check(
+        'a project can be created',
+        $madeProject['status'] === 302,
+        'status ' . $madeProject['status']
+    );
 
     preg_match('#/projects/(\d+)#', $madeProject['headers'], $m);
     $projectId = (int) ($m[1] ?? 0);
@@ -206,8 +223,10 @@ if ($email === null || $password === null) {
         'code' => $code,
         'name' => 'The same code again',
     ], $jar);
-    check('a code that is taken is refused',
-        str_contains($duplicate['body'], 'already a project with that code'));
+    check(
+        'a code that is taken is refused',
+        str_contains($duplicate['body'], 'already a project with that code')
+    );
 
     $madeEpic = request($baseUrl . '/projects/' . $projectId . '/epics/create', [
         '_token' => $token,
@@ -234,11 +253,15 @@ if ($email === null || $password === null) {
     $ticketId = (int) ($m[1] ?? 0);
 
     $ticketPage = request($baseUrl . '/tickets/' . $ticketId, [], $jar);
-    check('the ticket page carries its name and project',
+    check(
+        'the ticket page carries its name and project',
         str_contains($ticketPage['body'], $code . '-1') && str_contains($ticketPage['body'], 'Smoke test ticket'),
-        'the first ticket of a project should be ' . $code . '-1');
-    check('and the estimate was read as an hour and a half',
-        str_contains($ticketPage['body'], '1h 30m'));
+        'the first ticket of a project should be ' . $code . '-1'
+    );
+    check(
+        'and the estimate was read as an hour and a half',
+        str_contains($ticketPage['body'], '1h 30m')
+    );
 
     // An estimate nobody can parse is refused rather than quietly dropped.
     $badEstimate = request($baseUrl . '/tickets/create', [
@@ -247,8 +270,10 @@ if ($email === null || $password === null) {
         'title' => 'Unreadable estimate',
         'estimate' => 'three apples',
     ], $jar);
-    check('an estimate that cannot be read is refused',
-        str_contains($badEstimate['body'], 'should read like'));
+    check(
+        'an estimate that cannot be read is refused',
+        str_contains($badEstimate['body'], 'should read like')
+    );
 
     $moved = request($baseUrl . '/tickets/' . $ticketId . '/status', [
         '_token' => $token,
@@ -256,12 +281,16 @@ if ($email === null || $password === null) {
         'back' => '/projects/' . $projectId,
     ], $jar);
     check('a ticket can be moved along the board', $moved['status'] === 302);
-    check('and the move goes back where it was clicked',
-        str_contains($moved['headers'], '/projects/' . $projectId));
+    check(
+        'and the move goes back where it was clicked',
+        str_contains($moved['headers'], '/projects/' . $projectId)
+    );
 
     $board = request($baseUrl . '/projects/' . $projectId, [], $jar);
-    check('the board shows the ticket in its new column',
-        str_contains($board['body'], 'Smoke test ticket') && str_contains($board['body'], 'Smoke test epic'));
+    check(
+        'the board shows the ticket in its new column',
+        str_contains($board['body'], 'Smoke test ticket') && str_contains($board['body'], 'Smoke test epic')
+    );
 
     $list = request($baseUrl . '/tickets?q=' . $code . '-1', [], $jar);
     check('the ticket can be found by its name', str_contains($list['body'], 'Smoke test ticket'));
@@ -277,9 +306,11 @@ if ($email === null || $password === null) {
         'title' => 'Assigned to nobody who exists',
         'assignee_id' => 999999,
     ], $jar);
-    check('an assignee that does not exist is refused, not a 500',
+    check(
+        'an assignee that does not exist is refused, not a 500',
         $ghost['status'] === 422 && str_contains($ghost['body'], 'no such active account'),
-        'status ' . $ghost['status']);
+        'status ' . $ghost['status']
+    );
 
     $otherCode = 'U' . random_int(100, 999);
     $other = request($baseUrl . '/projects/create', [
@@ -303,9 +334,11 @@ if ($email === null || $password === null) {
         'title' => 'In the wrong epic',
         'epic_id' => $otherEpicId,
     ], $jar);
-    check('an epic from another project is refused',
+    check(
+        'an epic from another project is refused',
         $foreign['status'] === 422 && str_contains($foreign['body'], 'not in this project'),
-        'status ' . $foreign['status']);
+        'status ' . $foreign['status']
+    );
 
     request($baseUrl . '/projects/' . $otherId, [
         '_token' => $token,
@@ -317,9 +350,11 @@ if ($email === null || $password === null) {
         'project_id' => $otherId,
         'title' => 'Into the archive',
     ], $jar);
-    check('an archived project takes no new tickets',
+    check(
+        'an archived project takes no new tickets',
         $archived['status'] === 422 && str_contains($archived['body'], 'archived'),
-        'status ' . $archived['status']);
+        'status ' . $archived['status']
+    );
 
     $otherGone = request($baseUrl . '/projects/' . $otherId . '/delete', ['_token' => $token], $jar);
     check('a project without hours can still be deleted', $otherGone['status'] === 302
@@ -350,11 +385,15 @@ if ($email === null || $password === null) {
         'priority' => 'low',
         'epic_id' => $epicId,
     ], $jar);
-    check('the second save over the same version is refused',
+    check(
+        'the second save over the same version is refused',
         $second['status'] === 409 && str_contains($second['body'], 'The first person’s edit.'),
-        'status ' . $second['status']);
-    check('and the first person’s edit is still what is saved',
-        str_contains(request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'], 'The first person’s edit.'));
+        'status ' . $second['status']
+    );
+    check(
+        'and the first person’s edit is still what is saved',
+        str_contains(request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'], 'The first person’s edit.')
+    );
 
     // ---------------------------------------------------------------------
     // The hours
@@ -368,9 +407,11 @@ if ($email === null || $password === null) {
     check('time can be logged against a ticket', $logged['status'] === 302, 'status ' . $logged['status']);
 
     $ticketPage = request($baseUrl . '/tickets/' . $ticketId, [], $jar);
-    check('the ticket shows what was logged on it',
+    check(
+        'the ticket shows what was logged on it',
         str_contains($ticketPage['body'], 'Logged by tests/smoke.php.')
-        && str_contains($ticketPage['body'], '1h 30m'));
+        && str_contains($ticketPage['body'], '1h 30m')
+    );
 
     // Two entries on the same ticket have to add up rather than replace each
     // other, which is the whole point of keeping them as rows.
@@ -390,23 +431,29 @@ if ($email === null || $password === null) {
         'time' => 'ages',
         'work_date' => date('Y-m-d'),
     ], $jar);
-    check('a time that cannot be read is refused',
+    check(
+        'a time that cannot be read is refused',
         str_contains(request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'], 'should read like')
-        && $badTime['status'] === 302);
+        && $badTime['status'] === 302
+    );
 
     request($baseUrl . '/tickets/' . $ticketId . '/log', [
         '_token' => $token,
         'time' => '1h',
         'work_date' => (new DateTimeImmutable('+2 days'))->format('Y-m-d'),
     ], $jar);
-    check('a day that has not happened is refused',
-        str_contains(request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'], 'has not happened'));
+    check(
+        'a day that has not happened is refused',
+        str_contains(request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'], 'has not happened')
+    );
 
     $timesheet = request($baseUrl . '/timesheet', [], $jar);
     check('the timesheet answers', $timesheet['status'] === 200, 'status ' . $timesheet['status']);
-    check('and this week shows the ticket the time went on',
+    check(
+        'and this week shows the ticket the time went on',
         str_contains($timesheet['body'], $code . '-1')
-        && str_contains($timesheet['body'], 'Logged by tests/smoke.php.'));
+        && str_contains($timesheet['body'], 'Logged by tests/smoke.php.')
+    );
     check('with the week totalled', str_contains($timesheet['body'], '2h 15m'));
 
     // The entries belong to whoever worked them, so this account can remove its
@@ -419,16 +466,20 @@ if ($email === null || $password === null) {
     preg_match('#/worklogs/(\d+)/delete#', $ticketPage['body'], $m);
     $worklogId = (int) ($m[1] ?? 0);
     check('the ticket offers to delete an entry of yours', $worklogId > 0);
-    check('and the timesheet offers the same one',
-        str_contains($timesheet['body'], '/worklogs/' . $worklogId . '/delete'));
+    check(
+        'and the timesheet offers the same one',
+        str_contains($timesheet['body'], '/worklogs/' . $worklogId . '/delete')
+    );
 
     $removedLog = request($baseUrl . '/worklogs/' . $worklogId . '/delete', [
         '_token' => $token,
         'back' => '/timesheet',
     ], $jar);
     check('an entry can be deleted', $removedLog['status'] === 302);
-    check('and the ticket total drops with it',
-        !str_contains(request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'], '2h 15m'));
+    check(
+        'and the ticket total drops with it',
+        !str_contains(request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'], '2h 15m')
+    );
 
     // The smallest slice: five minutes is stored as the configured minimum,
     // and the person is told so rather than finding out at the end of the month.
@@ -438,8 +489,10 @@ if ($email === null || $password === null) {
         'work_date' => date('Y-m-d'),
     ], $jar);
     $afterTiny = request($baseUrl . '/tickets/' . $ticketId, [], $jar);
-    check('a sliver of time is rounded up to the minimum, and says so',
-        $tiny['status'] === 302 && str_contains($afterTiny['body'], 'rounded up'));
+    check(
+        'a sliver of time is rounded up to the minimum, and says so',
+        $tiny['status'] === 302 && str_contains($afterTiny['body'], 'rounded up')
+    );
 
     // An entry can be corrected in place, which it could not be before: the
     // route existed and no form pointed at it.
@@ -455,18 +508,24 @@ if ($email === null || $password === null) {
         'back' => '/tickets/' . $ticketId,
     ], $jar);
     $afterCorrection = request($baseUrl . '/tickets/' . $ticketId, [], $jar);
-    check('and the correction is saved',
-        $corrected['status'] === 302 && str_contains($afterCorrection['body'], 'Corrected by tests/smoke.php.'));
+    check(
+        'and the correction is saved',
+        $corrected['status'] === 302 && str_contains($afterCorrection['body'], 'Corrected by tests/smoke.php.')
+    );
 
     // Hours are not deleted along with what they were logged against: they
     // are what gets reported and invoiced.
     request($baseUrl . '/tickets/' . $ticketId . '/delete', ['_token' => $token], $jar);
-    check('a ticket with hours on it cannot be deleted',
-        request($baseUrl . '/tickets/' . $ticketId, [], $jar)['status'] === 200);
+    check(
+        'a ticket with hours on it cannot be deleted',
+        request($baseUrl . '/tickets/' . $ticketId, [], $jar)['status'] === 200
+    );
 
     request($baseUrl . '/projects/' . $projectId . '/delete', ['_token' => $token], $jar);
-    check('nor can a project with hours in it',
-        request($baseUrl . '/projects/' . $projectId, [], $jar)['status'] === 200);
+    check(
+        'nor can a project with hours in it',
+        request($baseUrl . '/projects/' . $projectId, [], $jar)['status'] === 200
+    );
 
     // Tidy up after itself: the hours first, one by one — the slow way,
     // deliberately — and then the project takes the epic and the ticket.
@@ -478,8 +537,10 @@ if ($email === null || $password === null) {
 
     $removed = request($baseUrl . '/projects/' . $projectId . '/delete', ['_token' => $token], $jar);
     check('once the hours are gone, the project can be deleted', $removed['status'] === 302);
-    check('and its ticket is gone with it',
-        request($baseUrl . '/tickets/' . $ticketId, [], $jar)['status'] === 404);
+    check(
+        'and its ticket is gone with it',
+        request($baseUrl . '/tickets/' . $ticketId, [], $jar)['status'] === 404
+    );
 
     // ---------------------------------------------------------------------
     // The people. Accounts are never deleted by design, so this leaves a
@@ -500,10 +561,14 @@ if ($email === null || $password === null) {
     check('a colleague can be given an account', $added['status'] === 302);
 
     $afterAdd = request($baseUrl . '/people', [], $jar);
-    check('and the password is shown once, to hand over',
-        str_contains($afterAdd['body'], 'Hand this over') && str_contains($afterAdd['body'], $colleague));
-    check('but not again on the next look',
-        !str_contains(request($baseUrl . '/people', [], $jar)['body'], 'Hand this over'));
+    check(
+        'and the password is shown once, to hand over',
+        str_contains($afterAdd['body'], 'Hand this over') && str_contains($afterAdd['body'], $colleague)
+    );
+    check(
+        'but not again on the next look',
+        !str_contains(request($baseUrl . '/people', [], $jar)['body'], 'Hand this over')
+    );
 
     // The colleague, in a browser of their own, replaces the password the
     // administrator read out with one only they know.
@@ -524,8 +589,10 @@ if ($email === null || $password === null) {
     $theirProfile = request($baseUrl . '/profile', [], $theirJar);
     preg_match('/name="_token" value="([^"]+)"/', $theirProfile['body'], $m);
     $theirToken = $m[1] ?? $theirToken;
-    check('and has a profile page of their own',
-        $theirProfile['status'] === 200 && str_contains($theirProfile['body'], $colleague));
+    check(
+        'and has a profile page of their own',
+        $theirProfile['status'] === 200 && str_contains($theirProfile['body'], $colleague)
+    );
 
     $wrongCurrent = request($baseUrl . '/profile/password', [
         '_token' => $theirToken,
@@ -533,8 +600,10 @@ if ($email === null || $password === null) {
         'new_password' => 'correct horse battery staple',
         'new_password_again' => 'correct horse battery staple',
     ], $theirJar);
-    check('changing the password asks for the current one',
-        $wrongCurrent['status'] === 422 && str_contains($wrongCurrent['body'], 'not your current password'));
+    check(
+        'changing the password asks for the current one',
+        $wrongCurrent['status'] === 422 && str_contains($wrongCurrent['body'], 'not your current password')
+    );
 
     $changed = request($baseUrl . '/profile/password', [
         '_token' => $theirToken,
@@ -557,9 +626,11 @@ if ($email === null || $password === null) {
         'email' => $colleague,
         'password' => 'correct horse battery staple',
     ], $theirJar);
-    check('after which the old one no longer works and the new one does',
+    check(
+        'after which the old one no longer works and the new one does',
         $oldAgain['status'] === 401 && $newOne['status'] === 302,
-        'old ' . $oldAgain['status'] . ', new ' . $newOne['status']);
+        'old ' . $oldAgain['status'] . ', new ' . $newOne['status']
+    );
     @unlink($theirJar);
 
     // The limit in front of the login form, on an address nobody has — so a
@@ -575,9 +646,11 @@ if ($email === null || $password === null) {
         }
 
         $sixth = request($baseUrl . '/login', ['_token' => $m[1] ?? '', 'email' => $nobody, 'password' => 'guess 6'], $throttleJar);
-        check('the sixth failed sign-in in a row is refused before it is tried',
+        check(
+            'the sixth failed sign-in in a row is refused before it is tried',
             $sixth['status'] === 429 && str_contains($sixth['body'], 'Too many failed attempts'),
-            'status ' . $sixth['status']);
+            'status ' . $sixth['status']
+        );
         @unlink($throttleJar);
     }
 
@@ -587,8 +660,10 @@ if ($email === null || $password === null) {
         'email' => $colleague,
         'role' => 'member',
     ], $jar);
-    check('an address that already signs somebody in is refused',
-        str_contains($duplicate['body'], 'already signs in with that address'));
+    check(
+        'an address that already signs somebody in is refused',
+        str_contains($duplicate['body'], 'already signs in with that address')
+    );
 
     /*
      * Which row is whose. Taken from the row that carries the address rather
@@ -597,8 +672,11 @@ if ($email === null || $password === null) {
      * checks ended up editing the wrong person.
      */
     $rowId = static function (string $html, string $address): int {
-        preg_match('#<tr[^>]*>(?:(?!</tr>).)*?' . preg_quote($address, '#') . '(?:(?!</tr>).)*?/people/(\d+)/edit#s',
-            $html, $found);
+        preg_match(
+            '#<tr[^>]*>(?:(?!</tr>).)*?' . preg_quote($address, '#') . '(?:(?!</tr>).)*?/people/(\d+)/edit#s',
+            $html,
+            $found
+        );
 
         return (int) ($found[1] ?? 0);
     };
@@ -607,9 +685,11 @@ if ($email === null || $password === null) {
     $myId = $rowId($listing['body'], $email);
     $colleagueId = $rowId($listing['body'], $colleague);
 
-    check('each person can be picked out of the list by their address',
+    check(
+        'each person can be picked out of the list by their address',
         $myId > 0 && $colleagueId > 0 && $myId !== $colleagueId,
-        'mine ' . $myId . ', theirs ' . $colleagueId);
+        'mine ' . $myId . ', theirs ' . $colleagueId
+    );
 
     // The two ways an administrator could lock themselves out of their own
     // installation. Both are refused with a sentence rather than by leaving
@@ -621,8 +701,10 @@ if ($email === null || $password === null) {
         'role' => 'member',
         'is_active' => '1',
     ], $jar);
-    check('an administrator cannot take the role off themselves',
-        str_contains($selfDemote['body'], 'cannot take the administrator role off yourself'));
+    check(
+        'an administrator cannot take the role off themselves',
+        str_contains($selfDemote['body'], 'cannot take the administrator role off yourself')
+    );
 
     $selfOff = request($baseUrl . '/people/' . $myId, [
         '_token' => $token,
@@ -630,8 +712,10 @@ if ($email === null || $password === null) {
         'email' => $email,
         'role' => 'admin',
     ], $jar);
-    check('nor deactivate their own account',
-        str_contains($selfOff['body'], 'cannot deactivate your own account'));
+    check(
+        'nor deactivate their own account',
+        str_contains($selfOff['body'], 'cannot deactivate your own account')
+    );
 
     // Somebody else, on the other hand, can be deactivated — which is what
     // happens instead of deleting them.
@@ -642,8 +726,10 @@ if ($email === null || $password === null) {
         'role' => 'member',
     ], $jar);
     check('somebody else can be deactivated rather than deleted', $deactivated['status'] === 302);
-    check('and then reads as deactivated',
-        str_contains(request($baseUrl . '/people', [], $jar)['body'], 'Deactivated'));
+    check(
+        'and then reads as deactivated',
+        str_contains(request($baseUrl . '/people', [], $jar)['body'], 'Deactivated')
+    );
 
     // A deactivated colleague is no longer offered as an assignee, which is the
     // point of deactivating them.
@@ -653,19 +739,25 @@ if ($email === null || $password === null) {
     // Inside the assignee list only: the project list on the same form has
     // ids of its own, and project 31 is not person 31.
     preg_match('#<select id="assignee_id".*?</select>#s', request($baseUrl . '/tickets/create', [], $jar)['body'], $m);
-    check('a deactivated person is off the assignee list',
-        isset($m[0]) && !str_contains($m[0], 'value="' . $colleagueId . '"'));
+    check(
+        'a deactivated person is off the assignee list',
+        isset($m[0]) && !str_contains($m[0], 'value="' . $colleagueId . '"')
+    );
 
     // A GET must not sign anybody out: an <img src=".../logout"> on any page
     // on the internet would otherwise do it.
     $getOut = request($baseUrl . '/logout', [], $jar);
-    check('a GET to the sign-out address does not sign out',
+    check(
+        'a GET to the sign-out address does not sign out',
         $getOut['status'] === 405 && request($baseUrl . '/', [], $jar)['status'] === 200,
-        'status ' . $getOut['status']);
+        'status ' . $getOut['status']
+    );
 
     $out = request($baseUrl . '/logout', ['_token' => $token], $jar);
-    check('signing out redirects to the login page',
-        $out['status'] === 302 && str_contains($out['headers'], '/login'));
+    check(
+        'signing out redirects to the login page',
+        $out['status'] === 302 && str_contains($out['headers'], '/login')
+    );
 
     $after = request($baseUrl . '/', [], $jar);
     check('and the session no longer opens the dashboard', $after['status'] === 302);

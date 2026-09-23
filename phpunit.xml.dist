@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    Two suites. Unit tests need nothing but PHP. Integration tests need a
+    database of their own — config/test.ini, or the file named in
+    CANTOTRACK_TEST_CONFIG — which they migrate and empty as they go. It must
+    never be the database anybody works in: every test starts by deleting
+    everything in it.
+
+    Run with "vendor/bin/phpunit", or "composer test"; the unit suite alone
+    with the testsuite option set to "unit".
+-->
+<phpunit xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+         bootstrap="tests/bootstrap.php"
+         colors="true"
+         cacheDirectory="var/cache/phpunit"
+         failOnRisky="true"
+         failOnWarning="true">
+    <testsuites>
+        <testsuite name="unit">
+            <directory>tests/Unit</directory>
+        </testsuite>
+        <testsuite name="integration">
+            <directory>tests/Integration</directory>
+        </testsuite>
+    </testsuites>
+    <source>
+        <include>
+            <directory>src</directory>
+        </include>
+    </source>
+</phpunit>

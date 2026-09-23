@@ -69,7 +69,7 @@ if ($reset) {
 
             // The project then takes its epics and tickets with it.
             $projects->delete((int) $existing['id']);
-            printf("  removed %s and everything in it%s", $code, PHP_EOL);
+            printf('  removed %s and everything in it%s', $code, PHP_EOL);
         }
     }
 }
@@ -109,7 +109,9 @@ foreach ($team as $member) {
 // Whoever set the installation up gets the work assigned to them as well, so
 // the dashboard and the timesheet have something on them for the person who
 // is most likely to be looking.
-$firstAdmin = $database->query("SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1")->fetchColumn();
+$firstAdminQuery = $database->prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1");
+$firstAdminQuery->execute();
+$firstAdmin = $firstAdminQuery->fetchColumn();
 $me = (int) $firstAdmin;
 $anna = $people['anna@cantotrack.demo'];
 $mark = $people['mark@cantotrack.demo'];
@@ -303,8 +305,14 @@ foreach ($entries as [$userId, $ticket, $offset, $minutes, $note]) {
     $logged += $minutes;
 }
 
-printf('%sMade 2 projects, %d epics, %d tickets and %s of logged time.%s',
-    PHP_EOL, 5, count($made), floor($logged / 60) . 'h', PHP_EOL);
+printf(
+    '%sMade 2 projects, %d epics, %d tickets and %s of logged time.%s',
+    PHP_EOL,
+    5,
+    count($made),
+    floor($logged / 60) . 'h',
+    PHP_EOL
+);
 
 if ($madePasswords !== []) {
     printf('%sThe demo accounts:%s', PHP_EOL, PHP_EOL);

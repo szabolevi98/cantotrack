@@ -47,7 +47,9 @@ foreach ($argv ?? [] as $argument) {
 Config::load($configPath);
 
 $database = DatabaseConnection::get();
-$existing = (int) $database->query('SELECT COUNT(*) FROM users')->fetchColumn();
+$count = $database->prepare('SELECT COUNT(*) FROM users');
+$count->execute();
+$existing = (int) $count->fetchColumn();
 
 if ($existing > 0) {
     printf('There are already %d user%s; nothing to seed.%s', $existing, $existing === 1 ? '' : 's', PHP_EOL);

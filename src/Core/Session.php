@@ -77,17 +77,19 @@ class Session
     {
         $last = (int) ($_SESSION['_cookie_sent_at'] ?? 0);
 
-        if (!isset($_COOKIE[session_name()]) || time() - $last < self::REFRESH_EVERY) {
+        $name = session_name();
+
+        if ($name === false || !isset($_COOKIE[$name]) || time() - $last < self::REFRESH_EVERY) {
             return;
         }
 
         $params = session_get_cookie_params();
-        setcookie(session_name(), (string) session_id(), [
+        setcookie($name, (string) session_id(), [
             'expires' => time() + $lifetime,
             'path' => $params['path'],
             'secure' => $params['secure'],
             'httponly' => $params['httponly'],
-            'samesite' => $params['samesite'] ?? 'Lax',
+            'samesite' => $params['samesite'],
         ]);
 
         $_SESSION['_cookie_sent_at'] = time();
@@ -153,14 +155,16 @@ class Session
 
         // Emptying the array leaves the cookie in the browser, and with it a
         // session id that is still valid for whatever comes next.
-        if (ini_get('session.use_cookies')) {
+        $name = session_name();
+
+        if (ini_get('session.use_cookies') && $name !== false) {
             $params = session_get_cookie_params();
-            setcookie(session_name(), '', [
+            setcookie($name, '', [
                 'expires' => time() - 42000,
                 'path' => $params['path'],
                 'secure' => $params['secure'],
                 'httponly' => $params['httponly'],
-                'samesite' => $params['samesite'] ?? 'Lax',
+                'samesite' => $params['samesite'],
             ]);
         }
 

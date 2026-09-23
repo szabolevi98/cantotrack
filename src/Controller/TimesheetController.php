@@ -3,8 +3,8 @@
 namespace CantoTrack\Controller;
 
 use CantoTrack\Core\Auth;
-use CantoTrack\Core\Controller;
 use CantoTrack\Core\Config;
+use CantoTrack\Core\Controller;
 use CantoTrack\Core\View;
 use CantoTrack\Model\UserRepository;
 use CantoTrack\Model\WorklogRepository;
@@ -45,8 +45,14 @@ class TimesheetController extends Controller
         }
 
         foreach ($entries as $entry) {
-            $days[$entry['work_date']]['entries'][] = $entry;
-            $days[$entry['work_date']]['minutes'] += (int) $entry['minutes'];
+            $day = (string) $entry['work_date'];
+
+            if (!isset($days[$day])) {
+                continue;
+            }
+
+            $days[$day]['entries'][] = $entry;
+            $days[$day]['minutes'] += (int) $entry['minutes'];
         }
 
         $expected = Config::int('work.hours_per_day', 8) * 60;

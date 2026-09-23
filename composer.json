@@ -14,11 +14,27 @@
             "src/functions.php"
         ]
     },
+    "autoload-dev": {
+        "psr-4": {
+            "CantoTrack\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "analyse": "phpstan analyse --memory-limit=1G",
+        "style": "php-cs-fixer fix --dry-run --diff",
+        "check": ["@style", "@analyse", "@test"]
+    },
     "config": {
         "sort-packages": true,
         "platform": {
             "php": "8.4.0"
         },
         "platform-check": false
+    },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.64",
+        "phpstan/phpstan": "^2.1",
+        "phpunit/phpunit": "^11.5"
     }
 }

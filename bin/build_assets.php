@@ -75,5 +75,5 @@ foreach ($bundles as $output => $bundle) {
 
     file_put_contents($target, rtrim($content) . "\n");
 
-    printf("Built %s from %d source files.%s", $output, count($bundle['files']), PHP_EOL);
+    printf('Built %s from %d source files.%s', $output, count($bundle['files']), PHP_EOL);
 }

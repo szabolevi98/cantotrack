@@ -34,7 +34,13 @@ class I18n
     public static function locale(): string
     {
         if (self::$locale === null) {
-            self::setLocale((string) Config::get('app.locale', 'en'));
+            // Before the configuration is loaded (a command-line script that
+            // failed early, a unit test) there is only English.
+            try {
+                self::setLocale((string) Config::get('app.locale', 'en'));
+            } catch (\RuntimeException) {
+                return 'en';
+            }
         }
 
         return (string) self::$locale;

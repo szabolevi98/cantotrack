@@ -171,7 +171,7 @@ class TicketRepository
      * only ever grows, so it shows the most recently finished and says how many
      * more there are.
      *
-     * @return array{columns: array<string, list<array>>, more_done: int}
+     * @return array{columns: array<string, array>, more_done: int}
      */
     public function board(int $projectId, int $doneShown = 20): array
     {
@@ -196,7 +196,7 @@ class TicketRepository
 
         $total = $this->countsByStatus($projectId)['done'];
 
-        return ['columns' => $columns, 'more_done' => max(0, $total - count($columns['done']))];
+        return ['columns' => $columns, 'more_done' => max(0, (int) $total - count($columns['done']))];
     }
 
     /**

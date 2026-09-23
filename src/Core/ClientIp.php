@@ -22,7 +22,7 @@ class ClientIp
     {
         $remote = (string) ($_SERVER['REMOTE_ADDR'] ?? '0.0.0.0');
         $header = (string) Config::get('app.client_ip_header', '');
-        $trusted = array_filter(array_map('trim', explode(',', (string) Config::get('app.trusted_proxies', ''))));
+        $trusted = array_values(array_filter(array_map('trim', explode(',', (string) Config::get('app.trusted_proxies', '')))));
 
         if ($header === '' || $trusted === [] || !self::inAny($remote, $trusted)) {
             return $remote;

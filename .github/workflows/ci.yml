@@ -1,0 +1,100 @@
+# Every push and pull request: the code style, the static analysis, the unit and
+# integration tests against a real MariaDB, and the smoke test over HTTP against
+# a fresh installation — seeded, signed into, and walked through.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  check:
+    runs-on: ubuntu-24.04
+
+    services:
+      mariadb:
+        image: mariadb:10.11
+        env:
+          MARIADB_ROOT_PASSWORD: root
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="healthcheck.sh --connect --innodb_initialized"
+          --health-interval=5s
+          --health-timeout=5s
+          --health-retries=20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_mysql, mbstring, gd, zip, curl, fileinfo
+          coverage: none
+
+      - name: Install dependencies
+        run: composer install --no-interaction --no-progress --prefer-dist
+
+      - name: Write the configuration
+        run: |
+          cat > config/config.ini <<'INI'
+          [database]
+          host = 127.0.0.1
+          port = 3306
+          name = cantotrack_ci
+          user = root
+          password = root
+          charset = utf8mb4
+          collation = utf8mb4_unicode_ci
+
+          [app]
+          name = "CantoTrack"
+          env = dev
+          debug = 1
+          base_url = "http://127.0.0.1:8080"
+          timezone = "Europe/Budapest"
+
+          [session]
+          name = cantotrack_session
+          lifetime = 28800
+
+          [work]
+          hours_per_day = 8
+          minimum_minutes = 15
+
+          [mail]
+          dsn = "file"
+          from = "cantotrack@example.test"
+          INI
+          sed 's/^name = cantotrack_ci$/name = cantotrack_test/' config/config.ini > config/test.ini
+
+      - name: Code style
+        run: vendor/bin/php-cs-fixer fix --dry-run --diff
+
+      - name: Static analysis
+        run: vendor/bin/phpstan analyse --memory-limit=1G --no-progress
+
+      - name: Unit and integration tests
+        run: vendor/bin/phpunit
+
+      - name: The built assets match their sources
+        run: |
+          php bin/build_assets.php
+          git diff --exit-code -- web/assets
+
+      - name: Install, seed and walk through over HTTP
+        run: |
+          php database/migrate.php
+          php database/seed.php --email=ci@example.test --name="CI Admin" | tee seed.txt
+          PASSWORD=$(grep -oP 'password:\s+\K\S+' seed.txt)
+          php -S 127.0.0.1:8080 -t web bin/dev-router.php > server.log 2>&1 &
+          sleep 1
+          php tests/smoke.php --url=http://127.0.0.1:8080 --email=ci@example.test --password="$PASSWORD" --throttle
+          php database/seed_demo.php
+
+      - name: Server log
+        if: failure()
+        run: |
+          cat server.log || true
+          cat var/log/*.log || true

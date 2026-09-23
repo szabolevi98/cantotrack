@@ -32,7 +32,7 @@ class ProjectRepository
 
         $sql .= ' GROUP BY p.id ORDER BY p.is_archived, p.name';
 
-        return $this->db->query($sql)->fetchAll();
+        return $this->rows($sql);
     }
 
     public function find(int $id): ?array
@@ -128,5 +128,14 @@ class ProjectRepository
         $value = trim((string) $value);
 
         return $value === '' ? null : $value;
+    }
+
+    /** Every row a query without parameters returns. */
+    private function rows(string $sql): array
+    {
+        $statement = $this->db->prepare($sql);
+        $statement->execute();
+
+        return $statement->fetchAll();
     }
 }

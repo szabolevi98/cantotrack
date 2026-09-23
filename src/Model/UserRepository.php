@@ -50,14 +50,14 @@ class UserRepository
     /** Everyone, for the assignee lists. Inactive people are kept out of those. */
     public function active(): array
     {
-        return $this->db->query(
+        return $this->rows(
             'SELECT * FROM users WHERE is_active = 1 ORDER BY name'
-        )->fetchAll();
+        );
     }
 
     public function all(): array
     {
-        return $this->db->query('SELECT * FROM users ORDER BY is_active DESC, name')->fetchAll();
+        return $this->rows('SELECT * FROM users ORDER BY is_active DESC, name');
     }
 
     public function create(string $name, string $email, string $password, string $role = 'member'): int
@@ -173,14 +173,14 @@ class UserRepository
     /** How much each person has open and logged, for the people page. */
     public function withActivity(): array
     {
-        return $this->db->query(
+        return $this->rows(
             'SELECT u.*,
                     (SELECT COUNT(*) FROM tickets t WHERE t.assignee_id = u.id AND t.status <> \'done\') AS open_tickets,
                     (SELECT COALESCE(SUM(w.minutes), 0) FROM worklogs w
                      WHERE w.user_id = u.id AND w.work_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)) AS minutes_30d
              FROM users u
              ORDER BY u.is_active DESC, u.name'
-        )->fetchAll();
+        );
     }
 
     public function touchLastLogin(int $id): void
@@ -198,5 +198,14 @@ class UserRepository
     private static function role(string $role): string
     {
         return $role === 'admin' ? 'admin' : 'member';
+    }
+
+    /** Every row a query without parameters returns. */
+    private function rows(string $sql): array
+    {
+        $statement = $this->db->prepare($sql);
+        $statement->execute();
+
+        return $statement->fetchAll();
     }
 }

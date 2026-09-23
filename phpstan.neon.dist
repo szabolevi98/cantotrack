@@ -1,0 +1,19 @@
+# Static analysis, at level 8: types, and whether something can be null where
+# it is used as if it could not.
+#
+# The check switched off below is about writing out the shape of every array
+# in a docblock. The rows here come from PDO as plain arrays, and a
+# docblock on each would be a second copy of the schema that nothing keeps in
+# step with the first.
+parameters:
+    level: 8
+    paths:
+        - src
+        - web/index.php
+        - database
+        - bin
+    excludePaths:
+        - src/View
+    tmpDir: var/cache/phpstan
+    ignoreErrors:
+        - identifier: missingType.iterableValue

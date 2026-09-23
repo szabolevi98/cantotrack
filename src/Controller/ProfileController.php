@@ -88,6 +88,25 @@ class ProfileController extends Controller
         $this->back('/');
     }
 
+    /** One's own calendar, read for the week's meetings; an empty address takes it off. */
+    public function calendarFeed(): void
+    {
+        Auth::require();
+
+        $given = $this->input('calendar_feed');
+
+        try {
+            (new UserRepository())->setCalendarFeed((int) Auth::id(), $given === '' ? null : \CantoTrack\Service\CalendarFeed::address($given));
+            $this->flash($given === ''
+                ? __('Your calendar is no longer read.')
+                : __('Your calendar is read from now on: the week’s calendar offers its meetings as entries.'));
+        } catch (\CantoTrack\Core\ValidationError $e) {
+            $this->flash($e->getMessage(), 'danger');
+        }
+
+        $this->redirect('/profile');
+    }
+
     public function changePassword(): void
     {
         Auth::require();

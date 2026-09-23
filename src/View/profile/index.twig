@@ -113,6 +113,25 @@
     </section>
 
     <section class="card card--narrow">
+        <h2 class="card__title">{{ 'Your calendar'|t }}</h2>
+        <p class="card__body">{{ 'Paste the private address of your calendar in iCal format, and the week’s calendar offers your meetings as entries — one click from logged. Google Calendar: Settings → your calendar → “Secret address in iCal format”. Outlook: Settings → Calendar → Shared calendars → Publish a calendar → ICS.'|t }}</p>
+        <form method="post" action="{{ url('/profile/calendar') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            {% if me.calendar_feed %}
+                <p class="hint">{{ 'Read from {host}.'|t({host: me.calendar_feed|split('/')[2]|default('')}) }}</p>
+            {% endif %}
+            <input class="field field--code" type="url" name="calendar_feed" placeholder="https://calendar.google.com/calendar/ical/…/basic.ics"
+                   aria-label="{{ 'Calendar address'|t }}" autocomplete="off">
+            <div class="form__actions">
+                <button class="button" type="submit">{{ me.calendar_feed ? 'Replace'|t : 'Save'|t }}</button>
+                {% if me.calendar_feed %}
+                    <button class="button button--danger" type="submit" name="calendar_feed" value="">{{ 'Stop reading it'|t }}</button>
+                {% endif %}
+            </div>
+        </form>
+    </section>
+
+    <section class="card card--narrow">
         <h2 class="card__title">{{ 'Two-step sign-in'|t }}</h2>
         <p class="card__body">
             {{ me.totp_enabled_at ? 'On: signing in also takes a code from your phone.'|t : 'Off: the password alone signs you in.'|t }}

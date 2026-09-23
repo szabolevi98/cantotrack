@@ -149,6 +149,13 @@ class UserRepository
         ]);
     }
 
+    /** The address of one's own calendar, or none. */
+    public function setCalendarFeed(int $id, ?string $address): void
+    {
+        $this->db->prepare('UPDATE users SET calendar_feed = :feed WHERE id = :id')
+            ->execute(['feed' => $address, 'id' => $id]);
+    }
+
     /** The language alone: what the top bar's menu changes. */
     public function setLocale(int $id, string $locale): void
     {

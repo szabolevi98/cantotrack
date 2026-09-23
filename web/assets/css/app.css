@@ -3820,6 +3820,38 @@ kbd {
     pointer-events: none;
 }
 
+/* A meeting from one's own calendar: dashed, in a narrow lane of its own
+   on the right above the entries — so one that overlaps an entry can still
+   be seen and clicked — a click away from being one. */
+.calendar__meeting {
+    position: absolute;
+    z-index: 2;
+    right: 3px;
+    width: 34%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 3px 6px;
+    border: 1px dashed var(--ct-violet);
+    border-radius: 6px;
+    background: color-mix(in srgb, var(--ct-violet-soft) 70%, transparent);
+    color: var(--ct-violet);
+    font: inherit;
+    font-size: 0.75rem;
+    line-height: 1.25;
+    text-align: left;
+    cursor: pointer;
+}
+
+.calendar__meeting:hover:not(:disabled) {
+    border-style: solid;
+}
+
+.calendar__meeting:disabled {
+    cursor: default;
+    opacity: 0.6;
+}
+
 /*
  * The sign-in page: one card in the middle of a coloured field.
  *

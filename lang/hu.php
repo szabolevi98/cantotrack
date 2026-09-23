@@ -991,4 +991,13 @@ return [
     'Missing' => 'Hiányzik',
     '{time} short' => '{time} hiányzik',
     'Each person against their own working week, with holidays and days away counted out. Red: nothing logged; amber: short.' => 'Mindenki a saját munkahetéhez mérve, az ünnepek és a távollétek nélkül. Piros: semmi sincs rögzítve; borostyán: kevés.',
+    'Your calendar' => 'A naptárad',
+    'Paste the private address of your calendar in iCal format, and the week’s calendar offers your meetings as entries — one click from logged. Google Calendar: Settings → your calendar → “Secret address in iCal format”. Outlook: Settings → Calendar → Shared calendars → Publish a calendar → ICS.' => 'Másold be a naptárad privát, iCal formátumú címét, és a heti naptár felkínálja a megbeszéléseidet bejegyzésként — egy kattintásra rögzítve. Google Naptár: Beállítások → a naptárad → „Titkos cím iCal formátumban”. Outlook: Beállítások → Naptár → Megosztott naptárak → Naptár közzététele → ICS.',
+    'Read from {host}.' => 'Innen olvasva: {host}.',
+    'Calendar address' => 'Naptár címe',
+    'Replace' => 'Csere',
+    'Stop reading it' => 'Ne olvassa tovább',
+    'Your calendar is no longer read.' => 'A naptáradat már nem olvassuk.',
+    'Your calendar is read from now on: the week’s calendar offers its meetings as entries.' => 'Mostantól olvassuk a naptáradat: a heti naptár felkínálja a megbeszéléseit bejegyzésként.',
+    'Log it: {what}' => 'Rögzítsd: {what}',
 ];

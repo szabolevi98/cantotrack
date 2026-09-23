@@ -201,6 +201,19 @@
                     {% set info = days[date] %}
                     <div class="calendar__day{{ info.expected == 0 ? ' calendar__day--off' : '' }}{{ date > today ? ' calendar__day--future' : '' }}"
                          data-date="{{ date }}"{{ date > today ? ' data-future' : '' }}>
+                        {# The meetings from one's own calendar, in a lane of their
+                           own: a click logs one. #}
+                        {% for meeting in day.meetings %}
+                            <button class="calendar__meeting" type="button"
+                                    style="top: calc({{ meeting.start - from }} * var(--ppm)); height: calc({{ meeting.end - meeting.start }} * var(--ppm));"
+                                    data-meeting data-date="{{ date }}" data-start="{{ '%02d:%02d'|format(meeting.start // 60, meeting.start % 60) }}"
+                                    data-minutes="{{ meeting.end - meeting.start }}" data-summary="{{ meeting.summary }}"
+                                    {{ date > today ? 'disabled' : '' }}
+                                    title="{{ 'Log it: {what}'|t({what: meeting.summary}) }}">
+                                <span class="calendar__when">{{ '%02d:%02d'|format(meeting.start // 60, meeting.start % 60) }}–{{ '%02d:%02d'|format(meeting.end // 60, meeting.end % 60) }}</span>
+                                <span class="calendar__title">{{ meeting.summary }}</span>
+                            </button>
+                        {% endfor %}
                         {% for block in day.placed %}
                             {% set entry = block.entry %}
                             <a class="calendar__block{{ entry.billable is defined and not entry.billable and entry.project_billable|default(1) ? ' calendar__block--unbilled' : '' }}"

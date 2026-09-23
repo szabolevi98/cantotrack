@@ -94,7 +94,7 @@ class TimesheetController extends Controller
             'absences' => $calendar->absences($userId, $from, $to),
             'can_submit' => $mine && $from <= date('Y-m-d'),
             'grid' => $view === 'grid' ? $this->grid($userId, $entries, array_keys($days)) : [],
-            'calendar' => $view === 'calendar' ? self::calendar($days) : null,
+            'calendar' => $view === 'calendar' ? self::calendar($days, $mine ? self::meetings($person, $from, $to) : []) : null,
             'last_week_keys' => $view === 'grid'
                 ? (new TicketRepository())->keysLoggedBy($userId, $monday->modify('-7 days')->format('Y-m-d'), $monday->modify('-1 day')->format('Y-m-d'))
                 : [],
@@ -188,13 +188,21 @@ class TimesheetController extends Controller
      * or later — a day that started at six is not cut off.
      *
      * @param array<string, array> $days
-     * @return array{from: int, to: int, days: array<string, array{placed: list<array>, loose: list<array>}>}
+     * @param list<array{day: string, start: int, end: int, summary: string}> $meetings from one's own calendar
+     * @return array{from: int, to: int, days: array<string, array{placed: list<array>, loose: list<array>, meetings: list<array>}>}
      */
-    public static function calendar(array $days): array
+    public static function calendar(array $days, array $meetings = []): array
     {
         $from = 8 * 60;
         $to = 18 * 60;
         $out = [];
+
+        foreach ($meetings as $meeting) {
+            if (isset($days[$meeting['day']])) {
+                $from = min($from, intdiv($meeting['start'], 60) * 60);
+                $to = max($to, (int) ceil($meeting['end'] / 60) * 60);
+            }
+        }
 
         foreach ($days as $date => $day) {
             $placed = [];
@@ -252,10 +260,35 @@ class TimesheetController extends Controller
                 $flush($group, $placed);
             }
 
-            $out[$date] = ['placed' => $placed, 'loose' => $loose];
+            $out[$date] = [
+                'placed' => $placed,
+                'loose' => $loose,
+                'meetings' => array_values(array_filter($meetings, static fn(array $m): bool => $m['day'] === $date)),
+            ];
         }
 
         return ['from' => $from, 'to' => $to, 'days' => $out];
+    }
+
+    /**
+     * The week's meetings from the person's own calendar, if they gave its
+     * address — nothing at all when the calendar cannot be read.
+     *
+     * @return list<array{day: string, start: int, end: int, summary: string}>
+     */
+    private static function meetings(array $person, string $from, string $to): array
+    {
+        if (empty($person['calendar_feed'])) {
+            return [];
+        }
+
+        try {
+            return (new \CantoTrack\Service\CalendarFeed())->events((int) $person['id'], (string) $person['calendar_feed'], $from, $to);
+        } catch (\Throwable $e) {
+            \CantoTrack\Core\Logger::error('A calendar could not be read: ' . $e->getMessage());
+
+            return [];
+        }
     }
 
     /**

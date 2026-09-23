@@ -32,10 +32,24 @@
         return {start: start, end: end === start ? start + 60 : end};
     }
 
+    // A meeting from one's own calendar, logged with what it was.
+    calendar.addEventListener('click', function (event) {
+        var meeting = event.target.closest('[data-meeting]');
+
+        if (meeting && !meeting.disabled) {
+            window.ctQuickLog({
+                work_date: meeting.dataset.date,
+                started_at: meeting.dataset.start,
+                time: meeting.dataset.minutes + 'm',
+                note: meeting.dataset.summary
+            });
+        }
+    });
+
     calendar.addEventListener('pointerdown', function (event) {
         var day = event.target.closest('.calendar__day');
 
-        if (!day || event.button !== 0 || day.hasAttribute('data-future') || event.target.closest('.calendar__block')) {
+        if (!day || event.button !== 0 || day.hasAttribute('data-future') || event.target.closest('.calendar__block, [data-meeting]')) {
             return;
         }
 

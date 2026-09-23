@@ -2595,6 +2595,38 @@ a.label:hover {
     color: var(--ct-primary);
 }
 
+/* The bell, and the number of notifications not yet read on its shoulder. */
+.topbar__bell {
+    position: relative;
+    text-decoration: none;
+}
+
+.topbar__bell:hover {
+    text-decoration: none;
+}
+
+.topbar__bell.is-active {
+    border-color: var(--ct-primary-border);
+    background: var(--ct-primary-soft);
+    color: var(--ct-primary);
+}
+
+.topbar__badge {
+    position: absolute;
+    top: -5px;
+    right: -6px;
+    min-width: 18px;
+    padding: 0 5px;
+    border: 2px solid var(--ct-surface);
+    border-radius: 999px;
+    background: var(--ct-danger);
+    color: #ffffff;
+    font-size: 0.66rem;
+    font-weight: 700;
+    line-height: 14px;
+    text-align: center;
+}
+
 /* The light/dark switch shows the moon on a light page, the sun on a dark one. */
 .theme-switch__sun {
     display: none;

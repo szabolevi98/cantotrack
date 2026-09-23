@@ -61,11 +61,6 @@
                {{ active ? 'aria-current="page"' : '' }}><i class="bi bi-{{ item.icon }}" aria-hidden="true"></i><span>{{ item.label|t }}</span></a>
         {% endfor %}
 
-        {% set unread = unread_notifications() %}
-        <a class="sidebar__link{{ current_path starts with '/notifications' ? ' is-active' : '' }}" href="{{ url('/notifications') }}">
-            <i class="bi bi-bell" aria-hidden="true"></i><span>{{ 'Notifications'|t }}</span>
-            {% if unread > 0 %}<span class="sidebar__count" aria-label="{{ plural('{count} not read', '{count} not read', unread) }}">{{ unread }}</span>{% endif %}
-        </a>
 
         {# Named apart from `filters`, which the list pages use for their own:
            a template and its layout share one set of variables. #}
@@ -115,6 +110,16 @@
 
 <div class="main">
     <header class="topbar">
+        {# What happened to the tickets somebody follows: a bell, with the
+           number not yet read on it. #}
+        {% set unread = unread_notifications() %}
+        <a class="topbar__icon topbar__bell{{ current_path starts with '/notifications' ? ' is-active' : '' }}" href="{{ url('/notifications') }}"
+           title="{{ 'Notifications'|t }}"
+           aria-label="{{ unread > 0 ? 'Notifications'|t ~ ' — ' ~ plural('{count} not read', '{count} not read', unread) : 'Notifications'|t }}">
+            <i class="bi bi-bell" aria-hidden="true"></i>
+            {% if unread > 0 %}<span class="topbar__badge" aria-hidden="true">{{ unread > 99 ? '99+' : unread }}</span>{% endif %}
+        </a>
+
         {# Light or dark in one click. Which one the page is in right now is
            filled in by the script, since with "the system's" chosen only the
            browser knows. #}

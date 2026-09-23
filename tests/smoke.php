@@ -832,6 +832,25 @@ if ($email === null || $password === null) {
     @unlink($sheetFile);
     check('and as a spreadsheet', $xlsx['status'] === 200 && str_contains($sheet, $code . '-1'));
 
+    // "Log time" from anywhere: the ticket offered as it is typed, logged by
+    // its name, and back to the page it was logged from.
+    $offered = json_decode(request($baseUrl . '/log/suggest?q=' . urlencode($code . '-1'), [], $jar)['body'], true);
+    check('the log box offers a ticket by its name', ($offered['tickets'][0]['key'] ?? '') === $code . '-1');
+
+    $quick = request($baseUrl . '/log', [
+        '_token' => $token,
+        'ticket' => $code . '-1',
+        'time' => '20m',
+        'work_date' => date('Y-m-d'),
+        'note' => 'Logged from the top bar by tests/smoke.php.',
+        'back' => '/reports',
+    ], $jar);
+    check(
+        'and logs on it from any page, back to that page',
+        $quick['status'] === 302 && str_contains($quick['headers'], '/reports')
+        && str_contains(request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'], 'Logged from the top bar by tests/smoke.php.')
+    );
+
     // The calendar: a holiday far enough ahead that it cannot touch anybody's
     // real week, added and taken off again. Handing a week in is left to the
     // integration tests — it would close this account's hours for the rest

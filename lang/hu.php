@@ -923,4 +923,7 @@ return [
     'This page is protected by reCAPTCHA; Google’s privacy policy and terms apply.' => 'Ezt az oldalt reCAPTCHA védi; a Google adatvédelmi irányelvei és feltételei érvényesek.',
     'Edit your profile' => 'Profil szerkesztése',
     'Your account: {name}' => 'A fiókod: {name}',
+    'Log time on any ticket' => 'Idő rögzítése bármelyik jegyre',
+    'CT-14, or words from its title' => 'CT-14, vagy szavak a címéből',
+    'As the project’s hours usually are' => 'Ahogy a projekt órái általában',
 ];

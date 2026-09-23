@@ -1,0 +1,58 @@
+{#
+    "Log time" from anywhere: a ticket by its name, how long, which day, and
+    what it was. A dialog so the page stays where it was; a plain form under
+    it, so a typed key works without the script. The script adds the
+    suggestions under the ticket field.
+#}
+<dialog class="quick-log" id="quick-log" aria-labelledby="quick-log-title">
+    <form method="post" action="{{ url('/log') }}" class="quick-log__form" data-quick-log
+          data-suggest-url="{{ url('/log/suggest') }}" autocomplete="off">
+        <input type="hidden" name="_token" value="{{ csrf_token }}">
+        <input type="hidden" name="back" value="{{ current_path }}{{ current_query ? '?' ~ current_query : '' }}">
+
+        <header class="quick-log__head">
+            <h2 id="quick-log-title">{{ 'Log time'|t }}</h2>
+            <button class="link-button" type="button" data-quick-log-close aria-label="{{ 'Close'|t }}">×</button>
+        </header>
+
+        <label for="quick-ticket">{{ 'Ticket'|t }}</label>
+        <input id="quick-ticket" class="field" type="text" name="ticket" required
+               placeholder="{{ 'CT-14, or words from its title'|t }}"
+               role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="quick-suggestions">
+        <ul class="quick-log__suggestions" id="quick-suggestions" role="listbox" hidden></ul>
+
+        <div class="form__row">
+            <div>
+                <label for="quick-time">{{ 'How long'|t }}</label>
+                <input id="quick-time" class="field" type="text" name="time" placeholder="1h 30m" required>
+            </div>
+            <div>
+                <label for="quick-date">{{ 'Which day'|t }}</label>
+                <input id="quick-date" class="field" type="date" name="work_date" value="{{ 'now'|date('Y-m-d') }}" max="{{ 'now'|date('Y-m-d') }}">
+            </div>
+        </div>
+
+        <label for="quick-note">{{ 'What you did'|t }}</label>
+        <input id="quick-note" class="field" type="text" name="note" maxlength="500" placeholder="{{ 'Optional'|t }}">
+
+        <div class="form__row">
+            <div>
+                <label for="quick-remaining">{{ 'Left afterwards'|t }}</label>
+                <input id="quick-remaining" class="field" type="text" name="remaining" placeholder="{{ 'Optional'|t }}">
+            </div>
+            <div class="quick-log__billable">
+                <label class="check">
+                    <input type="hidden" name="billable_sent" value="1" disabled data-billable-sent>
+                    <input type="checkbox" name="billable" value="1" data-billable>
+                    {{ 'Billable'|t }}
+                </label>
+                <p class="hint" data-billable-hint>{{ 'As the project’s hours usually are'|t }}</p>
+            </div>
+        </div>
+
+        <div class="form__actions">
+            <button class="button button--primary" type="submit">{{ 'Log it'|t }}</button>
+            <button class="button" type="button" data-quick-log-close>{{ 'Cancel'|t }}</button>
+        </div>
+    </form>
+</dialog>

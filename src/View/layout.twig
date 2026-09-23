@@ -110,6 +110,16 @@
 
 <div class="main">
     <header class="topbar">
+        {% if can_work %}
+            {# The one thing somebody does here most often, from any page.
+               Without the script it is a link to the week's grid. #}
+            <a class="topbar__log button button--primary button--small" href="{{ url('/timesheet?view=grid') }}" data-quick-log-open
+               title="{{ 'Log time'|t }} (l)">
+                <i class="bi bi-stopwatch" aria-hidden="true"></i>{{ 'Log time'|t }}
+            </a>
+            <span class="topbar__spacer"></span>
+        {% endif %}
+
         {# What happened to the tickets somebody follows: a bell, with the
            number not yet read on it. #}
         {% set unread = unread_notifications() %}
@@ -217,9 +227,12 @@
         <dt><kbd>g</kbd> <kbd>t</kbd></dt><dd>{{ 'Go to the tickets'|t }}</dd>
         <dt><kbd>g</kbd> <kbd>s</kbd></dt><dd>{{ 'Go to your timesheet'|t }}</dd>
         <dt><kbd>g</kbd> <kbd>b</kbd></dt><dd>{{ 'Go to this project’s board'|t }}</dd>
+        <dt><kbd>l</kbd></dt><dd>{{ 'Log time on any ticket'|t }}</dd>
         <dt><kbd>?</kbd></dt><dd>{{ 'Show this list'|t }}</dd>
     </dl>
     <form method="dialog"><button class="button">{{ 'Close'|t }}</button></form>
 </dialog>
+
+{% if can_work %}{% include 'common/quick_log.twig' %}{% endif %}
 </body>
 </html>

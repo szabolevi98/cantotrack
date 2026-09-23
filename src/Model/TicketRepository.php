@@ -508,6 +508,33 @@ class TicketRepository
         return (bool) $statement->fetchColumn();
     }
 
+    /**
+     * The tickets somebody logged time on lately, the most recent first —
+     * what they are most likely to log on again.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function recentlyLoggedBy(int $userId, int $limit = 6): array
+    {
+        $statement = $this->db->prepare(
+            'SELECT w.ticket_id, MAX(w.work_date) AS last_day FROM worklogs w
+             WHERE w.user_id = :user AND w.work_date >= CURDATE() - INTERVAL 21 DAY
+             GROUP BY w.ticket_id ORDER BY last_day DESC, MAX(w.id) DESC LIMIT ' . max(1, $limit)
+        );
+        $statement->execute(['user' => $userId]);
+        $found = [];
+
+        foreach ($statement->fetchAll(PDO::FETCH_COLUMN) as $id) {
+            $ticket = $this->find((int) $id);
+
+            if ($ticket !== null) {
+                $found[] = $ticket;
+            }
+        }
+
+        return $found;
+    }
+
     /** What one person has open, newest first — the dashboard's main list. */
     public function openFor(int $userId, int $limit = 25): array
     {

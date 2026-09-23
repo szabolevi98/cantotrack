@@ -162,6 +162,9 @@ $router->post('/comments/{id}/delete', static fn($id) => (new CommentController(
 // The hours
 // ---------------------------------------------------------------------------
 $router->post('/tickets/{id}/log', static fn($id) => (new WorklogController())->create((int) $id));
+// Logged from anywhere: the top bar's "Log time", and the tickets it offers.
+$router->post('/log', static fn() => (new WorklogController())->quick());
+$router->get('/log/suggest', static fn() => (new WorklogController())->suggest());
 $router->post('/worklogs/{id}', static fn($id) => (new WorklogController())->update((int) $id));
 $router->post('/worklogs/{id}/delete', static fn($id) => (new WorklogController())->delete((int) $id));
 

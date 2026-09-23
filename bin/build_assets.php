@@ -55,6 +55,7 @@ $bundles = [
             'board.js',
             'shortcuts.js',
             'timer.js',
+            'quicklog.js',
         ],
     ],
 ];

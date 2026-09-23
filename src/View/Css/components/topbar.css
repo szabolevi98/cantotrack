@@ -29,6 +29,22 @@
     box-shadow: 0 1px 6px rgba(var(--ct-shadow-rgb), 0.06);
 }
 
+/* "Log time", at the left end; the rest of the bar keeps to the right. */
+.topbar__log {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    border-radius: 999px;
+}
+
+.topbar__log:hover {
+    text-decoration: none;
+}
+
+.topbar__spacer {
+    flex: 1;
+}
+
 /* A round button with an icon in it: the theme, the shortcuts. */
 .topbar__icon {
     display: grid;
@@ -257,6 +273,87 @@
 
 .menu__item.is-current .bi {
     color: var(--ct-primary);
+}
+
+/* The "Log time" dialog. */
+.quick-log {
+    width: min(520px, calc(100vw - 32px));
+    padding: 0;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius);
+    background: var(--ct-surface);
+    color: var(--ct-text);
+    box-shadow: var(--ct-shadow-lg);
+}
+
+.quick-log::backdrop {
+    background: rgba(var(--ct-shadow-rgb), 0.35);
+}
+
+.quick-log__form {
+    position: relative;
+    padding: 20px 22px 18px;
+}
+
+.quick-log__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.quick-log__head h2 {
+    margin: 0;
+    font-size: 1.15rem;
+}
+
+.quick-log__head .link-button {
+    font-size: 1.4rem;
+    line-height: 1;
+}
+
+.quick-log__suggestions {
+    position: absolute;
+    right: 22px;
+    left: 22px;
+    z-index: 5;
+    max-height: 260px;
+    margin: -6px 0 0;
+    padding: 4px;
+    overflow-y: auto;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-sm);
+    background: var(--ct-surface);
+    box-shadow: var(--ct-shadow-lg);
+    list-style: none;
+}
+
+.quick-log__suggestions li {
+    overflow: hidden;
+    padding: 7px 10px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    cursor: pointer;
+}
+
+.quick-log__suggestions li strong {
+    color: var(--ct-primary);
+    font-weight: 700;
+}
+
+.quick-log__suggestions li:hover,
+.quick-log__suggestions li.is-active {
+    background: var(--ct-primary-soft);
+}
+
+.quick-log__billable {
+    align-self: end;
+}
+
+.quick-log__billable .hint {
+    margin: 2px 0 0;
 }
 
 @media (max-width: 760px) {

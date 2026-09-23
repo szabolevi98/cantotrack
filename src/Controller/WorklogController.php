@@ -48,6 +48,73 @@ class WorklogController extends Controller
         $this->back('/tickets/' . $ticketId);
     }
 
+    /**
+     * The top bar's "Log time": a ticket by its name, and the same fields as
+     * the ticket page's form — logged from wherever somebody happens to be,
+     * and back to that page afterwards.
+     */
+    public function quick(): void
+    {
+        Auth::requireMember();
+
+        $ticket = (new TicketRepository())->findByKey($this->input('ticket'));
+
+        if ($ticket === null) {
+            $this->flash(__('There is no ticket {key}.', ['key' => $this->input('ticket') ?: '—']), 'danger');
+            $this->back('/timesheet');
+        }
+
+        try {
+            $logged = (new WorklogService())->log(
+                (int) $ticket['id'],
+                (int) Auth::id(),
+                $this->input('time'),
+                $this->input('work_date'),
+                $this->input('note'),
+                $this->input('remaining'),
+                $this->billable()
+            );
+        } catch (ValidationError $e) {
+            $this->flash($ticket['project_code'] . '-' . $ticket['number'] . ': ' . $e->getMessage(), 'danger');
+            $this->back('/timesheet');
+        }
+
+        $this->flash($ticket['project_code'] . '-' . $ticket['number'] . ': ' . $this->saidBack($logged['minutes'], $this->input('work_date') ?: date('Y-m-d'), $logged['rounded']));
+        $this->back('/timesheet');
+    }
+
+    /**
+     * The tickets the "Log time" box offers as somebody types: a key finds
+     * that ticket, words find open tickets whose title has them, and nothing
+     * at all offers what they worked on lately and what they have in
+     * progress. Only tickets they can see, as everywhere.
+     */
+    public function suggest(): void
+    {
+        Auth::requireMember();
+
+        $q = trim((string) ($_GET['q'] ?? ''));
+        $tickets = new TicketRepository();
+
+        if ($q === '') {
+            $found = array_merge(
+                $tickets->recentlyLoggedBy((int) Auth::id()),
+                $tickets->search(['assignee_id' => Auth::id(), 'status' => 'in_progress'], 6)
+            );
+        } else {
+            $byKey = $tickets->findByKey($q);
+            $found = $byKey !== null ? [$byKey] : $tickets->search(['q' => $q, 'open_only' => true], 8);
+        }
+
+        $out = [];
+        foreach ($found as $ticket) {
+            $key = $ticket['project_code'] . '-' . $ticket['number'];
+            $out[$key] ??= ['key' => $key, 'title' => $ticket['title'], 'billable' => (int) ($ticket['project_billable'] ?? 1) === 1];
+        }
+
+        $this->json(['tickets' => array_values(array_slice($out, 0, 8))]);
+    }
+
     public function update(int $id): void
     {
         Auth::requireMember();

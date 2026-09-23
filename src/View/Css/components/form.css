@@ -67,8 +67,8 @@ label {
 }
 
 .button--primary {
-    border-color: var(--ct-primary);
-    background: var(--ct-primary);
+    border-color: var(--ct-primary-fill);
+    background: var(--ct-primary-fill);
     color: #ffffff;
 }
 

@@ -30,7 +30,7 @@
     height: 42px;
     margin-bottom: 14px;
     border-radius: 12px;
-    background: var(--ct-primary);
+    background: var(--ct-primary-fill);
     color: #ffffff;
     font-size: 0.9rem;
     font-weight: 700;

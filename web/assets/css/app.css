@@ -38,6 +38,16 @@
     --ct-primary-border: #d6e4f8;
     --ct-primary-rgb: 26, 95, 191;
 
+    /* The blue under white text — buttons, counts, the current item. The
+       same as the brand blue here; in the dark theme the two part, because
+       a blue light enough to read on a dark page is too light to carry white. */
+    --ct-primary-fill: var(--ct-primary);
+
+    /* A board column's own ground, a shade off the page. */
+    --ct-column-bg: rgba(255, 255, 255, 0.55);
+
+    color-scheme: light;
+
     /* The sidebar runs from near-black blue to the brand's own hue, so the
        navigation is clearly a different surface from the content. Its text is
        11.36:1 on the dark end. */
@@ -75,6 +85,81 @@
     --ct-shadow-rgb: 20, 40, 74;
     --ct-shadow: 0 8px 24px rgba(var(--ct-shadow-rgb), 0.06);
     --ct-shadow-lg: 0 20px 45px rgba(var(--ct-shadow-rgb), 0.16);
+}
+
+/*
+ * The dark theme: chosen on the profile, or — with "the system's" chosen
+ * there, which is the default — whenever the operating system is dark.
+ *
+ * The same variables, darker. The contrast rules above still hold: body text
+ * on a card is over 12:1, secondary text over 6:1, and white on the button
+ * blue over 5:1. The block is written twice because a media query and an
+ * attribute cannot share one selector list.
+ */
+:root[data-theme="dark"] {
+    --ct-bg: #0e1522;
+    --ct-surface: #161f2e;
+    --ct-text: #e3e9f3;
+    --ct-muted: #9aa6b8;
+    --ct-border: #273246;
+    --ct-primary: #6aa5f5;
+    --ct-primary-dark: #1f5bb5;
+    --ct-primary-soft: #1a2a44;
+    --ct-primary-border: #2c4470;
+    --ct-primary-rgb: 106, 165, 245;
+    --ct-primary-fill: #2a67c4;
+    --ct-sidebar-from: #0a111d;
+    --ct-sidebar-to: #14305a;
+    --ct-success: #4cc08d;
+    --ct-success-soft: #13291f;
+    --ct-warning: #e0a44a;
+    --ct-warning-soft: #2c2212;
+    --ct-danger: #ef7a8e;
+    --ct-danger-soft: #331a20;
+    --ct-violet: #a88cf0;
+    --ct-violet-soft: #231c3a;
+    --ct-badge-slate-bg: #222c3d;
+    --ct-badge-slate-text: #b8c3d6;
+    --ct-shadow-rgb: 0, 0, 0;
+    --ct-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+    --ct-shadow-lg: 0 20px 45px rgba(0, 0, 0, 0.5);
+    --ct-column-bg: rgba(255, 255, 255, 0.03);
+
+    color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+        --ct-bg: #0e1522;
+        --ct-surface: #161f2e;
+        --ct-text: #e3e9f3;
+        --ct-muted: #9aa6b8;
+        --ct-border: #273246;
+        --ct-primary: #6aa5f5;
+        --ct-primary-dark: #1f5bb5;
+        --ct-primary-soft: #1a2a44;
+        --ct-primary-border: #2c4470;
+        --ct-primary-rgb: 106, 165, 245;
+        --ct-primary-fill: #2a67c4;
+        --ct-sidebar-from: #0a111d;
+        --ct-sidebar-to: #14305a;
+        --ct-success: #4cc08d;
+        --ct-success-soft: #13291f;
+        --ct-warning: #e0a44a;
+        --ct-warning-soft: #2c2212;
+        --ct-danger: #ef7a8e;
+        --ct-danger-soft: #331a20;
+        --ct-violet: #a88cf0;
+        --ct-violet-soft: #231c3a;
+        --ct-badge-slate-bg: #222c3d;
+        --ct-badge-slate-text: #b8c3d6;
+        --ct-shadow-rgb: 0, 0, 0;
+        --ct-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+        --ct-shadow-lg: 0 20px 45px rgba(0, 0, 0, 0.5);
+        --ct-column-bg: rgba(255, 255, 255, 0.03);
+
+        color-scheme: dark;
+    }
 }
 
 /*
@@ -748,8 +833,8 @@ label {
 }
 
 .button--primary {
-    border-color: var(--ct-primary);
-    background: var(--ct-primary);
+    border-color: var(--ct-primary-fill);
+    background: var(--ct-primary-fill);
     color: #ffffff;
 }
 
@@ -930,8 +1015,8 @@ summary.link-button::-webkit-details-marker {
 
 .badge--todo {
     border-color: var(--ct-border);
-    background: #eef1f7;
-    color: #44506a;
+    background: var(--ct-badge-slate-bg);
+    color: var(--ct-badge-slate-text);
 }
 
 .badge--in-progress {
@@ -994,7 +1079,7 @@ summary.link-button::-webkit-details-marker {
     display: block;
     height: 100%;
     border-radius: 999px;
-    background: var(--ct-primary);
+    background: var(--ct-primary-fill);
 }
 
 /* A person, wherever one is named. */
@@ -1232,7 +1317,7 @@ summary.link-button::-webkit-details-marker {
     padding: 10px;
     border: 1px solid var(--ct-border);
     border-radius: var(--ct-radius);
-    background: rgba(255, 255, 255, 0.55);
+    background: var(--ct-column-bg);
     transition: background 0.1s ease, border-color 0.1s ease;
 }
 
@@ -2382,7 +2467,7 @@ a.label:hover {
 
 .chart__key--line,
 .chart__key--completed {
-    background: var(--ct-primary);
+    background: var(--ct-primary-fill);
 }
 
 .chart__key--committed {
@@ -2506,7 +2591,7 @@ a.label:hover {
     z-index: 10;
     padding: 8px 14px;
     border-radius: var(--ct-radius-sm);
-    background: var(--ct-primary);
+    background: var(--ct-primary-fill);
     color: #ffffff;
 }
 
@@ -2985,7 +3070,7 @@ kbd {
     height: 42px;
     margin-bottom: 14px;
     border-radius: 12px;
-    background: var(--ct-primary);
+    background: var(--ct-primary-fill);
     color: #ffffff;
     font-size: 0.9rem;
     font-weight: 700;

@@ -79,7 +79,7 @@
     padding: 10px;
     border: 1px solid var(--ct-border);
     border-radius: var(--ct-radius);
-    background: rgba(255, 255, 255, 0.55);
+    background: var(--ct-column-bg);
     transition: background 0.1s ease, border-color 0.1s ease;
 }
 

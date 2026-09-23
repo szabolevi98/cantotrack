@@ -178,7 +178,7 @@
 
 .chart__key--line,
 .chart__key--completed {
-    background: var(--ct-primary);
+    background: var(--ct-primary-fill);
 }
 
 .chart__key--committed {

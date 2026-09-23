@@ -123,3 +123,12 @@ label {
 .js .nojs-only {
     display: none;
 }
+
+/* A disclosure dressed as a quiet link ("Edit", "Delete"): no triangle. */
+summary.link-button {
+    list-style: none;
+}
+
+summary.link-button::-webkit-details-marker {
+    display: none;
+}

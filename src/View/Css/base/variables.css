@@ -52,6 +52,13 @@
     --ct-danger: #c14a5f;
     --ct-danger-soft: #fdeef1;
 
+    /* Two more for column colours. Violet text on its tint is 6.4:1; the grey
+       one is the "To do" pair the badges always had (7.9:1). */
+    --ct-violet: #6f4cbe;
+    --ct-violet-soft: #f3effc;
+    --ct-badge-slate-bg: #eef1f7;
+    --ct-badge-slate-text: #44506a;
+
     --ct-radius: 14px;
     --ct-radius-sm: 10px;
 

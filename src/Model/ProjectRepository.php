@@ -22,9 +22,10 @@ class ProjectRepository
     {
         $sql = 'SELECT p.*,
                        COUNT(t.id) AS ticket_count,
-                       SUM(t.status = \'done\') AS done_count
+                       SUM(s.category = \'done\') AS done_count
                 FROM projects p
-                LEFT JOIN tickets t ON t.project_id = p.id';
+                LEFT JOIN tickets t ON t.project_id = p.id
+                LEFT JOIN statuses s ON s.id = t.status_id';
 
         if (!$includeArchived) {
             $sql .= ' WHERE p.is_archived = 0';
@@ -63,7 +64,13 @@ class ProjectRepository
             'description' => $this->emptyToNull($description),
         ]);
 
-        return (int) $this->db->lastInsertId();
+        $id = (int) $this->db->lastInsertId();
+
+        // Every project starts with the five columns there always were; its
+        // settings page changes them from there.
+        (new StatusRepository($this->db))->createDefaults($id);
+
+        return $id;
     }
 
     public function update(int $id, string $name, ?string $description, bool $isArchived): void
@@ -95,10 +102,26 @@ class ProjectRepository
         return (bool) $statement->fetchColumn();
     }
 
+    /**
+     * Deletes a project and its tickets.
+     *
+     * The tickets go first, explicitly. Left to the cascade, the database
+     * would reach the project's columns and its tickets in an order of its own
+     * choosing — and a column cannot go while a ticket still stands in it.
+     */
     public function delete(int $id): void
     {
-        $statement = $this->db->prepare('DELETE FROM projects WHERE id = :id');
-        $statement->execute(['id' => $id]);
+        $this->db->beginTransaction();
+
+        try {
+            $this->db->prepare('DELETE FROM tickets WHERE project_id = :id')->execute(['id' => $id]);
+            $this->db->prepare('DELETE FROM projects WHERE id = :id')->execute(['id' => $id]);
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+
+            throw $e;
+        }
     }
 
     /**

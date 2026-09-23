@@ -28,9 +28,8 @@ class DashboardController extends Controller
             'mine' => $mine,
             // In progress is the count that matters: several at once is the
             // thing a person can see about their own week and act on.
-            'in_progress' => count(array_filter($mine, static fn(array $t): bool => $t['status'] === 'in_progress')),
+            'in_progress' => count(array_filter($mine, static fn(array $t): bool => $t['status_category'] === 'in_progress')),
             'projects' => (new ProjectRepository())->allWithCounts(),
-            'statuses' => TicketRepository::STATUSES,
         ]);
     }
 }

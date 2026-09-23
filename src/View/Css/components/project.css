@@ -101,3 +101,60 @@
     color: var(--ct-muted);
     font-size: 0.82rem;
 }
+
+/* The columns on a project's settings page: one row of fields per column. */
+.workflow {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 14px 0 18px;
+}
+
+.workflow__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-sm);
+}
+
+.workflow__form,
+.workflow__add {
+    display: flex;
+    flex: 1;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.workflow__preview {
+    min-width: 110px;
+}
+
+.workflow__wip {
+    width: 110px;
+}
+
+.workflow__move {
+    display: flex;
+    gap: 4px;
+}
+
+.workflow__delete[open] {
+    flex-basis: 100%;
+}
+
+.workflow__delete form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding-top: 8px;
+}
+
+.workflow__delete label {
+    margin: 0;
+    font-weight: 400;
+}

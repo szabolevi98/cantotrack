@@ -80,7 +80,7 @@
             <section class="card">
                 <dl class="facts">
                     <dt>{{ 'Status'|t }}</dt>
-                    <dd>{{ ui.status(ticket.status) }}</dd>
+                    <dd>{{ ui.status(ticket.status_name, ticket.status_colour) }}</dd>
 
                     <dt>{{ 'Priority'|t }}</dt>
                     <dd>{{ ticket.priority == 'normal' ? ui.priority_label('normal') : ui.priority(ticket.priority) }}</dd>

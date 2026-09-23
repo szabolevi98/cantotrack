@@ -7,19 +7,24 @@
     nobody reports and everybody notices.
 #}
 
-{% macro status_label(value) %}
-    {%- set labels = {
-        backlog: 'Backlog',
-        todo: 'To do',
-        in_progress: 'In progress',
-        review: 'Review',
-        done: 'Done'
-    } -%}
-    {{- (labels[value]|default(value))|t -}}
+{#
+    A column's name. Columns are named by whoever set the project up, so the
+    name is data — but the five every project starts with are English words
+    the catalogue knows, and they read in the viewer's language until somebody
+    renames them.
+#}
+{% macro status_label(name) %}
+    {{- name|t -}}
 {% endmacro %}
 
-{% macro status(value) %}
-    <span class="badge badge--{{ value|replace({'_': '-'}) }}">{{ _self.status_label(value) }}</span>
+{% macro status(name, colour) %}
+    <span class="badge badge--status badge--{{ colour|default('slate') }}">{{ name|t }}</span>
+{% endmacro %}
+
+{# The three kinds of column, which are the application's own words. #}
+{% macro category_label(value) %}
+    {%- set labels = { todo: 'Not started', in_progress: 'In progress', done: 'Done' } -%}
+    {{- (labels[value]|default(value))|t -}}
 {% endmacro %}
 
 {% macro priority_label(value) %}
@@ -77,8 +82,8 @@
         <input type="hidden" name="back" value="{{ back }}">
         <select class="field field--inline move__select" name="status" data-autosubmit
                 aria-label="{{ 'Status of {key}'|t({key: ticket.project_code ~ '-' ~ ticket.number}) }}">
-            {% for value in statuses %}
-                <option value="{{ value }}"{{ ticket.status == value ? ' selected' : '' }}>{{ _self.status_label(value) }}</option>
+            {% for status in statuses %}
+                <option value="{{ status.id }}"{{ ticket.status_id == status.id ? ' selected' : '' }}>{{ status.name|t }}</option>
             {% endfor %}
         </select>
         {# Without JavaScript the select changes nothing on its own, so the form

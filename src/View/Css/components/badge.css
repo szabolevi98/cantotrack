@@ -124,3 +124,44 @@
 .muted {
     color: var(--ct-muted);
 }
+
+/*
+ * A column's colour, chosen per column in the project's settings. Six, all dark
+ * text on a tint like the rest of the badges, each pair measured at 4.5:1 or
+ * better so a column named in any of them stays readable.
+ */
+.badge--slate {
+    border-color: var(--ct-border);
+    background: var(--ct-badge-slate-bg);
+    color: var(--ct-badge-slate-text);
+}
+
+.badge--blue {
+    border-color: var(--ct-primary-border);
+    background: var(--ct-primary-soft);
+    color: var(--ct-primary);
+}
+
+.badge--amber {
+    border-color: rgba(164, 112, 29, 0.3);
+    background: var(--ct-warning-soft);
+    color: var(--ct-warning);
+}
+
+.badge--green {
+    border-color: rgba(46, 139, 100, 0.3);
+    background: var(--ct-success-soft);
+    color: var(--ct-success);
+}
+
+.badge--violet {
+    border-color: rgba(111, 76, 190, 0.3);
+    background: var(--ct-violet-soft);
+    color: var(--ct-violet);
+}
+
+.badge--red {
+    border-color: rgba(193, 74, 95, 0.35);
+    background: var(--ct-danger-soft);
+    color: var(--ct-danger);
+}

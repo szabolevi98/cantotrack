@@ -49,14 +49,19 @@
     #}
     <div class="board">
         {% for status in statuses %}
-            <section class="board__column">
+            {% set over = status.wip_limit and status.ticket_count > status.wip_limit %}
+            <section class="board__column{{ over ? ' board__column--over' : '' }}">
                 <header class="board__head">
-                    {{ ui.status(status) }}
-                    <span class="board__count">{{ counts[status] }}</span>
+                    {{ ui.status(status.name, status.colour) }}
+                    {# A limit is shown as "3 / 4", and over it the column says so
+                       — it does not refuse the ticket. #}
+                    <span class="board__count"{{ over ? ' title="' ~ ('Over the limit of {count}'|t({count: status.wip_limit})) ~ '"' : '' }}>
+                        {{ status.ticket_count }}{% if status.wip_limit %} / {{ status.wip_limit }}{% endif %}
+                    </span>
                 </header>
 
                 <div class="board__cards">
-                    {% for ticket in board[status] %}
+                    {% for ticket in board[status.id] %}
                         <article class="ticket-card">
                             <div class="ticket-card__top">
                                 {{ ui.ticket_key(ticket) }}
@@ -82,12 +87,12 @@
                         <p class="board__empty">—</p>
                     {% endfor %}
 
-                    {% if status == 'done' and more_done > 0 %}
+                    {% if more[status.id]|default(0) > 0 %}
                         {# The done column only ever grows, so it shows the latest
                            and says how many more there are rather than drawing
                            two years of finished work on every visit. #}
-                        <a class="board__more" href="{{ url('/tickets?project=' ~ project.id ~ '&status=done') }}">
-                            {{ plural('and {count} more', 'and {count} more', more_done) }}
+                        <a class="board__more" href="{{ url('/tickets?project=' ~ project.id ~ '&status=' ~ status.id) }}">
+                            {{ plural('and {count} more', 'and {count} more', more[status.id]) }}
                         </a>
                     {% endif %}
                 </div>

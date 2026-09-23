@@ -27,9 +27,10 @@ class EpicRepository
         $statement = $this->db->prepare(
             'SELECT e.*,
                     COUNT(t.id) AS ticket_count,
-                    SUM(t.status = \'done\') AS done_count
+                    SUM(s.category = \'done\') AS done_count
              FROM epics e
              LEFT JOIN tickets t ON t.epic_id = e.id
+             LEFT JOIN statuses s ON s.id = t.status_id
              WHERE e.project_id = :project
              GROUP BY e.id
              ORDER BY e.is_done, e.title'

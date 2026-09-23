@@ -10,6 +10,7 @@ use CantoTrack\Core\ValidationError;
 use CantoTrack\Core\View;
 use CantoTrack\Model\EpicRepository;
 use CantoTrack\Model\ProjectRepository;
+use CantoTrack\Model\StatusRepository;
 use CantoTrack\Model\TicketRepository;
 use CantoTrack\Model\UserRepository;
 use CantoTrack\Model\WorklogRepository;
@@ -60,7 +61,9 @@ class TicketController extends Controller
             'query' => http_build_query(array_diff_key($_GET, ['page' => true])),
             'projects' => (new ProjectRepository())->allWithCounts(),
             'people' => (new UserRepository())->active(),
-            'statuses' => TicketRepository::STATUSES,
+            // A project's own columns once one project is picked; across
+            // projects only the three kinds of column mean the same thing.
+            'statuses' => $filters['project_id'] ? (new StatusRepository())->forProject($filters['project_id']) : [],
         ]);
     }
 
@@ -73,7 +76,7 @@ class TicketController extends Controller
         View::render('tickets/show.twig', [
             'ticket' => $ticket,
             'people' => (new UserRepository())->active(),
-            'statuses' => TicketRepository::STATUSES,
+            'statuses' => (new StatusRepository())->forProject((int) $ticket['project_id']),
             'worklogs' => (new WorklogRepository())->forTicket($id),
             'today' => date('Y-m-d'),
         ]);
@@ -210,7 +213,7 @@ class TicketController extends Controller
             'epics' => $projectId > 0 ? (new EpicRepository())->openForProject($projectId) : [],
             'people' => (new UserRepository())->active(),
             'priorities' => TicketRepository::PRIORITIES,
-            'statuses' => TicketRepository::STATUSES,
+            'statuses' => $projectId > 0 ? (new StatusRepository())->forProject($projectId) : [],
             'error' => $error,
             'theirs' => $theirs,
         ], $status);

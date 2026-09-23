@@ -56,6 +56,13 @@
     --ct-danger: #c14a5f;
     --ct-danger-soft: #fdeef1;
 
+    /* Two more for column colours. Violet text on its tint is 6.4:1; the grey
+       one is the "To do" pair the badges always had (7.9:1). */
+    --ct-violet: #6f4cbe;
+    --ct-violet-soft: #f3effc;
+    --ct-badge-slate-bg: #eef1f7;
+    --ct-badge-slate-text: #44506a;
+
     --ct-radius: 14px;
     --ct-radius-sm: 10px;
 
@@ -740,6 +747,15 @@ label {
     display: none;
 }
 
+/* A disclosure dressed as a quiet link ("Edit", "Delete"): no triangle. */
+summary.link-button {
+    list-style: none;
+}
+
+summary.link-button::-webkit-details-marker {
+    display: none;
+}
+
 /*
  * The small coloured labels: a ticket's status, its priority, an archived
  * project. Dark text on a tint rather than white on a solid colour — at this
@@ -865,6 +881,47 @@ label {
 
 .muted {
     color: var(--ct-muted);
+}
+
+/*
+ * A column's colour, chosen per column in the project's settings. Six, all dark
+ * text on a tint like the rest of the badges, each pair measured at 4.5:1 or
+ * better so a column named in any of them stays readable.
+ */
+.badge--slate {
+    border-color: var(--ct-border);
+    background: var(--ct-badge-slate-bg);
+    color: var(--ct-badge-slate-text);
+}
+
+.badge--blue {
+    border-color: var(--ct-primary-border);
+    background: var(--ct-primary-soft);
+    color: var(--ct-primary);
+}
+
+.badge--amber {
+    border-color: rgba(164, 112, 29, 0.3);
+    background: var(--ct-warning-soft);
+    color: var(--ct-warning);
+}
+
+.badge--green {
+    border-color: rgba(46, 139, 100, 0.3);
+    background: var(--ct-success-soft);
+    color: var(--ct-success);
+}
+
+.badge--violet {
+    border-color: rgba(111, 76, 190, 0.3);
+    background: var(--ct-violet-soft);
+    color: var(--ct-violet);
+}
+
+.badge--red {
+    border-color: rgba(193, 74, 95, 0.35);
+    background: var(--ct-danger-soft);
+    color: var(--ct-danger);
 }
 
 /*
@@ -1069,6 +1126,16 @@ label {
     text-align: center;
 }
 
+/* A column over its limit says so in its header; it does not refuse work. */
+.board__column--over .board__count {
+    color: var(--ct-danger);
+    font-weight: 700;
+}
+
+.board__column--over .board__head {
+    border-bottom-color: rgba(193, 74, 95, 0.35);
+}
+
 /*
  * The project cards on the index, and the epic strip on a project's page.
  */
@@ -1171,6 +1238,63 @@ label {
 .epic__meta {
     color: var(--ct-muted);
     font-size: 0.82rem;
+}
+
+/* The columns on a project's settings page: one row of fields per column. */
+.workflow {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 14px 0 18px;
+}
+
+.workflow__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    align-items: center;
+    padding: 10px 12px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-sm);
+}
+
+.workflow__form,
+.workflow__add {
+    display: flex;
+    flex: 1;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.workflow__preview {
+    min-width: 110px;
+}
+
+.workflow__wip {
+    width: 110px;
+}
+
+.workflow__move {
+    display: flex;
+    gap: 4px;
+}
+
+.workflow__delete[open] {
+    flex-basis: 100%;
+}
+
+.workflow__delete form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    padding-top: 8px;
+}
+
+.workflow__delete label {
+    margin: 0;
+    font-weight: 400;
 }
 
 /*

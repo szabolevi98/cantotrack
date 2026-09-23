@@ -1,9 +1,10 @@
 {% extends 'layout.twig' %}
+{% import 'common/macros.twig' as ui %}
 
 {% set editing = project is not null and project.id is defined %}
 
-{% block title %}{{ editing ? 'Project settings' : 'New project' }} — {{ app_name }}{% endblock %}
-{% block heading %}{{ editing ? 'Project settings' : 'New project' }}{% endblock %}
+{% block title %}{{ editing ? 'Project settings'|t : 'New project'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ editing ? 'Project settings'|t : 'New project'|t }}{% endblock %}
 
 {% block content %}
     {% if error %}<p class="flash flash--danger">{{ error }}</p>{% endif %}
@@ -12,50 +13,131 @@
         <form method="post" action="{{ editing ? url('/projects/' ~ project.id) : url('/projects/create') }}">
             <input type="hidden" name="_token" value="{{ csrf_token }}">
 
-            <label for="code">Code</label>
+            <label for="code">{{ 'Code'|t }}</label>
             {% if editing %}
                 {# Not editable: it is printed on every ticket this project ever
                    had, and in everything anyone wrote about them. #}
                 <input id="code" class="field" type="text" value="{{ project.code }}" disabled>
-                <p class="hint">The code cannot be changed — every ticket in the project carries it.</p>
+                <p class="hint">{{ 'The code cannot be changed — every ticket in the project carries it.'|t }}</p>
             {% else %}
                 <input id="code" class="field" type="text" name="code" value="{{ project.code|default('') }}"
                        maxlength="10" placeholder="CT" required autofocus>
-                <p class="hint">2 to 10 letters and digits. Tickets are named after it: CT-14.</p>
+                <p class="hint">{{ '2 to 10 letters and digits. Tickets are named after it: CT-14.'|t }}</p>
             {% endif %}
 
-            <label for="name">Name</label>
+            <label for="name">{{ 'Name'|t }}</label>
             <input id="name" class="field" type="text" name="name" value="{{ project.name|default('') }}"
                    maxlength="160" required>
 
-            <label for="description">Description</label>
+            <label for="description">{{ 'Description'|t }}</label>
             <textarea id="description" class="field" name="description" rows="4">{{ project.description|default('') }}</textarea>
 
             {% if editing %}
                 <label class="check">
                     <input type="checkbox" name="is_archived" value="1"{{ project.is_archived ? ' checked' : '' }}>
-                    Archived — hidden from the lists, and takes no new tickets
+                    {{ 'Archived — hidden from the lists, and takes no new tickets'|t }}
                 </label>
             {% endif %}
 
             <div class="form__actions">
-                <button class="button button--primary" type="submit">{{ editing ? 'Save' : 'Create project' }}</button>
-                <a class="button" href="{{ editing ? url('/projects/' ~ project.id) : url('/projects') }}">Cancel</a>
+                <button class="button button--primary" type="submit">{{ editing ? 'Save'|t : 'Create project'|t }}</button>
+                <a class="button" href="{{ editing ? url('/projects/' ~ project.id) : url('/projects') }}">{{ 'Cancel'|t }}</a>
             </div>
         </form>
     </section>
 
     {% if editing %}
-        <section class="card card--narrow">
-            <h2 class="card__title">Delete this project</h2>
+        {#
+            The columns. Each is a small form of its own, so changing one never
+            submits the others; the order is changed a step at a time, which
+            works on a keyboard and a phone as well as with a mouse.
+        #}
+        <section class="card" id="workflow">
+            <h2 class="card__title">{{ 'Columns'|t }}</h2>
             <p class="card__body">
-                This removes the project, its epics, its tickets and every hour logged
-                against them. Archiving keeps all of that and takes it out of the way.
+                {{ 'The board’s columns, left to right. Each belongs to a kind: tickets in a done column count as finished, everything else as open.'|t }}
+            </p>
+
+            <div class="workflow">
+                {% for status in statuses %}
+                    <div class="workflow__row">
+                        <form class="workflow__form" method="post" action="{{ url('/statuses/' ~ status.id) }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                            <span class="workflow__preview">{{ ui.status(status.name, status.colour) }}</span>
+                            <input class="field field--inline" type="text" name="name" value="{{ status.name }}"
+                                   maxlength="60" required aria-label="{{ 'Name'|t }}">
+                            <select class="field field--inline" name="category" aria-label="{{ 'Kind'|t }}">
+                                {% for category in ['todo', 'in_progress', 'done'] %}
+                                    <option value="{{ category }}"{{ status.category == category ? ' selected' : '' }}>{{ ui.category_label(category) }}</option>
+                                {% endfor %}
+                            </select>
+                            <select class="field field--inline" name="colour" aria-label="{{ 'Colour'|t }}">
+                                {% for colour, label in {slate: 'Grey', blue: 'Blue', amber: 'Amber', green: 'Green', violet: 'Violet', red: 'Red'} %}
+                                    <option value="{{ colour }}"{{ status.colour == colour ? ' selected' : '' }}>{{ label|t }}</option>
+                                {% endfor %}
+                            </select>
+                            <input class="field field--inline workflow__wip" type="number" name="wip_limit" min="1" max="999"
+                                   value="{{ status.wip_limit }}" placeholder="{{ 'No limit'|t }}" aria-label="{{ 'Limit'|t }}">
+                            <button class="button button--small" type="submit">{{ 'Save'|t }}</button>
+                        </form>
+
+                        <form class="workflow__move" method="post" action="{{ url('/statuses/' ~ status.id ~ '/move') }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                            <button class="button button--small" type="submit" name="direction" value="left"
+                                    {{ loop.first ? 'disabled' : '' }} aria-label="{{ 'Move left'|t }}">←</button>
+                            <button class="button button--small" type="submit" name="direction" value="right"
+                                    {{ loop.last ? 'disabled' : '' }} aria-label="{{ 'Move right'|t }}">→</button>
+                        </form>
+
+                        <details class="workflow__delete">
+                            <summary class="link-button link-button--text">{{ 'Delete'|t }}</summary>
+                            <form method="post" action="{{ url('/statuses/' ~ status.id ~ '/delete') }}"
+                                  data-confirm="{{ 'Delete the column {name}?'|t({name: status.name|t}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                {% if status.ticket_count > 0 %}
+                                    <label for="move-{{ status.id }}">
+                                        {{ plural('Its {count} ticket goes to', 'Its {count} tickets go to', status.ticket_count) }}
+                                    </label>
+                                    <select id="move-{{ status.id }}" class="field field--inline" name="move_to" required>
+                                        {% for other in statuses|filter(other => other.id != status.id) %}
+                                            <option value="{{ other.id }}">{{ other.name|t }}</option>
+                                        {% endfor %}
+                                    </select>
+                                {% endif %}
+                                <button class="button button--small button--danger" type="submit">{{ 'Delete column'|t }}</button>
+                            </form>
+                        </details>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <form class="workflow__add" method="post" action="{{ url('/projects/' ~ project.id ~ '/statuses') }}">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <input class="field field--inline" type="text" name="name" maxlength="60" required
+                       placeholder="{{ 'New column'|t }}" aria-label="{{ 'New column'|t }}">
+                <select class="field field--inline" name="category" aria-label="{{ 'Kind'|t }}">
+                    {% for category in ['todo', 'in_progress', 'done'] %}
+                        <option value="{{ category }}"{{ category == 'in_progress' ? ' selected' : '' }}>{{ ui.category_label(category) }}</option>
+                    {% endfor %}
+                </select>
+                <select class="field field--inline" name="colour" aria-label="{{ 'Colour'|t }}">
+                    {% for colour, label in {slate: 'Grey', blue: 'Blue', amber: 'Amber', green: 'Green', violet: 'Violet', red: 'Red'} %}
+                        <option value="{{ colour }}">{{ label|t }}</option>
+                    {% endfor %}
+                </select>
+                <button class="button" type="submit">{{ 'Add column'|t }}</button>
+            </form>
+        </section>
+
+        <section class="card card--narrow">
+            <h2 class="card__title">{{ 'Delete this project'|t }}</h2>
+            <p class="card__body">
+                {{ 'This removes the project, its epics and its tickets. A project with hours logged in it cannot be deleted — archive it instead, which keeps all of that and takes it out of the way.'|t }}
             </p>
             <form method="post" action="{{ url('/projects/' ~ project.id ~ '/delete') }}"
                   data-confirm="{{ 'Delete {code} and everything in it?'|t({code: project.code}) }}">
                 <input type="hidden" name="_token" value="{{ csrf_token }}">
-                <button class="button button--danger" type="submit">Delete {{ project.code }}</button>
+                <button class="button button--danger" type="submit">{{ 'Delete {code}'|t({code: project.code}) }}</button>
             </form>
         </section>
     {% endif %}

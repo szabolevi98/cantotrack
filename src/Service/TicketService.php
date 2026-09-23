@@ -8,6 +8,7 @@ use CantoTrack\Core\Format;
 use CantoTrack\Core\ValidationError;
 use CantoTrack\Model\EpicRepository;
 use CantoTrack\Model\ProjectRepository;
+use CantoTrack\Model\StatusRepository;
 use CantoTrack\Model\TicketRepository;
 use CantoTrack\Model\UserRepository;
 use PDO;
@@ -29,6 +30,7 @@ class TicketService
     private ProjectRepository $projects;
     private EpicRepository $epics;
     private UserRepository $users;
+    private StatusRepository $statuses;
 
     public function __construct(?PDO $db = null)
     {
@@ -38,6 +40,7 @@ class TicketService
         $this->projects = new ProjectRepository($db);
         $this->epics = new EpicRepository($db);
         $this->users = new UserRepository($db);
+        $this->statuses = new StatusRepository($db);
     }
 
     /**
@@ -57,13 +60,15 @@ class TicketService
         }
 
         $projectId = (int) $project['id'];
+        $status = $this->status($projectId, $input['status'] ?? '');
 
         return $this->tickets->create([
             'project_id' => $projectId,
             'epic_id' => $this->epic($input['epic_id'] ?? null, $projectId, null),
             'title' => $this->title($input['title'] ?? ''),
             'description' => (string) ($input['description'] ?? ''),
-            'status' => $this->status($input['status'] ?? 'backlog'),
+            'status_id' => (int) $status['id'],
+            'status_category' => (string) $status['category'],
             'priority' => $this->priority($input['priority'] ?? 'normal'),
             'assignee_id' => $this->assignee($input['assignee_id'] ?? null, null),
             // Whoever wrote it down. Not editable afterwards: it is a fact about
@@ -115,7 +120,15 @@ class TicketService
     /** @throws ValidationError */
     public function changeStatus(int $id, string $status): void
     {
-        $this->tickets->changeStatus($id, $this->status($status));
+        $ticket = $this->tickets->find($id);
+
+        if ($ticket === null) {
+            throw new ValidationError(__('There is no such ticket.'));
+        }
+
+        $column = $this->status((int) $ticket['project_id'], $status);
+
+        $this->tickets->changeStatus($id, (int) $column['id'], (string) $column['category']);
     }
 
     /**
@@ -238,11 +251,15 @@ class TicketService
         return $id;
     }
 
-    private function status(mixed $given): string
+    /**
+     * One of the project's own columns — by id, by name, or by category — and
+     * never another project's: the board a ticket is on is its project's.
+     */
+    private function status(int $projectId, mixed $given): array
     {
-        $status = (string) $given;
+        $status = $this->statuses->resolve($projectId, $given);
 
-        if (!in_array($status, TicketRepository::STATUSES, true)) {
+        if ($status === null) {
             throw new ValidationError(__('That is not one of the board’s columns.'));
         }
 

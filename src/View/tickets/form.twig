@@ -133,11 +133,9 @@
 
             {% if not editing %}
                 <label for="status">{{ 'Start in'|t }}</label>
-                <select id="status" class="field" name="status">
-                    {% for value in statuses %}
-                        <option value="{{ value }}"{{ values.status|default('backlog') == value ? ' selected' : '' }}>
-                            {{ ui.status_label(value) }}
-                        </option>
+                <select id="status" class="field" name="status" data-options="statuses">
+                    {% for status in statuses %}
+                        <option value="{{ status.id }}"{{ values.status|default('') == status.id ~ '' ? ' selected' : '' }}>{{ status.name|t }}</option>
                     {% endfor %}
                 </select>
             {% endif %}

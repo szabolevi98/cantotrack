@@ -119,3 +119,13 @@
     font-size: 0.82rem;
     text-align: center;
 }
+
+/* A column over its limit says so in its header; it does not refuse work. */
+.board__column--over .board__count {
+    color: var(--ct-danger);
+    font-weight: 700;
+}
+
+.board__column--over .board__head {
+    border-bottom-color: rgba(193, 74, 95, 0.35);
+}

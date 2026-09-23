@@ -27,11 +27,20 @@
             {% endfor %}
         </select>
 
+        {# Every project has its own columns, so across projects the choice is
+           the kind of column; once one project is picked, its columns too. #}
         <select class="field field--inline" name="status" aria-label="{{ 'Status'|t }}">
             <option value="">{{ 'Any status'|t }}</option>
-            {% for status in statuses %}
-                <option value="{{ status }}"{{ filters.status == status ? ' selected' : '' }}>{{ ui.status_label(status) }}</option>
+            {% for category in ['todo', 'in_progress', 'done'] %}
+                <option value="{{ category }}"{{ filters.status == category ? ' selected' : '' }}>{{ ui.category_label(category) }}</option>
             {% endfor %}
+            {% if statuses is not empty %}
+                <optgroup label="{{ 'Columns'|t }}">
+                    {% for status in statuses %}
+                        <option value="{{ status.id }}"{{ filters.status == status.id ~ '' ? ' selected' : '' }}>{{ status.name|t }}</option>
+                    {% endfor %}
+                </optgroup>
+            {% endif %}
         </select>
 
         <select class="field field--inline" name="assignee" aria-label="{{ 'Assignee'|t }}">
@@ -85,7 +94,7 @@
                             {{ ui.priority(ticket.priority) }}
                             {% if ticket.epic_title %}<span class="tag">{{ ticket.epic_title }}</span>{% endif %}
                         </td>
-                        <td>{{ ui.status(ticket.status) }}</td>
+                        <td>{{ ui.status(ticket.status_name, ticket.status_colour) }}</td>
                         <td>{{ ui.person(ticket.assignee_name) }}</td>
                         <td class="table__number">{{ ticket.estimate_minutes ? ticket.estimate_minutes|duration : '—' }}</td>
                         <td class="table__number">{{ ticket.logged_minutes > 0 ? ticket.logged_minutes|duration : '—' }}</td>

@@ -50,6 +50,12 @@ $router->get('/projects/{id}/options', static fn($id) => (new ProjectController(
 $router->post('/projects/{id}', static fn($id) => (new ProjectController())->update((int) $id));
 $router->post('/projects/{id}/delete', static fn($id) => (new ProjectController())->delete((int) $id));
 
+// A project's columns, from its settings page.
+$router->post('/projects/{id}/statuses', static fn($id) => (new ProjectController())->createStatus((int) $id));
+$router->post('/statuses/{id}', static fn($id) => (new ProjectController())->updateStatus((int) $id));
+$router->post('/statuses/{id}/move', static fn($id) => (new ProjectController())->moveStatus((int) $id));
+$router->post('/statuses/{id}/delete', static fn($id) => (new ProjectController())->deleteStatus((int) $id));
+
 $router->get('/projects/{id}/epics/create', static fn($id) => (new EpicController())->createForm((int) $id));
 $router->post('/projects/{id}/epics/create', static fn($id) => (new EpicController())->create((int) $id));
 $router->get('/epics/{id}', static fn($id) => (new EpicController())->show((int) $id));

@@ -175,7 +175,8 @@ class UserRepository
     {
         return $this->rows(
             'SELECT u.*,
-                    (SELECT COUNT(*) FROM tickets t WHERE t.assignee_id = u.id AND t.status <> \'done\') AS open_tickets,
+                    (SELECT COUNT(*) FROM tickets t JOIN statuses s ON s.id = t.status_id
+                     WHERE t.assignee_id = u.id AND s.category <> \'done\') AS open_tickets,
                     (SELECT COALESCE(SUM(w.minutes), 0) FROM worklogs w
                      WHERE w.user_id = u.id AND w.work_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)) AS minutes_30d
              FROM users u

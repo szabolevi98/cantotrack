@@ -129,12 +129,22 @@ $designEpic = $epics->create($ctId, 'Design and accessibility', 'The palette, th
 $contentEpic = $epics->create($webId, 'Content', 'Everything that has to be written before anything can be built.');
 $buildEpic = $epics->create($webId, 'Build', 'Templates, the CMS and the move.');
 
-/** Makes a ticket and hands back its id. */
-$make = static function (array $ticket) use ($tickets): int {
-    return $tickets->create($ticket + [
+$statuses = new CantoTrack\Model\StatusRepository();
+
+/** Makes a ticket and hands back its id. The status is named, as a person would. */
+$make = static function (array $ticket) use ($tickets, $statuses): int {
+    $status = $statuses->resolve((int) $ticket['project_id'], $ticket['status'] ?? 'backlog');
+
+    if ($status === null) {
+        throw new RuntimeException('No column called ' . ($ticket['status'] ?? 'backlog'));
+    }
+
+    return $tickets->create([
+        'status_id' => (int) $status['id'],
+        'status_category' => $status['category'],
+    ] + $ticket + [
         'epic_id' => null,
         'description' => null,
-        'status' => 'backlog',
         'priority' => 'normal',
         'assignee_id' => null,
         'reporter_id' => null,

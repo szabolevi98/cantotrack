@@ -4,15 +4,15 @@ namespace CantoTrack\Controller;
 
 use CantoTrack\Core\Auth;
 use CantoTrack\Core\Controller;
-use CantoTrack\Core\Session;
-use CantoTrack\Core\View;
+use CantoTrack\Core\I18n;
 use CantoTrack\Model\EpicRepository;
 use CantoTrack\Model\ProjectRepository;
+use CantoTrack\Model\StatusRepository;
 use CantoTrack\Model\TicketRepository;
 
 /**
- * Projects: the list, the board, and the form an administrator sets one up
- * with.
+ * Projects: the list, the board, and the settings an administrator sets one up
+ * with — its name, and the columns its tickets move through.
  *
  * Everyone signed in can see every project. A tracker where people cannot see
  * each other's work is one where the same thing gets built twice, and the
@@ -26,7 +26,7 @@ class ProjectController extends Controller
 
         $showArchived = ($_GET['archived'] ?? '') === '1';
 
-        View::render('projects/index.twig', [
+        $this->render('projects/index.twig', [
             'projects' => (new ProjectRepository())->allWithCounts($showArchived),
             'show_archived' => $showArchived,
         ]);
@@ -38,24 +38,22 @@ class ProjectController extends Controller
         Auth::require();
 
         $project = $this->projectOr404($id);
-        $tickets = new TicketRepository();
+        $statuses = (new StatusRepository())->forProject($id);
+        $board = (new TicketRepository())->board($id, $statuses);
 
-        $board = $tickets->board($id);
-
-        View::render('projects/show.twig', [
+        $this->render('projects/show.twig', [
             'project' => $project,
             'board' => $board['columns'],
-            'more_done' => $board['more_done'],
-            'counts' => $tickets->countsByStatus($id),
-            'statuses' => TicketRepository::STATUSES,
+            'more' => $board['more'],
+            'statuses' => $statuses,
             'epics' => (new EpicRepository())->forProject($id),
         ]);
     }
 
     /**
-     * What a ticket form offers once a project is chosen: its open epics. Asked
-     * for by the form's script, so choosing a project does not reload the page
-     * and lose what was already typed.
+     * What a ticket form offers once a project is chosen: its open epics and
+     * its columns. Asked for by the form's script, so choosing a project does
+     * not reload the page and lose what was already typed.
      */
     public function options(int $id): void
     {
@@ -68,6 +66,13 @@ class ProjectController extends Controller
                 static fn(array $epic): array => ['value' => (int) $epic['id'], 'label' => $epic['title']],
                 (new EpicRepository())->openForProject($id)
             ),
+            'statuses' => array_map(
+                static fn(array $status): array => [
+                    'value' => (int) $status['id'],
+                    'label' => I18n::translate((string) $status['name']),
+                ],
+                (new StatusRepository())->forProject($id)
+            ),
         ]);
     }
 
@@ -75,40 +80,41 @@ class ProjectController extends Controller
     {
         Auth::requireAdmin();
 
-        View::render('projects/form.twig', ['project' => null, 'error' => null]);
+        $this->render('projects/form.twig', ['project' => null, 'error' => null, 'statuses' => []]);
     }
 
     public function create(): void
     {
         Auth::requireAdmin();
 
-        $code = strtoupper(trim((string) ($_POST['code'] ?? '')));
-        $name = trim((string) ($_POST['name'] ?? ''));
+        $code = strtoupper($this->input('code'));
+        $name = $this->input('name');
         $projects = new ProjectRepository();
 
         // The code ends up in every ticket's name, in commit messages and in
         // conversations, so it is held to a shape: letters and digits, short
         // enough to say.
         $error = match (true) {
-            $name === '' => 'A project needs a name.',
+            $name === '' => __('A project needs a name.'),
             preg_match('/^[A-Z][A-Z0-9]{1,9}$/', $code) !== 1 =>
-                'The code is 2 to 10 characters, letters and digits, starting with a letter.',
-            $projects->findByCode($code) !== null => 'There is already a project with that code.',
+                __('The code is 2 to 10 characters, letters and digits, starting with a letter.'),
+            $projects->findByCode($code) !== null => __('There is already a project with that code.'),
             default => null,
         };
 
         if ($error !== null) {
-            View::render('projects/form.twig', [
-                'project' => ['code' => $code, 'name' => $name, 'description' => $_POST['description'] ?? ''],
+            $this->render('projects/form.twig', [
+                'project' => ['code' => $code, 'name' => $name, 'description' => $this->input('description')],
                 'error' => $error,
-            ]);
+                'statuses' => [],
+            ], 422);
 
             return;
         }
 
-        $id = $projects->create($code, $name, (string) ($_POST['description'] ?? ''));
+        $id = $projects->create($code, $name, $this->input('description'));
 
-        Session::flash('Project ' . $code . ' created.');
+        $this->flash(__('Project {code} created.', ['code' => $code]));
         $this->redirect('/projects/' . $id);
     }
 
@@ -116,7 +122,11 @@ class ProjectController extends Controller
     {
         Auth::requireAdmin();
 
-        View::render('projects/form.twig', ['project' => $this->projectOr404($id), 'error' => null]);
+        $this->render('projects/form.twig', [
+            'project' => $this->projectOr404($id),
+            'error' => null,
+            'statuses' => (new StatusRepository())->forProject($id),
+        ]);
     }
 
     public function update(int $id): void
@@ -124,25 +134,21 @@ class ProjectController extends Controller
         Auth::requireAdmin();
 
         $project = $this->projectOr404($id);
-        $name = trim((string) ($_POST['name'] ?? ''));
+        $name = $this->input('name');
 
         if ($name === '') {
-            View::render('projects/form.twig', [
+            $this->render('projects/form.twig', [
                 'project' => $project,
-                'error' => 'A project needs a name.',
-            ]);
+                'error' => __('A project needs a name.'),
+                'statuses' => (new StatusRepository())->forProject($id),
+            ], 422);
 
             return;
         }
 
-        (new ProjectRepository())->update(
-            $id,
-            $name,
-            (string) ($_POST['description'] ?? ''),
-            isset($_POST['is_archived'])
-        );
+        (new ProjectRepository())->update($id, $name, $this->input('description'), isset($_POST['is_archived']));
 
-        Session::flash('Project saved.');
+        $this->flash(__('Project saved.'));
         $this->redirect('/projects/' . $id);
     }
 
@@ -167,6 +173,135 @@ class ProjectController extends Controller
 
         $this->flash(__('Project {code} and its tickets were deleted.', ['code' => $project['code']]), 'warning');
         $this->redirect('/projects');
+    }
+
+    // -----------------------------------------------------------------------
+    // The columns
+    // -----------------------------------------------------------------------
+
+    public function createStatus(int $id): void
+    {
+        Auth::requireAdmin();
+
+        $this->projectOr404($id);
+        $name = $this->input('name');
+
+        if ($name === '') {
+            $this->flash(__('A column needs a name.'), 'danger');
+            $this->redirect('/projects/' . $id . '/edit#workflow');
+        }
+
+        (new StatusRepository())->create(
+            $id,
+            mb_substr($name, 0, 60),
+            $this->input('category', 'todo'),
+            $this->input('colour', 'slate'),
+            $this->idInput('wip_limit')
+        );
+
+        $this->flash(__('Column {name} added.', ['name' => $name]));
+        $this->redirect('/projects/' . $id . '/edit#workflow');
+    }
+
+    public function updateStatus(int $statusId): void
+    {
+        Auth::requireAdmin();
+
+        $status = $this->statusOr404($statusId);
+        $name = $this->input('name');
+        $statuses = new StatusRepository();
+
+        if ($name === '') {
+            $this->flash(__('A column needs a name.'), 'danger');
+            $this->redirect('/projects/' . $status['project_id'] . '/edit#workflow');
+        }
+
+        // A board with no done column has nowhere for work to finish, and
+        // nothing would ever count as finished.
+        $category = StatusRepository::category($this->input('category', 'todo'));
+        if ($status['category'] === 'done' && $category !== 'done' && $this->doneColumns((int) $status['project_id']) === 1) {
+            $this->flash(__('A project needs at least one done column.'), 'danger');
+            $this->redirect('/projects/' . $status['project_id'] . '/edit#workflow');
+        }
+
+        $statuses->update($statusId, mb_substr($name, 0, 60), $category, $this->input('colour', 'slate'), $this->idInput('wip_limit'));
+
+        $this->flash(__('Column {name} saved.', ['name' => $name]));
+        $this->redirect('/projects/' . $status['project_id'] . '/edit#workflow');
+    }
+
+    public function moveStatus(int $statusId): void
+    {
+        Auth::requireAdmin();
+
+        $status = $this->statusOr404($statusId);
+        (new StatusRepository())->move($statusId, $this->input('direction') === 'left' ? -1 : 1);
+
+        $this->redirect('/projects/' . $status['project_id'] . '/edit#workflow');
+    }
+
+    public function deleteStatus(int $statusId): void
+    {
+        Auth::requireAdmin();
+
+        $status = $this->statusOr404($statusId);
+        $projectId = (int) $status['project_id'];
+        $statuses = new StatusRepository();
+        $columns = $statuses->forProject($projectId);
+        $moveTo = $this->idInput('move_to');
+        $target = $moveTo === null ? null : $statuses->find($moveTo);
+
+        $error = match (true) {
+            count($columns) <= 1 => __('A board needs at least one column.'),
+            $status['category'] === 'done' && $this->doneColumns($projectId) === 1 => __('A project needs at least one done column.'),
+            // Its tickets go somewhere of the same project first; a column is
+            // never deleted out from under them.
+            (int) ($this->ticketCount($columns, $statusId)) > 0
+                && ($target === null || (int) $target['project_id'] !== $projectId || $moveTo === $statusId) =>
+                __('Choose where its tickets go first.'),
+            default => null,
+        };
+
+        if ($error !== null) {
+            $this->flash($error, 'danger');
+            $this->redirect('/projects/' . $projectId . '/edit#workflow');
+        }
+
+        $statuses->delete($statusId, $target === null ? null : (int) $target['id']);
+
+        $this->flash(__('Column {name} deleted.', ['name' => $status['name']]), 'warning');
+        $this->redirect('/projects/' . $projectId . '/edit#workflow');
+    }
+
+    private function doneColumns(int $projectId): int
+    {
+        return count(array_filter(
+            (new StatusRepository())->forProject($projectId),
+            static fn(array $s): bool => $s['category'] === 'done'
+        ));
+    }
+
+    /** @param array<array> $columns */
+    private function ticketCount(array $columns, int $statusId): int
+    {
+        foreach ($columns as $column) {
+            if ((int) $column['id'] === $statusId) {
+                return (int) $column['ticket_count'];
+            }
+        }
+
+        return 0;
+    }
+
+    private function statusOr404(int $id): array
+    {
+        $status = (new StatusRepository())->find($id);
+
+        if ($status === null) {
+            $this->notFound(__('There is no such column.'));
+        }
+
+        return $status;
     }
 
     private function projectOr404(int $id): array

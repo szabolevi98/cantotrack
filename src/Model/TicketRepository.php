@@ -10,14 +10,12 @@ use PDO;
  * against.
  *
  * Every read here joins in the names a page needs — the project's code, the
- * epic's title, who it is assigned to — because the alternative is a list page
- * that runs one query for the list and three more for every row on it.
+ * epic's title, the column it is in, who it is assigned to — because the
+ * alternative is a list page that runs one query for the list and three more
+ * for every row on it.
  */
 class TicketRepository
 {
-    /** The board's columns, in the order work moves through them. */
-    public const STATUSES = ['backlog', 'todo', 'in_progress', 'review', 'done'];
-
     public const PRIORITIES = ['low', 'normal', 'high', 'urgent'];
 
     /** A ticket name as people type it: CT-14. */
@@ -42,15 +40,22 @@ class TicketRepository
                    p.code AS project_code,
                    p.name AS project_name,
                    p.is_archived AS project_archived,
+                   s.name AS status_name,
+                   s.category AS status_category,
+                   s.colour AS status_colour,
                    e.title AS epic_title,
                    a.name AS assignee_name,
                    r.name AS reporter_name,
                    (SELECT COALESCE(SUM(w.minutes), 0) FROM worklogs w WHERE w.ticket_id = t.id) AS logged_minutes
             FROM tickets t
             JOIN projects p ON p.id = t.project_id
+            JOIN statuses s ON s.id = t.status_id
             LEFT JOIN epics e ON e.id = t.epic_id
             LEFT JOIN users a ON a.id = t.assignee_id
             LEFT JOIN users r ON r.id = t.reporter_id';
+
+    /** Unfinished first, then by priority, then the newest. */
+    private const ORDER = ' ORDER BY s.category = \'done\', FIELD(t.priority, \'urgent\', \'high\', \'normal\', \'low\'), t.id DESC';
 
     public function find(int $id): ?array
     {
@@ -82,14 +87,12 @@ class TicketRepository
     {
         [$where, $parameters] = $this->conditions($filters);
 
-        $sql = self::SELECT
+        $statement = $this->db->prepare(
+            self::SELECT
             . ($where === [] ? '' : ' WHERE ' . implode(' AND ', $where))
-            // Unfinished work first, then by priority, then the newest — which
-            // is the order somebody scanning the list is looking for.
-            . ' ORDER BY t.status = \'done\', FIELD(t.priority, \'urgent\', \'high\', \'normal\', \'low\'), t.id DESC'
-            . ' LIMIT ' . max(1, min($limit, 500)) . ' OFFSET ' . max(0, $offset);
-
-        $statement = $this->db->prepare($sql);
+            . self::ORDER
+            . ' LIMIT ' . max(1, min($limit, 500)) . ' OFFSET ' . max(0, $offset)
+        );
         $statement->execute($parameters);
 
         return $statement->fetchAll();
@@ -101,7 +104,9 @@ class TicketRepository
         [$where, $parameters] = $this->conditions($filters);
 
         $statement = $this->db->prepare(
-            'SELECT COUNT(*) FROM tickets t JOIN projects p ON p.id = t.project_id'
+            'SELECT COUNT(*) FROM tickets t
+             JOIN projects p ON p.id = t.project_id
+             JOIN statuses s ON s.id = t.status_id'
             . ($where === [] ? '' : ' WHERE ' . implode(' AND ', $where))
         );
         $statement->execute($parameters);
@@ -125,9 +130,18 @@ class TicketRepository
             $parameters['epic_id'] = (int) $filters['epic_id'];
         }
 
-        if (!empty($filters['status']) && in_array($filters['status'], self::STATUSES, true)) {
-            $where[] = 't.status = :status';
-            $parameters['status'] = $filters['status'];
+        // A status is either one column (an id) or a category, which is what
+        // "every project's done column" needs: the columns differ by project.
+        if (!empty($filters['status'])) {
+            $status = (string) $filters['status'];
+
+            if (ctype_digit($status)) {
+                $where[] = 't.status_id = :status_id';
+                $parameters['status_id'] = (int) $status;
+            } elseif (in_array($status, StatusRepository::CATEGORIES, true)) {
+                $where[] = 's.category = :category';
+                $parameters['category'] = $status;
+            }
         }
 
         if (!empty($filters['assignee_id'])) {
@@ -138,7 +152,7 @@ class TicketRepository
         // "Anything not finished" is what people mean by "open", and it is the
         // view a tracker spends most of its life showing.
         if (!empty($filters['open_only'])) {
-            $where[] = 't.status <> \'done\'';
+            $where[] = 's.category <> \'done\'';
         }
 
         if (!empty($filters['q'])) {
@@ -164,39 +178,48 @@ class TicketRepository
     }
 
     /**
-     * A project's tickets grouped into the board's columns.
+     * A project's tickets grouped into its columns.
      *
      * Every unfinished ticket, however many — a board that quietly stops at
-     * some number is a board that hides work. The done column is the one that
-     * only ever grows, so it shows the most recently finished and says how many
-     * more there are.
+     * some number is a board that hides work. A done column is the one that
+     * only ever grows, so it shows the most recently finished and says how
+     * many more there are.
      *
-     * @return array{columns: array<string, array>, more_done: int}
+     * @param array<array> $statuses the project's columns, in order
+     * @return array{columns: array<int, array>, more: array<int, int>}
      */
-    public function board(int $projectId, int $doneShown = 20): array
+    public function board(int $projectId, array $statuses, int $doneShown = 20): array
     {
-        $columns = array_fill_keys(self::STATUSES, []);
+        $columns = [];
+        foreach ($statuses as $status) {
+            $columns[(int) $status['id']] = [];
+        }
 
         $open = $this->db->prepare(
-            self::SELECT . ' WHERE t.project_id = :project AND t.status <> \'done\'
-             ORDER BY FIELD(t.priority, \'urgent\', \'high\', \'normal\', \'low\'), t.id DESC'
+            self::SELECT . ' WHERE t.project_id = :project AND s.category <> \'done\'' . self::ORDER
         );
         $open->execute(['project' => $projectId]);
 
         foreach ($open->fetchAll() as $ticket) {
-            $columns[$ticket['status']][] = $ticket;
+            $columns[(int) $ticket['status_id']][] = $ticket;
         }
 
+        $more = [];
         $done = $this->db->prepare(
-            self::SELECT . ' WHERE t.project_id = :project AND t.status = \'done\'
-             ORDER BY t.closed_at DESC, t.id DESC LIMIT ' . max(1, $doneShown)
+            self::SELECT . ' WHERE t.status_id = :status ORDER BY t.closed_at DESC, t.id DESC LIMIT ' . max(1, $doneShown)
         );
-        $done->execute(['project' => $projectId]);
-        $columns['done'] = $done->fetchAll();
 
-        $total = $this->countsByStatus($projectId)['done'];
+        foreach ($statuses as $status) {
+            if ($status['category'] !== 'done') {
+                continue;
+            }
 
-        return ['columns' => $columns, 'more_done' => max(0, (int) $total - count($columns['done']))];
+            $done->execute(['status' => (int) $status['id']]);
+            $columns[(int) $status['id']] = $done->fetchAll();
+            $more[(int) $status['id']] = max(0, (int) $status['ticket_count'] - count($columns[(int) $status['id']]));
+        }
+
+        return ['columns' => $columns, 'more' => $more];
     }
 
     /**
@@ -217,14 +240,12 @@ class TicketRepository
 
             $statement = $this->db->prepare(
                 'INSERT INTO tickets
-                    (project_id, number, epic_id, title, description, status, priority,
+                    (project_id, number, epic_id, title, description, status_id, priority,
                      assignee_id, reporter_id, estimate_minutes, closed_at)
                  VALUES
-                    (:project_id, :number, :epic_id, :title, :description, :status, :priority,
+                    (:project_id, :number, :epic_id, :title, :description, :status_id, :priority,
                      :assignee_id, :reporter_id, :estimate_minutes, :closed_at)'
             );
-
-            $status = in_array($data['status'] ?? '', self::STATUSES, true) ? $data['status'] : 'backlog';
 
             $statement->execute([
                 'project_id' => (int) $data['project_id'],
@@ -232,13 +253,13 @@ class TicketRepository
                 'epic_id' => $data['epic_id'] ?: null,
                 'title' => trim((string) $data['title']),
                 'description' => trim((string) ($data['description'] ?? '')) ?: null,
-                'status' => $status,
+                'status_id' => (int) $data['status_id'],
                 'priority' => in_array($data['priority'] ?? '', self::PRIORITIES, true) ? $data['priority'] : 'normal',
                 'assignee_id' => $data['assignee_id'] ?: null,
                 'reporter_id' => $data['reporter_id'] ?: null,
                 'estimate_minutes' => $data['estimate_minutes'] ?: null,
-                // A ticket created straight into done was finished now.
-                'closed_at' => $status === 'done' ? date('Y-m-d H:i:s') : null,
+                // A ticket created straight into a done column was finished now.
+                'closed_at' => ($data['status_category'] ?? '') === 'done' ? date('Y-m-d H:i:s') : null,
             ]);
 
             $id = (int) $this->db->lastInsertId();
@@ -289,23 +310,19 @@ class TicketRepository
 
     /**
      * Moves a ticket to another column, and keeps `closed_at` honest: it is set
-     * when the ticket reaches done and cleared when it leaves again, so
-     * "finished last week" cannot include something that was reopened.
+     * when the ticket reaches a done column and cleared when it leaves again,
+     * so "finished last week" cannot include something that was reopened.
      */
-    public function changeStatus(int $id, string $status): void
+    public function changeStatus(int $id, int $statusId, string $category): void
     {
-        if (!in_array($status, self::STATUSES, true)) {
-            return;
-        }
-
         $statement = $this->db->prepare(
             'UPDATE tickets
-             SET status = :status,
-                 closed_at = CASE WHEN :status2 = \'done\' THEN COALESCE(closed_at, NOW()) ELSE NULL END
+             SET status_id = :status,
+                 closed_at = CASE WHEN :category = \'done\' THEN COALESCE(closed_at, NOW()) ELSE NULL END
              WHERE id = :id'
         );
 
-        $statement->execute(['status' => $status, 'status2' => $status, 'id' => $id]);
+        $statement->execute(['status' => $statusId, 'category' => $category, 'id' => $id]);
     }
 
     public function delete(int $id): void
@@ -326,22 +343,5 @@ class TicketRepository
     public function openFor(int $userId, int $limit = 25): array
     {
         return $this->search(['assignee_id' => $userId, 'open_only' => true], $limit);
-    }
-
-    /** How many tickets are in each status for a project, for the column headings. */
-    public function countsByStatus(int $projectId): array
-    {
-        $statement = $this->db->prepare(
-            'SELECT status, COUNT(*) AS count FROM tickets WHERE project_id = :project GROUP BY status'
-        );
-
-        $statement->execute(['project' => $projectId]);
-
-        $counts = array_fill_keys(self::STATUSES, 0);
-        foreach ($statement->fetchAll() as $row) {
-            $counts[$row['status']] = (int) $row['count'];
-        }
-
-        return $counts;
     }
 }

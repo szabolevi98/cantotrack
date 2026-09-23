@@ -1,0 +1,195 @@
+/*
+ * The bar along the top of the content: the light/dark switch, the keyboard
+ * shortcuts, and whoever is signed in — with their profile and the way out
+ * behind their name.
+ *
+ * It stays at the top while the page scrolls under it, so signing out or
+ * switching the theme never means scrolling back up a long board first.
+ */
+.main {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.topbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    min-height: 56px;
+    padding: 8px 32px;
+    border-bottom: 1px solid var(--ct-border);
+    /* White, like the cards — the dark theme's card colour in the dark. */
+    background: var(--ct-surface);
+    box-shadow: 0 1px 6px rgba(var(--ct-shadow-rgb), 0.06);
+}
+
+/* A round button with an icon in it: the theme, the shortcuts. */
+.topbar__icon {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--ct-border);
+    border-radius: 50%;
+    background: var(--ct-surface);
+    color: var(--ct-muted);
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.topbar__icon:hover {
+    border-color: var(--ct-primary-border);
+    color: var(--ct-primary);
+}
+
+/* The light/dark switch shows the moon on a light page, the sun on a dark one. */
+.theme-switch__sun {
+    display: none;
+}
+
+.theme-switch[data-shown="dark"] .theme-switch__sun {
+    display: inline;
+}
+
+.theme-switch[data-shown="dark"] .theme-switch__moon {
+    display: none;
+}
+
+/*
+ * The person signed in: a pill with their face and name, and a menu under
+ * it. A <details> element, so it opens and closes without a script; the
+ * script only closes it on a click elsewhere or on Escape.
+ */
+.user-menu {
+    position: relative;
+}
+
+.user-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 12px 3px 3px;
+    border: 1px solid var(--ct-border);
+    border-radius: 999px;
+    background: var(--ct-surface);
+    color: var(--ct-text);
+    font-size: 0.9rem;
+    font-weight: 600;
+    list-style: none;
+    cursor: pointer;
+}
+
+.user-pill::-webkit-details-marker {
+    display: none;
+}
+
+.user-pill:hover,
+.user-menu[open] .user-pill {
+    border-color: var(--ct-primary-border);
+}
+
+.user-pill .avatar {
+    width: 30px;
+    height: 30px;
+    background: var(--ct-primary-soft);
+    color: var(--ct-primary);
+    font-size: 0.72rem;
+}
+
+.user-pill__name {
+    max-width: 14rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.user-pill .bi-chevron-down {
+    color: var(--ct-muted);
+    font-size: 0.75rem;
+    transition: transform 0.12s ease;
+}
+
+.user-menu[open] .bi-chevron-down {
+    transform: rotate(180deg);
+}
+
+.menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 240px;
+    padding: 6px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-sm);
+    background: var(--ct-surface);
+    box-shadow: var(--ct-shadow-lg);
+}
+
+.menu__head {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 10px 10px;
+    border-bottom: 1px solid var(--ct-border);
+    margin-bottom: 6px;
+}
+
+.menu__head small {
+    color: var(--ct-muted);
+    font-size: 0.8rem;
+}
+
+.menu__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: var(--ct-text);
+    font: inherit;
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.menu__item:hover,
+.menu__item:focus-visible {
+    background: var(--ct-primary-soft);
+    color: var(--ct-primary);
+    text-decoration: none;
+}
+
+.menu__item .bi {
+    width: 1.1em;
+    color: var(--ct-muted);
+}
+
+.menu__item:hover .bi {
+    color: inherit;
+}
+
+.menu__rule {
+    margin: 6px 0;
+    border: 0;
+    border-top: 1px solid var(--ct-border);
+}
+
+@media (max-width: 760px) {
+    .topbar {
+        position: static;
+        padding: 8px 16px;
+    }
+
+    .user-pill__name {
+        display: none;
+    }
+}

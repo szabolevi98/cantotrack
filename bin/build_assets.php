@@ -37,6 +37,8 @@ $bundles = [
             'components/worklog.css',
             'components/activity.css',
             'components/planning.css',
+            'components/icons.css',
+            'components/topbar.css',
             'components/navigation.css',
             'components/notifications.css',
             'components/time.css',

@@ -5,8 +5,28 @@
 .sidebar__link {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    gap: 10px;
+}
+
+.sidebar__link .bi {
+    flex-shrink: 0;
+    width: 1.15em;
+    font-size: 1.02rem;
+    opacity: 0.85;
+}
+
+.sidebar__link.is-active .bi {
+    opacity: 1;
+}
+
+.sidebar__link > span:not(.sidebar__count):not(.sidebar__shared) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sidebar__count {
+    margin-left: auto;
 }
 
 .sidebar__count {

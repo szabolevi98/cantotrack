@@ -111,9 +111,13 @@ foreach (files($root . '/src/View', '.twig') as $file) {
 
     // The values of a literal map — { low: 'Low', high: 'High' } — which a
     // template looks a word up in and then translates.
-    preg_match_all("/\\b[a-z_]+:\\s*'([A-Za-z][^'\\\\]*)'/", $code, $m);
-    foreach ($m[1] as $text) {
-        $note($text, $file);
+    // Keys that hold something other than words — an icon's name, a path —
+    // are left out.
+    preg_match_all("/\\b([a-z_]+):\\s*'([A-Za-z][^'\\\\]*)'/", $code, $m, PREG_SET_ORDER);
+    foreach ($m as $hit) {
+        if (!in_array($hit[1], ['icon', 'path'], true)) {
+            $note($hit[2], $file);
+        }
     }
 
     // A ternary's two sentences both translated: cond ? 'a'|t : 'b'|t is

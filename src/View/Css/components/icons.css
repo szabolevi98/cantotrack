@@ -1,0 +1,47 @@
+/*!
+ * Bootstrap Icons v1.11.3 (https://icons.getbootstrap.com/)
+ * Copyright 2019-2024 The Bootstrap Authors
+ * Licensed under MIT (https://github.com/twbs/icons/blob/main/LICENSE)
+ *
+ * The icon font, served from this site like everything else, with only the
+ * icons the interface uses — the full stylesheet is 86 KB of names for two
+ * thousand icons, and a class that is not here shows nothing rather than
+ * the wrong thing.
+ */
+@font-face {
+    font-display: block;
+    font-family: "bootstrap-icons";
+    src: url("../fonts/bootstrap-icons.woff2?v=1.11.3") format("woff2");
+}
+
+.bi::before {
+    display: inline-block;
+    font-family: "bootstrap-icons" !important;
+    font-style: normal;
+    font-weight: 400 !important;
+    font-variant: normal;
+    line-height: 1;
+    text-transform: none;
+    vertical-align: -0.125em;
+    -webkit-font-smoothing: antialiased;
+}
+
+.bi-speedometer2::before { content: "\f580"; }
+.bi-kanban::before { content: "\f44d"; }
+.bi-card-checklist::before { content: "\f224"; }
+.bi-calendar-week::before { content: "\f1f3"; }
+.bi-bar-chart-line::before { content: "\f17c"; }
+.bi-bell::before { content: "\f18a"; }
+.bi-funnel::before { content: "\f3e1"; }
+.bi-people::before { content: "\f4d0"; }
+.bi-clipboard-check::before { content: "\f28b"; }
+.bi-calendar3::before { content: "\f214"; }
+.bi-broadcast::before { content: "\f1d6"; }
+.bi-person::before { content: "\f4e1"; }
+.bi-key::before { content: "\f44f"; }
+.bi-shield-lock::before { content: "\f538"; }
+.bi-box-arrow-right::before { content: "\f1c3"; }
+.bi-moon-stars::before { content: "\f496"; }
+.bi-sun::before { content: "\f5a2"; }
+.bi-question-circle::before { content: "\f505"; }
+.bi-chevron-down::before { content: "\f282"; }

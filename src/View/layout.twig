@@ -41,11 +41,11 @@
 
     <nav class="sidebar__nav" aria-label="{{ 'Main'|t }}">
         {% set items = [
-            { path: '/', label: 'Dashboard' },
-            { path: '/projects', label: 'Projects' },
-            { path: '/tickets', label: 'Tickets' },
-            { path: '/timesheet', label: 'Timesheet' },
-            { path: '/reports', label: 'Reports' }
+            { path: '/', label: 'Dashboard', icon: 'speedometer2' },
+            { path: '/projects', label: 'Projects', icon: 'kanban' },
+            { path: '/tickets', label: 'Tickets', icon: 'card-checklist' },
+            { path: '/timesheet', label: 'Timesheet', icon: 'calendar-week' },
+            { path: '/reports', label: 'Reports', icon: 'bar-chart-line' }
         ] %}
         {# A guest has no hours and no reports to look at. #}
         {% if not can_work %}
@@ -58,12 +58,12 @@
                make "/" current on every page. #}
             {% set active = item.path == '/' ? current_path == '/' : (current_path starts with item.path and not (current_path starts with '/timesheet/approvals')) %}
             <a class="sidebar__link{{ active ? ' is-active' : '' }}" href="{{ url(item.path) }}"
-               {{ active ? 'aria-current="page"' : '' }}>{{ item.label|t }}</a>
+               {{ active ? 'aria-current="page"' : '' }}><i class="bi bi-{{ item.icon }}" aria-hidden="true"></i><span>{{ item.label|t }}</span></a>
         {% endfor %}
 
         {% set unread = unread_notifications() %}
         <a class="sidebar__link{{ current_path starts with '/notifications' ? ' is-active' : '' }}" href="{{ url('/notifications') }}">
-            {{ 'Notifications'|t }}
+            <i class="bi bi-bell" aria-hidden="true"></i><span>{{ 'Notifications'|t }}</span>
             {% if unread > 0 %}<span class="sidebar__count" aria-label="{{ plural('{count} not read', '{count} not read', unread) }}">{{ unread }}</span>{% endif %}
         </a>
 
@@ -75,7 +75,7 @@
             {% for filter in sidebar_filters %}
                 <a class="sidebar__link sidebar__link--filter" href="{{ url('/tickets?' ~ filter.query ~ (filter.query ? '&' : '') ~ 'filter=' ~ filter.id) }}"
                    title="{{ filter.mine ? '' : 'Shared by {name}'|t({name: filter.user_name}) }}">
-                    {{ filter.name }}{% if not filter.mine %} <span class="sidebar__shared">↗</span>{% endif %}
+                    <i class="bi bi-funnel" aria-hidden="true"></i><span>{{ filter.name }}</span>{% if not filter.mine %} <span class="sidebar__shared">↗</span>{% endif %}
                 </a>
             {% endfor %}
         {% endif %}
@@ -83,13 +83,13 @@
         {% if is_admin %}
             <span class="sidebar__section">{{ 'Administration'|t }}</span>
             <a class="sidebar__link{{ current_path starts with '/people' ? ' is-active' : '' }}"
-               href="{{ url('/people') }}">{{ 'People'|t }}</a>
+               href="{{ url('/people') }}"><i class="bi bi-people" aria-hidden="true"></i><span>{{ 'People'|t }}</span></a>
             <a class="sidebar__link{{ current_path starts with '/timesheet/approvals' ? ' is-active' : '' }}"
-               href="{{ url('/timesheet/approvals') }}">{{ 'Approvals'|t }}{% set waiting = pending_weeks() %}{% if waiting > 0 %} <span class="sidebar__count">{{ waiting }}</span>{% endif %}</a>
+               href="{{ url('/timesheet/approvals') }}"><i class="bi bi-clipboard-check" aria-hidden="true"></i><span>{{ 'Approvals'|t }}</span>{% set waiting = pending_weeks() %}{% if waiting > 0 %} <span class="sidebar__count">{{ waiting }}</span>{% endif %}</a>
             <a class="sidebar__link{{ current_path starts with '/settings' and not (current_path starts with '/settings/webhooks') ? ' is-active' : '' }}"
-               href="{{ url('/settings') }}">{{ 'Calendar'|t }}</a>
+               href="{{ url('/settings') }}"><i class="bi bi-calendar3" aria-hidden="true"></i><span>{{ 'Calendar'|t }}</span></a>
             <a class="sidebar__link{{ current_path starts with '/settings/webhooks' ? ' is-active' : '' }}"
-               href="{{ url('/settings/webhooks') }}">{{ 'Webhooks'|t }}</a>
+               href="{{ url('/settings/webhooks') }}"><i class="bi bi-broadcast" aria-hidden="true"></i><span>{{ 'Webhooks'|t }}</span></a>
         {% endif %}
     </nav>
 
@@ -111,42 +111,57 @@
         </div>
     {% endif %}
 
-    <div class="sidebar__foot">
-        {% import 'common/macros.twig' as faces %}
-        {{ faces.face(current_user.name, current_user.id, 'avatar') }}
-        <a class="sidebar__user" href="{{ url('/profile') }}" title="{{ 'Your profile'|t }}">
-            <strong>{{ current_user.name }}</strong>
-            <small>{{ {admin: 'Administrator', guest: 'Guest'}[current_user.role]|default('Member')|t }}</small>
-        </a>
-        {# A form, because signing out changes something: a link would let any
-           page on the internet sign somebody out with an image tag. #}
-        <div class="sidebar__actions">
-            <form class="sidebar__logout" method="post" action="{{ url('/logout') }}">
-                <input type="hidden" name="_token" value="{{ csrf_token }}">
-                <button class="link-button link-button--quiet" type="submit">{{ 'Sign out'|t }}</button>
-                <button class="link-button link-button--quiet" type="button" data-shortcut-help
-                        title="{{ 'Keyboard shortcuts'|t }}">?</button>
-            </form>
-
-            {# Light or dark in one click. Which one the page is in right now
-               is filled in by the script, since with "the system's" chosen
-               only the browser knows. #}
-            {% set dark_now = theme == 'dark' %}
-            <form class="theme-switch" method="post" action="{{ url('/profile/theme') }}" data-theme-switch
-                  data-to-dark="{{ 'Switch to the dark theme'|t }}" data-to-light="{{ 'Switch to the light theme'|t }}">
-                <input type="hidden" name="_token" value="{{ csrf_token }}">
-                <input type="hidden" name="back" value="{{ current_path }}{{ current_query ? '?' ~ current_query : '' }}">
-                <input type="hidden" name="shown" value="{{ dark_now ? 'dark' : 'light' }}">
-                <button class="theme-switch__button" type="submit"
-                        title="{{ dark_now ? 'Switch to the light theme'|t : 'Switch to the dark theme'|t }}"
-                        aria-label="{{ dark_now ? 'Switch to the light theme'|t : 'Switch to the dark theme'|t }}">
-                    <span class="theme-switch__moon" aria-hidden="true">☾</span>
-                    <span class="theme-switch__sun" aria-hidden="true">☀</span>
-                </button>
-            </form>
-        </div>
-    </div>
 </aside>
+
+<div class="main">
+    <header class="topbar">
+        {# Light or dark in one click. Which one the page is in right now is
+           filled in by the script, since with "the system's" chosen only the
+           browser knows. #}
+        {% set dark_now = theme == 'dark' %}
+        <form class="theme-switch" method="post" action="{{ url('/profile/theme') }}" data-theme-switch
+              data-to-dark="{{ 'Switch to the dark theme'|t }}" data-to-light="{{ 'Switch to the light theme'|t }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <input type="hidden" name="back" value="{{ current_path }}{{ current_query ? '?' ~ current_query : '' }}">
+            <input type="hidden" name="shown" value="{{ dark_now ? 'dark' : 'light' }}">
+            <button class="topbar__icon" type="submit"
+                    title="{{ dark_now ? 'Switch to the light theme'|t : 'Switch to the dark theme'|t }}"
+                    aria-label="{{ dark_now ? 'Switch to the light theme'|t : 'Switch to the dark theme'|t }}">
+                <i class="bi bi-moon-stars theme-switch__moon" aria-hidden="true"></i>
+                <i class="bi bi-sun theme-switch__sun" aria-hidden="true"></i>
+            </button>
+        </form>
+
+        <button class="topbar__icon" type="button" data-shortcut-help
+                title="{{ 'Keyboard shortcuts'|t }}" aria-label="{{ 'Keyboard shortcuts'|t }}">
+            <i class="bi bi-question-circle" aria-hidden="true"></i>
+        </button>
+
+        {% import 'common/macros.twig' as faces %}
+        <details class="user-menu" data-menu>
+            <summary class="user-pill" aria-label="{{ 'Your account: {name}'|t({name: current_user.name}) }}">
+                {{ faces.face(current_user.name, current_user.id, 'avatar') }}
+                <span class="user-pill__name">{{ current_user.name }}</span>
+                <i class="bi bi-chevron-down" aria-hidden="true"></i>
+            </summary>
+            <div class="menu">
+                <div class="menu__head">
+                    <strong>{{ current_user.name }}</strong>
+                    <small>{{ current_user.email }} · {{ {admin: 'Administrator', guest: 'Guest'}[current_user.role]|default('Member')|t }}</small>
+                </div>
+                <a class="menu__item" href="{{ url('/profile') }}"><i class="bi bi-person" aria-hidden="true"></i>{{ 'Edit your profile'|t }}</a>
+                <a class="menu__item" href="{{ url('/profile/two-factor') }}"><i class="bi bi-shield-lock" aria-hidden="true"></i>{{ 'Two-step sign-in'|t }}</a>
+                <a class="menu__item" href="{{ url('/profile/tokens') }}"><i class="bi bi-key" aria-hidden="true"></i>{{ 'Access tokens'|t }}</a>
+                <hr class="menu__rule">
+                {# A form, because signing out changes something: a link would
+                   let any page on the internet sign somebody out with an image. #}
+                <form method="post" action="{{ url('/logout') }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                    <button class="menu__item" type="submit"><i class="bi bi-box-arrow-right" aria-hidden="true"></i>{{ 'Sign out'|t }}</button>
+                </form>
+            </div>
+        </details>
+    </header>
 
 <main class="content" id="main">
     <header class="content__head">
@@ -163,6 +178,7 @@
 
     {% block content %}{% endblock %}
 </main>
+</div>
 
 {# The keyboard shortcuts, opened with "?". A dialog element, so the browser
    handles focus and Escape. #}

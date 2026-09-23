@@ -107,6 +107,29 @@
     });
 
     /*
+     * data-menu — a <details> dropdown (the account menu) that closes when
+     * somebody clicks anywhere else, or presses Escape, the way a menu does.
+     */
+    document.addEventListener('click', function (event) {
+        document.querySelectorAll('details[data-menu][open]').forEach(function (menu) {
+            if (!menu.contains(event.target)) {
+                menu.removeAttribute('open');
+            }
+        });
+    });
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key !== 'Escape') {
+            return;
+        }
+
+        document.querySelectorAll('details[data-menu][open]').forEach(function (menu) {
+            menu.removeAttribute('open');
+            menu.querySelector('summary').focus();
+        });
+    });
+
+    /*
      * data-autosubmit — a select that sends its form when it changes.
      *
      * With a mouse or a finger that is immediate: somebody opened the list and

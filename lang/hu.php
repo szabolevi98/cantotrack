@@ -921,4 +921,6 @@ return [
     'Switch to the light theme' => 'Váltás világos témára',
     'The check that you are a person and not a script did not go through. Try again.' => 'Az ellenőrzés, hogy ember vagy és nem program, nem sikerült. Próbáld újra.',
     'This page is protected by reCAPTCHA; Google’s privacy policy and terms apply.' => 'Ezt az oldalt reCAPTCHA védi; a Google adatvédelmi irányelvei és feltételei érvényesek.',
+    'Edit your profile' => 'Profil szerkesztése',
+    'Your account: {name}' => 'A fiókod: {name}',
 ];

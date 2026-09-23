@@ -331,54 +331,6 @@ button {
     font-weight: 600;
 }
 
-.sidebar__foot {
-    display: grid;
-    grid-template-columns: auto 1fr;
-    gap: 4px 10px;
-    align-items: center;
-    padding-top: 16px;
-    border-top: 1px solid rgba(255, 255, 255, 0.12);
-}
-
-.sidebar__user {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    line-height: 1.3;
-}
-
-.sidebar__user strong {
-    overflow: hidden;
-    color: var(--ct-sidebar-text-active);
-    font-size: 0.9rem;
-    font-weight: 600;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.sidebar__user small {
-    color: rgba(var(--ct-sidebar-text-rgb), 0.75);
-    font-size: 0.76rem;
-}
-
-/* Sign out, the shortcuts, and the light/dark switch: one row. */
-.sidebar__actions {
-    grid-column: 1 / -1;
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-top: 8px;
-}
-
-.sidebar__logout {
-    color: rgba(var(--ct-sidebar-text-rgb), 0.8);
-    font-size: 0.82rem;
-}
-
-.sidebar__logout:hover {
-    color: var(--ct-sidebar-text-active);
-}
-
 .avatar {
     display: grid;
     place-items: center;
@@ -475,31 +427,6 @@ button {
     }
 }
 
-/* Signing out is a form, dressed as the quiet link it used to be. */
-.sidebar__logout .link-button--quiet {
-    padding: 0;
-    color: rgba(var(--ct-sidebar-text-rgb), 0.8);
-    font-size: 0.82rem;
-}
-
-.sidebar__logout .link-button--quiet:hover {
-    color: var(--ct-sidebar-text-active);
-    text-decoration: underline;
-}
-
-/* The name at the foot of the sidebar is the way to one's own profile. */
-a.sidebar__user {
-    color: inherit;
-}
-
-a.sidebar__user:hover {
-    text-decoration: none;
-}
-
-a.sidebar__user:hover strong {
-    text-decoration: underline;
-}
-
 /* A picture where the initials would be: the same circle, filled. */
 img.face {
     object-fit: cover;
@@ -551,40 +478,6 @@ img.face {
     list-style: none;
     font-family: var(--ct-mono);
     font-size: 0.95rem;
-}
-
-/* The light/dark switch: a moon on a light page, a sun on a dark one. */
-.theme-switch__button {
-    display: grid;
-    place-items: center;
-    width: 30px;
-    height: 30px;
-    padding: 0;
-    border: 1px solid rgba(255, 255, 255, 0.16);
-    border-radius: 50%;
-    background: rgba(255, 255, 255, 0.08);
-    color: var(--ct-sidebar-text);
-    font-size: 0.95rem;
-    line-height: 1;
-    cursor: pointer;
-}
-
-.theme-switch__button:hover {
-    border-color: rgba(255, 255, 255, 0.35);
-    background: rgba(255, 255, 255, 0.16);
-    color: var(--ct-sidebar-text-active);
-}
-
-.theme-switch__sun {
-    display: none;
-}
-
-.theme-switch[data-shown="dark"] .theme-switch__sun {
-    display: inline;
-}
-
-.theme-switch[data-shown="dark"] .theme-switch__moon {
-    display: none;
 }
 
 /*
@@ -2600,6 +2493,250 @@ a.label:hover {
     }
 }
 
+/*!
+ * Bootstrap Icons v1.11.3 (https://icons.getbootstrap.com/)
+ * Copyright 2019-2024 The Bootstrap Authors
+ * Licensed under MIT (https://github.com/twbs/icons/blob/main/LICENSE)
+ *
+ * The icon font, served from this site like everything else, with only the
+ * icons the interface uses — the full stylesheet is 86 KB of names for two
+ * thousand icons, and a class that is not here shows nothing rather than
+ * the wrong thing.
+ */
+@font-face {
+    font-display: block;
+    font-family: "bootstrap-icons";
+    src: url("../fonts/bootstrap-icons.woff2?v=1.11.3") format("woff2");
+}
+
+.bi::before {
+    display: inline-block;
+    font-family: "bootstrap-icons" !important;
+    font-style: normal;
+    font-weight: 400 !important;
+    font-variant: normal;
+    line-height: 1;
+    text-transform: none;
+    vertical-align: -0.125em;
+    -webkit-font-smoothing: antialiased;
+}
+
+.bi-speedometer2::before { content: "\f580"; }
+.bi-kanban::before { content: "\f44d"; }
+.bi-card-checklist::before { content: "\f224"; }
+.bi-calendar-week::before { content: "\f1f3"; }
+.bi-bar-chart-line::before { content: "\f17c"; }
+.bi-bell::before { content: "\f18a"; }
+.bi-funnel::before { content: "\f3e1"; }
+.bi-people::before { content: "\f4d0"; }
+.bi-clipboard-check::before { content: "\f28b"; }
+.bi-calendar3::before { content: "\f214"; }
+.bi-broadcast::before { content: "\f1d6"; }
+.bi-person::before { content: "\f4e1"; }
+.bi-key::before { content: "\f44f"; }
+.bi-shield-lock::before { content: "\f538"; }
+.bi-box-arrow-right::before { content: "\f1c3"; }
+.bi-moon-stars::before { content: "\f496"; }
+.bi-sun::before { content: "\f5a2"; }
+.bi-question-circle::before { content: "\f505"; }
+.bi-chevron-down::before { content: "\f282"; }
+
+/*
+ * The bar along the top of the content: the light/dark switch, the keyboard
+ * shortcuts, and whoever is signed in — with their profile and the way out
+ * behind their name.
+ *
+ * It stays at the top while the page scrolls under it, so signing out or
+ * switching the theme never means scrolling back up a long board first.
+ */
+.main {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    min-width: 0;
+}
+
+.topbar {
+    position: sticky;
+    top: 0;
+    z-index: 30;
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+    min-height: 56px;
+    padding: 8px 32px;
+    border-bottom: 1px solid var(--ct-border);
+    /* White, like the cards — the dark theme's card colour in the dark. */
+    background: var(--ct-surface);
+    box-shadow: 0 1px 6px rgba(var(--ct-shadow-rgb), 0.06);
+}
+
+/* A round button with an icon in it: the theme, the shortcuts. */
+.topbar__icon {
+    display: grid;
+    place-items: center;
+    width: 36px;
+    height: 36px;
+    padding: 0;
+    border: 1px solid var(--ct-border);
+    border-radius: 50%;
+    background: var(--ct-surface);
+    color: var(--ct-muted);
+    font-size: 1rem;
+    cursor: pointer;
+}
+
+.topbar__icon:hover {
+    border-color: var(--ct-primary-border);
+    color: var(--ct-primary);
+}
+
+/* The light/dark switch shows the moon on a light page, the sun on a dark one. */
+.theme-switch__sun {
+    display: none;
+}
+
+.theme-switch[data-shown="dark"] .theme-switch__sun {
+    display: inline;
+}
+
+.theme-switch[data-shown="dark"] .theme-switch__moon {
+    display: none;
+}
+
+/*
+ * The person signed in: a pill with their face and name, and a menu under
+ * it. A <details> element, so it opens and closes without a script; the
+ * script only closes it on a click elsewhere or on Escape.
+ */
+.user-menu {
+    position: relative;
+}
+
+.user-pill {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 3px 12px 3px 3px;
+    border: 1px solid var(--ct-border);
+    border-radius: 999px;
+    background: var(--ct-surface);
+    color: var(--ct-text);
+    font-size: 0.9rem;
+    font-weight: 600;
+    list-style: none;
+    cursor: pointer;
+}
+
+.user-pill::-webkit-details-marker {
+    display: none;
+}
+
+.user-pill:hover,
+.user-menu[open] .user-pill {
+    border-color: var(--ct-primary-border);
+}
+
+.user-pill .avatar {
+    width: 30px;
+    height: 30px;
+    background: var(--ct-primary-soft);
+    color: var(--ct-primary);
+    font-size: 0.72rem;
+}
+
+.user-pill__name {
+    max-width: 14rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.user-pill .bi-chevron-down {
+    color: var(--ct-muted);
+    font-size: 0.75rem;
+    transition: transform 0.12s ease;
+}
+
+.user-menu[open] .bi-chevron-down {
+    transform: rotate(180deg);
+}
+
+.menu {
+    position: absolute;
+    top: calc(100% + 6px);
+    right: 0;
+    min-width: 240px;
+    padding: 6px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-sm);
+    background: var(--ct-surface);
+    box-shadow: var(--ct-shadow-lg);
+}
+
+.menu__head {
+    display: flex;
+    flex-direction: column;
+    padding: 8px 10px 10px;
+    border-bottom: 1px solid var(--ct-border);
+    margin-bottom: 6px;
+}
+
+.menu__head small {
+    color: var(--ct-muted);
+    font-size: 0.8rem;
+}
+
+.menu__item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    width: 100%;
+    padding: 8px 10px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: var(--ct-text);
+    font: inherit;
+    font-size: 0.9rem;
+    text-align: left;
+    cursor: pointer;
+}
+
+.menu__item:hover,
+.menu__item:focus-visible {
+    background: var(--ct-primary-soft);
+    color: var(--ct-primary);
+    text-decoration: none;
+}
+
+.menu__item .bi {
+    width: 1.1em;
+    color: var(--ct-muted);
+}
+
+.menu__item:hover .bi {
+    color: inherit;
+}
+
+.menu__rule {
+    margin: 6px 0;
+    border: 0;
+    border-top: 1px solid var(--ct-border);
+}
+
+@media (max-width: 760px) {
+    .topbar {
+        position: static;
+        padding: 8px 16px;
+    }
+
+    .user-pill__name {
+        display: none;
+    }
+}
+
 /*
  * Finding things: the search box and the saved filters in the sidebar, the
  * keyboard shortcuts, and the bar that changes many tickets at once.
@@ -2767,8 +2904,28 @@ kbd {
 .sidebar__link {
     display: flex;
     align-items: center;
-    justify-content: space-between;
-    gap: 8px;
+    gap: 10px;
+}
+
+.sidebar__link .bi {
+    flex-shrink: 0;
+    width: 1.15em;
+    font-size: 1.02rem;
+    opacity: 0.85;
+}
+
+.sidebar__link.is-active .bi {
+    opacity: 1;
+}
+
+.sidebar__link > span:not(.sidebar__count):not(.sidebar__shared) {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.sidebar__count {
+    margin-left: auto;
 }
 
 .sidebar__count {

@@ -21,6 +21,11 @@ final class FormatTest extends TestCase
         yield 'bare number is minutes' => ['90', 90];
         yield 'upper case' => ['2H 15M', 135];
         yield 'surrounding space' => ['  3h ', 180];
+        yield 'minutes without their m' => ['1h30', 90];
+        yield 'a working day' => ['2d', 960];
+        yield 'half a day, with a comma' => ['0,5d', 240];
+        yield 'a working week' => ['1w', 2400];
+        yield 'weeks, days and hours together' => ['1w 2d 3h', 2400 + 960 + 180];
         yield 'nothing' => ['', null];
         yield 'words' => ['three apples', null];
         yield 'minutes past sixty on a clock' => ['1:75', null];

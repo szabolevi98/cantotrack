@@ -39,6 +39,7 @@ $bundles = [
             'components/planning.css',
             'components/navigation.css',
             'components/notifications.css',
+            'components/time.css',
             'pages/auth.css',
         ],
     ],
@@ -50,6 +51,7 @@ $bundles = [
             'uploads.js',
             'board.js',
             'shortcuts.js',
+            'timer.js',
         ],
     ],
 ];

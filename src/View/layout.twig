@@ -79,6 +79,24 @@
         {% endif %}
     </nav>
 
+    {# The running clock, wherever one is: what it runs on, for how long, and
+       the button that turns it into hours. #}
+    {% set timer = running_timer() %}
+    {% if timer %}
+        <div class="timer" data-timer-started="{{ timer.started_at|date('U') }}">
+            <a class="timer__what" href="{{ url('/tickets/' ~ timer.ticket_id) }}" title="{{ timer.ticket_title }}">
+                <span class="timer__dot" aria-hidden="true"></span>
+                {{ timer.project_code }}-{{ timer.ticket_number }}
+                <span class="timer__clock" data-timer-clock>{{ ((('now'|date('U')) - timer.started_at|date('U')) / 60)|round(0, 'floor') }}m</span>
+            </a>
+            <form method="post" action="{{ url('/timer/stop') }}">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <input type="hidden" name="back" value="{{ current_path }}">
+                <button class="button button--small" type="submit">{{ 'Stop and log'|t }}</button>
+            </form>
+        </div>
+    {% endif %}
+
     <div class="sidebar__foot">
         <span class="avatar" title="{{ current_user.name }}">{{ current_user.name|initials }}</span>
         <a class="sidebar__user" href="{{ url('/profile') }}" title="{{ 'Your profile'|t }}">

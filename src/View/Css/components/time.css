@@ -1,0 +1,176 @@
+/*
+ * Time beyond single entries: the running clock, what is left on a ticket,
+ * and the week as a grid to type into.
+ */
+.timer {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin: 12px 0;
+    padding: 10px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: var(--ct-radius-sm);
+    background: rgba(255, 255, 255, 0.08);
+}
+
+.timer__what {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    color: var(--ct-sidebar-text-active);
+    font-family: var(--ct-mono);
+    font-size: 0.86rem;
+}
+
+.timer__what:hover {
+    text-decoration: none;
+}
+
+.timer__clock {
+    margin-left: auto;
+    font-variant-numeric: tabular-nums;
+}
+
+/* The one moving thing in the interface: a clock is running. Still for
+   anybody who asked their system for less motion. */
+.timer__dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: #e5536d;
+    animation: timer-pulse 1.6s ease-in-out infinite;
+}
+
+@keyframes timer-pulse {
+    50% {
+        opacity: 0.35;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .timer__dot {
+        animation: none;
+    }
+}
+
+.timer .button {
+    justify-content: center;
+    width: 100%;
+}
+
+.timer-control {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 14px;
+    align-items: center;
+    margin: 12px 0 4px;
+    padding-top: 12px;
+    border-top: 1px dashed var(--ct-border);
+}
+
+.timer-control form,
+.timer-control__form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.timer-control__running {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+    font-size: 0.88rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.log-form__remaining {
+    grid-column: 1 / -1;
+    max-width: 290px;
+    margin-top: 10px;
+}
+
+.bar--facts {
+    margin-top: 6px;
+}
+
+/* ---------------------------------------------------------------------------
+ * The week as a grid.
+ * ------------------------------------------------------------------------- */
+.grid-sheet__scroll {
+    overflow-x: auto;
+}
+
+.grid-sheet__table {
+    min-width: 820px;
+}
+
+.grid-sheet__day {
+    width: 84px;
+    text-align: center !important;
+}
+
+.grid-sheet__day--weekend,
+.grid-sheet__cell--weekend {
+    background: var(--ct-bg);
+}
+
+.grid-sheet__day--today {
+    color: var(--ct-primary) !important;
+}
+
+.grid-sheet__day--full {
+    color: var(--ct-success) !important;
+}
+
+.grid-sheet__ticket {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    max-width: 320px;
+}
+
+.grid-sheet__title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.grid-sheet__cell {
+    padding: 6px !important;
+    text-align: center;
+}
+
+.grid-sheet__input {
+    width: 72px;
+    margin: 0 auto;
+    padding: 6px;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+}
+
+.grid-sheet__several {
+    color: var(--ct-muted);
+    font-style: italic;
+}
+
+.grid-sheet tfoot th {
+    padding: 10px 8px;
+    white-space: nowrap;
+    border-top: 1px solid var(--ct-border);
+    font-variant-numeric: tabular-nums;
+}
+
+.grid-sheet__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    align-items: center;
+    padding: 14px 16px;
+    border-top: 1px solid var(--ct-border);
+}
+
+.grid-sheet__actions .hint {
+    margin: 0;
+}

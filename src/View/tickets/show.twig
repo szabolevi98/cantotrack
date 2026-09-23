@@ -256,7 +256,43 @@
                     </div>
 
                     <button class="button button--primary" type="submit">{{ 'Log it'|t }}</button>
+
+                    {# What is left once this is logged. Empty: what was left,
+                       less this — until somebody knows better. #}
+                    <div class="log-form__remaining">
+                        <label for="remaining">{{ 'Left afterwards'|t }}</label>
+                        <input id="remaining" class="field" type="text" name="remaining"
+                               placeholder="{{ remaining is not null ? 'counted down: {left}'|t({left: remaining|duration}) : 'no estimate'|t }}">
+                    </div>
                 </form>
+
+                {% set timer = running_timer() %}
+                <div class="timer-control">
+                    {% if timer and timer.ticket_id == ticket.id %}
+                        <form method="post" action="{{ url('/timer/stop') }}" class="timer-control__form">
+                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="back" value="/tickets/{{ ticket.id }}">
+                            <span class="timer-control__running" data-timer-started="{{ timer.started_at|date('U') }}">
+                                <span class="timer__dot" aria-hidden="true"></span>
+                                {{ 'The clock is running on this ticket'|t }} · <span data-timer-clock></span>
+                            </span>
+                            <input class="field field--inline" type="text" name="note" maxlength="500" placeholder="{{ 'What you did'|t }}" aria-label="{{ 'What you did'|t }}">
+                            <button class="button button--primary button--small" type="submit">{{ 'Stop and log'|t }}</button>
+                        </form>
+                        <form method="post" action="{{ url('/timer/discard') }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="back" value="/tickets/{{ ticket.id }}">
+                            <button class="link-button link-button--text" type="submit">{{ 'Throw it away'|t }}</button>
+                        </form>
+                    {% else %}
+                        <form method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/timer') }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="back" value="/tickets/{{ ticket.id }}">
+                            <button class="button button--small" type="submit">▶ {{ 'Start the clock'|t }}</button>
+                            {% if timer %}<span class="hint">{{ 'The one on {key} is stopped and logged first.'|t({key: timer.project_code ~ '-' ~ timer.ticket_number}) }}</span>{% endif %}
+                        </form>
+                    {% endif %}
+                </div>
 
                 {% if worklogs is empty %}
                     <p class="card__body">{{ 'No hours logged against this ticket yet.'|t }}</p>
@@ -329,6 +365,16 @@
                         #}
                         {% if ticket.estimate_minutes and ticket.logged_minutes > ticket.estimate_minutes %}
                             <span class="badge badge--urgent">{{ 'over by {duration}'|t({duration: (ticket.logged_minutes - ticket.estimate_minutes)|duration}) }}</span>
+                        {% endif %}
+                    </dd>
+
+                    <dt>{{ 'Left'|t }}</dt>
+                    <dd>
+                        {{ remaining is not null ? remaining|duration : '—' }}
+                        {% if remaining is not null and (ticket.logged_minutes + remaining) > 0 %}
+                            {# Done so far against done plus left — the real size of
+                               the work, which the estimate only guessed. #}
+                            <span class="bar bar--facts"><span class="bar__fill" style="width: {{ (ticket.logged_minutes / (ticket.logged_minutes + remaining) * 100)|round }}%"></span></span>
                         {% endif %}
                     </dd>
 

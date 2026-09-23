@@ -24,6 +24,7 @@ use CantoTrack\Controller\ProjectController;
 use CantoTrack\Controller\SearchController;
 use CantoTrack\Controller\SprintController;
 use CantoTrack\Controller\TicketController;
+use CantoTrack\Controller\TimerController;
 use CantoTrack\Controller\TimesheetController;
 use CantoTrack\Controller\WorklogController;
 
@@ -131,6 +132,11 @@ $router->post('/worklogs/{id}', static fn($id) => (new WorklogController())->upd
 $router->post('/worklogs/{id}/delete', static fn($id) => (new WorklogController())->delete((int) $id));
 
 $router->get('/timesheet', static fn() => (new TimesheetController())->index());
+$router->post('/timesheet/grid', static fn() => (new TimesheetController())->saveGrid());
+
+$router->post('/tickets/{id}/timer', static fn($id) => (new TimerController())->start((int) $id));
+$router->post('/timer/stop', static fn() => (new TimerController())->stop());
+$router->post('/timer/discard', static fn() => (new TimerController())->discard());
 
 // ---------------------------------------------------------------------------
 // The people, for administrators

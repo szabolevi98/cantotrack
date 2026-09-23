@@ -120,6 +120,7 @@ class TicketController extends Controller
 
         $this->render('tickets/show.twig', [
             'ticket' => $ticket,
+            'remaining' => TicketRepository::remaining($ticket),
             'watching' => $notifications->isWatching($id, (int) Auth::id()),
             'watchers' => $notifications->watcherCount($id),
             'labels' => (new LabelRepository())->forTicket($id),

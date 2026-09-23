@@ -43,7 +43,7 @@ class WorklogService
      * @return array{id: int, minutes: int, rounded: bool}
      * @throws ValidationError
      */
-    public function log(int $ticketId, int $userId, string $time, string $date, ?string $note): array
+    public function log(int $ticketId, int $userId, string $time, string $date, ?string $note, string $remaining = ''): array
     {
         $ticket = $this->tickets->find($ticketId);
 
@@ -53,12 +53,46 @@ class WorklogService
 
         [$minutes, $rounded] = $this->minutes($time);
         $day = $this->day($date);
+        $left = $this->remainingAfter($ticket, $minutes, $remaining);
 
         $id = $this->worklogs->create($ticketId, $userId, $day, $minutes, $this->note($note));
+
+        if ($left !== false) {
+            $this->tickets->setRemaining($ticketId, $left);
+        }
 
         $this->activity->happened($ticket, $userId, 'logged', 'time', $day, Format::duration($minutes));
 
         return ['id' => $id, 'minutes' => $minutes, 'rounded' => $rounded];
+    }
+
+    /**
+     * What is left on the ticket once this time is logged.
+     *
+     * Said out loud ("2h" in the remaining field): that. Left empty: what was
+     * left before, less this — the work goes down by the time put in, until
+     * somebody knows better. A ticket that never had an estimate has nothing
+     * to go down from, and stays without one (false: leave it alone).
+     *
+     * @throws ValidationError
+     */
+    private function remainingAfter(array $ticket, int $minutes, string $given): int|false
+    {
+        $given = trim($given);
+
+        if ($given !== '') {
+            $parsed = Format::parseDuration($given);
+
+            if ($parsed === null) {
+                throw new ValidationError(__('What is left should read like "3h" or "1d 2h".'));
+            }
+
+            return $parsed;
+        }
+
+        $before = TicketRepository::remaining($ticket);
+
+        return $before === null ? false : max(0, $before - $minutes);
     }
 
     /**

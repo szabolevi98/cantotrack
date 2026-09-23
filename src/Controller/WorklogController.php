@@ -35,11 +35,12 @@ class WorklogController extends Controller
                 (int) Auth::id(),
                 $this->input('time'),
                 $this->input('work_date'),
-                $this->input('note')
+                $this->input('note'),
+                $this->input('remaining')
             );
         } catch (ValidationError $e) {
             $this->flash($e->getMessage(), 'danger');
-            $this->redirect('/tickets/' . $ticketId);
+            $this->back('/tickets/' . $ticketId);
         }
 
         $this->flash($this->saidBack($logged['minutes'], $this->input('work_date') ?: date('Y-m-d'), $logged['rounded']));

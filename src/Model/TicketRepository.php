@@ -468,6 +468,30 @@ class TicketRepository
         $statement->execute(['id' => $id]);
     }
 
+    /** How much is left, as somebody just said — or null for "the estimate less what was logged". */
+    public function setRemaining(int $id, ?int $minutes): void
+    {
+        $this->db->prepare('UPDATE tickets SET remaining_minutes = :minutes WHERE id = :id')
+            ->execute(['minutes' => $minutes, 'id' => $id]);
+    }
+
+    /**
+     * What is left on a ticket: what was last said, or else the estimate less
+     * the hours logged, or nothing when there was never an estimate.
+     */
+    public static function remaining(array $ticket): ?int
+    {
+        if ($ticket['remaining_minutes'] !== null) {
+            return (int) $ticket['remaining_minutes'];
+        }
+
+        if (empty($ticket['estimate_minutes'])) {
+            return null;
+        }
+
+        return max(0, (int) $ticket['estimate_minutes'] - (int) $ticket['logged_minutes']);
+    }
+
     public function hasWorklogs(int $id): bool
     {
         $statement = $this->db->prepare('SELECT EXISTS (SELECT 1 FROM worklogs WHERE ticket_id = :id)');

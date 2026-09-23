@@ -49,10 +49,15 @@ class DatabaseConnection
                     // parameters. The consequence to remember: a named
                     // placeholder may appear only once in a statement.
                     PDO::ATTR_EMULATE_PREPARES => false,
+                    // The database's clock is set to PHP's zone, so that NOW()
+                    // and date() agree: a timer started by one and stopped by
+                    // the other otherwise runs an hour or two long, and a
+                    // ticket closed just after midnight lands on yesterday.
                     PDO::MYSQL_ATTR_INIT_COMMAND => sprintf(
-                        'SET NAMES %s COLLATE %s',
+                        "SET NAMES %s COLLATE %s, time_zone = '%s'",
                         Config::get('database.charset', 'utf8mb4'),
-                        $collation
+                        $collation,
+                        date('P')
                     ),
                 ]
             );

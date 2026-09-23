@@ -41,8 +41,12 @@ class Format
 
     /**
      * Parses what somebody typed into a duration field: "1h 30m", "1.5h", "90m",
-     * "90", "1:30". Anything it cannot read is nothing, which the caller reports
-     * rather than guessing at.
+     * "90", "1:30", "1h30", and — for estimates — days and weeks: "2d", "1w 2d".
+     * Anything it cannot read is nothing, which the caller reports rather than
+     * guessing at.
+     *
+     * A day is a working day (`work.hours_per_day`), and a week five of them:
+     * "3d" of work is three days at a desk, not seventy-two hours.
      */
     public static function parseDuration(string $input): ?int
     {
@@ -56,13 +60,20 @@ class Format
             return ((int) $m[1] * 60) + (int) $m[2];
         }
 
-        // "1h 30m", "1h", "30m", and the decimal "1.5h" people type out of habit.
-        if (preg_match('/^(?:(\d+(?:[.,]\d+)?)\s*h)?\s*(?:(\d+)\s*m)?$/', $text, $m) === 1
-            && ($m[1] ?? '') . ($m[2] ?? '') !== '') {
-            $hours = (float) str_replace(',', '.', $m[1] ?? '0');
-            $minutes = (int) ($m[2] ?? 0);
+        // "1h30" — minutes after hours without their m, as people type fast.
+        if (preg_match('/^(\d+)\s*h\s*([0-5]?\d)$/', $text, $m) === 1) {
+            return ((int) $m[1] * 60) + (int) $m[2];
+        }
 
-            return (int) round($hours * 60) + $minutes;
+        // "1w 2d 3h 30m" in any combination, each part optional but in that
+        // order, and the decimal "1.5h" or "0,5d" people type out of habit.
+        $number = '(\d+(?:[.,]\d+)?)';
+        if (preg_match('/^(?:' . $number . '\s*w)?\s*(?:' . $number . '\s*d)?\s*(?:' . $number . '\s*h)?\s*(?:(\d+)\s*m)?$/', $text, $m) === 1
+            && implode('', array_slice($m, 1)) !== '') {
+            $day = self::minutesPerDay();
+            $value = static fn(int $i): float => (float) str_replace(',', '.', $m[$i] ?? '0');
+
+            return (int) round($value(1) * 5 * $day + $value(2) * $day + $value(3) * 60) + (int) ($m[4] ?? 0);
         }
 
         // A bare number is minutes. It is the one reading that surprises people
@@ -72,6 +83,16 @@ class Format
         }
 
         return null;
+    }
+
+    /** A working day in minutes, from the configuration — eight hours when there is none. */
+    public static function minutesPerDay(): int
+    {
+        try {
+            return max(1, Config::int('work.hours_per_day', 8)) * 60;
+        } catch (\RuntimeException) {
+            return 480;
+        }
     }
 
     /** "1.4 MB", "820 KB" — the size of a file, as a person reads it. */

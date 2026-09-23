@@ -750,6 +750,29 @@ if ($email === null || $password === null) {
     );
     check('with the week totalled', str_contains($timesheet['body'], '2h 15m'));
 
+    // The same week as a grid, typed into: a new cell becomes an entry, and a
+    // cell that holds two entries is not rewritten from one number.
+    $yesterday = date('Y-m-d', strtotime('-1 day'));
+    $gridWeek = date('Y-m-d', strtotime('monday this week', strtotime($yesterday)));
+    $gridPage = request($baseUrl . '/timesheet?view=grid&week=' . $gridWeek, [], $jar);
+    check('the week can be shown as a grid', str_contains($gridPage['body'], 'grid-sheet') && str_contains($gridPage['body'], $code . '-1'));
+
+    $gridSaved = request($baseUrl . '/timesheet/grid', [
+        '_token' => $token,
+        'week' => $gridWeek,
+        'cells' => [$ticketId => [$yesterday => '1h 15m']],
+    ], $jar);
+    check(
+        'and a day typed into it becomes an entry',
+        $gridSaved['status'] === 302 && str_contains(request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'], '1h 15m')
+    );
+
+    request($baseUrl . '/timesheet/grid', ['_token' => $token, 'week' => date('Y-m-d', strtotime('monday this week')), 'cells' => [$ticketId => [date('Y-m-d') => '9h']]], $jar);
+    check(
+        'while a day with several entries is left for the day list',
+        str_contains(request($baseUrl . '/timesheet?view=grid', [], $jar)['body'], 'several entries on one ticket')
+    );
+
     // The entries belong to whoever worked them, so this account can remove its
     // own; the timesheet has to lose it with them.
     //

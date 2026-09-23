@@ -3,7 +3,7 @@
 namespace CantoTrack\Controller;
 
 use CantoTrack\Core\Auth;
-use CantoTrack\Core\Config;
+use CantoTrack\Core\Controller;
 use CantoTrack\Core\Session;
 use CantoTrack\Core\View;
 use CantoTrack\Model\UserRepository;
@@ -19,7 +19,7 @@ use CantoTrack\Model\UserRepository;
  * Nobody is deleted. Accounts are deactivated, because tickets and worklogs
  * point at them and the history has to keep making sense.
  */
-class PeopleController
+class PeopleController extends Controller
 {
     public function index(): void
     {
@@ -153,16 +153,9 @@ class PeopleController
         $person = (new UserRepository())->find($id);
 
         if ($person === null) {
-            http_response_code(404);
-            exit('There is no such person.');
+            $this->notFound(__('There is no such person.'));
         }
 
         return $person;
-    }
-
-    private function redirect(string $path): never
-    {
-        header('Location: ' . rtrim((string) Config::get('app.base_url'), '/') . $path);
-        exit;
     }
 }

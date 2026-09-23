@@ -3,7 +3,7 @@
 namespace CantoTrack\Controller;
 
 use CantoTrack\Core\Auth;
-use CantoTrack\Core\Config;
+use CantoTrack\Core\Controller;
 use CantoTrack\Core\Session;
 use CantoTrack\Core\View;
 use CantoTrack\Model\EpicRepository;
@@ -17,7 +17,7 @@ use CantoTrack\Model\TicketRepository;
  * Grouping tickets is part of doing the work, and a grouping that needs somebody
  * else's permission is one people stop maintaining.
  */
-class EpicController
+class EpicController extends Controller
 {
     public function show(int $id): void
     {
@@ -120,8 +120,7 @@ class EpicController
         $epic = (new EpicRepository())->find($id);
 
         if ($epic === null) {
-            http_response_code(404);
-            exit('There is no such epic.');
+            $this->notFound(__('There is no such epic.'));
         }
 
         return $epic;
@@ -132,16 +131,9 @@ class EpicController
         $project = (new ProjectRepository())->find($id);
 
         if ($project === null) {
-            http_response_code(404);
-            exit('There is no such project.');
+            $this->notFound(__('There is no such project.'));
         }
 
         return $project;
-    }
-
-    private function redirect(string $path): never
-    {
-        header('Location: ' . rtrim((string) Config::get('app.base_url'), '/') . $path);
-        exit;
     }
 }

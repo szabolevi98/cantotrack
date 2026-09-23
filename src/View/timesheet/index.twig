@@ -21,12 +21,12 @@
     <form class="filters card" method="get" action="{{ url('/timesheet') }}">
         <input type="hidden" name="week" value="{{ monday }}">
         <label class="check--inline" for="user">Whose week</label>
-        <select id="user" class="field field--inline" name="user" onchange="this.form.submit()">
+        <select id="user" class="field field--inline" name="user" data-autosubmit>
             {% for one in people %}
                 <option value="{{ one.id }}"{{ person.id == one.id ? ' selected' : '' }}>{{ one.name }}</option>
             {% endfor %}
         </select>
-        <noscript><button class="button" type="submit">Show</button></noscript>
+        <button class="button autosubmit__button" type="submit">{{ 'Show'|t }}</button>
     </form>
 
     <div class="stats">
@@ -87,7 +87,7 @@
                                     {% if is_mine or is_admin %}
                                         <form class="log__delete" method="post"
                                               action="{{ url('/worklogs/' ~ entry.id ~ '/delete') }}"
-                                              onsubmit="return confirm('Delete this {{ entry.minutes|duration }} entry?')">
+                                              data-confirm="{{ 'Delete this {duration} entry?'|t({duration: entry.minutes|duration}) }}">
                                             <input type="hidden" name="_token" value="{{ csrf_token }}">
                                             <input type="hidden" name="back" value="/timesheet?week={{ monday }}&user={{ person.id }}">
                                             <button class="link-button" type="submit" title="Delete this entry">×</button>

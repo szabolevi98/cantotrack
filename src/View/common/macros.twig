@@ -48,7 +48,7 @@
     <form class="move" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/status') }}">
         <input type="hidden" name="_token" value="{{ csrf_token }}">
         <input type="hidden" name="back" value="{{ back }}">
-        <select class="field field--inline move__select" name="status" onchange="this.form.submit()"
+        <select class="field field--inline move__select" name="status" data-autosubmit
                 aria-label="Status of {{ ticket.project_code }}-{{ ticket.number }}">
             {% for value in statuses %}
                 <option value="{{ value }}"{{ ticket.status == value ? ' selected' : '' }}>
@@ -57,7 +57,8 @@
             {% endfor %}
         </select>
         {# Without JavaScript the select changes nothing on its own, so the form
-           keeps a button that does. #}
-        <noscript><button class="button" type="submit">Move</button></noscript>
+           keeps a button that does. With it, the button is hidden until a
+           keyboard has changed the select — see data-autosubmit in core.js. #}
+        <button class="button button--small autosubmit__button" type="submit">{{ 'Move'|t }}</button>
     </form>
 {% endmacro %}

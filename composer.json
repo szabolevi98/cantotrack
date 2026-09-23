@@ -9,7 +9,10 @@
     "autoload": {
         "psr-4": {
             "CantoTrack\\": "src/"
-        }
+        },
+        "files": [
+            "src/functions.php"
+        ]
     },
     "config": {
         "sort-packages": true,

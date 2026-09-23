@@ -63,7 +63,7 @@
                 working; whatever they have open stays open.
             </p>
             <form method="post" action="{{ url('/people/' ~ person.id ~ '/password') }}"
-                  onsubmit="return confirm('Give {{ person.name }} a new password?')">
+                  data-confirm="{{ 'Give {name} a new password?'|t({name: person.name}) }}">
                 <input type="hidden" name="_token" value="{{ csrf_token }}">
                 <button class="button" type="submit">Make a new password</button>
             </form>

@@ -3,7 +3,7 @@
 namespace CantoTrack\Controller;
 
 use CantoTrack\Core\Auth;
-use CantoTrack\Core\Config;
+use CantoTrack\Core\Controller;
 use CantoTrack\Core\Format;
 use CantoTrack\Core\Session;
 use CantoTrack\Core\View;
@@ -21,7 +21,7 @@ use CantoTrack\Model\WorklogRepository;
  * should not go through a form with eight other fields on it that a second
  * person might be editing at the same time.
  */
-class TicketController
+class TicketController extends Controller
 {
     public function index(): void
     {
@@ -175,8 +175,7 @@ class TicketController
 
         // Back where it was clicked, so moving a ticket from the board does not
         // land somebody on the ticket's own page.
-        $back = (string) ($_POST['back'] ?? '');
-        $this->redirect(str_starts_with($back, '/') && !str_starts_with($back, '//') ? $back : '/tickets/' . $id);
+        $this->back('/tickets/' . $id);
     }
 
     public function delete(int $id): void
@@ -246,16 +245,9 @@ class TicketController
         $ticket = (new TicketRepository())->find($id);
 
         if ($ticket === null) {
-            http_response_code(404);
-            exit('There is no such ticket.');
+            $this->notFound(__('There is no such ticket.'));
         }
 
         return $ticket;
-    }
-
-    private function redirect(string $path): never
-    {
-        header('Location: ' . rtrim((string) Config::get('app.base_url'), '/') . $path);
-        exit;
     }
 }

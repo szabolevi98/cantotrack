@@ -70,6 +70,41 @@ class View
         $twig->addFunction(new TwigFunction('url', static fn(string $path = ''): string =>
             rtrim((string) Config::get('app.base_url', ''), '/') . '/' . ltrim($path, '/')));
 
+        $twig->addFunction(new TwigFunction('asset', [self::class, 'asset']));
+
+        // Every sentence on the screen goes through this, so the interface can
+        // be read in more than one language. See I18n for why the English is
+        // the key.
+        $twig->addFilter(new TwigFilter('t', static fn(?string $text, array $params = []): string =>
+            I18n::translate((string) $text, $params)));
+        $twig->addFunction(new TwigFunction('plural', static fn(string $one, string $many, int $count, array $params = []): string =>
+            I18n::plural($one, $many, $count, $params)));
+        $twig->addGlobal('locale', I18n::locale());
+        $twig->addGlobal('theme', (string) (Auth::user()['theme'] ?? 'system'));
+
         return self::$twig = $twig;
+    }
+
+    /**
+     * The address of a file under web/assets, with a fingerprint of its
+     * contents on the end.
+     *
+     * The fingerprint is what lets the stylesheet be cached for as long as the
+     * CDN in front of the site likes: a deployment that changes the file
+     * changes the address, so nobody is shown yesterday's CSS against today's
+     * markup. Without it, a release looked broken until the cache ran out.
+     */
+    public static function asset(string $path): string
+    {
+        static $fingerprints = [];
+
+        $path = ltrim($path, '/');
+        $file = dirname(__DIR__, 2) . '/web/assets/' . $path;
+
+        if (!isset($fingerprints[$path])) {
+            $fingerprints[$path] = is_file($file) ? substr((string) md5_file($file), 0, 10) : '0';
+        }
+
+        return rtrim((string) Config::get('app.base_url', ''), '/') . '/assets/' . $path . '?v=' . $fingerprints[$path];
     }
 }

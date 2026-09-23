@@ -25,24 +25,65 @@ class Router
         $this->routes['POST'][$path] = $handler;
     }
 
+    /** The API's verbs. HTML forms only ever send GET and POST. */
+    public function patch(string $path, callable $handler): void
+    {
+        $this->routes['PATCH'][$path] = $handler;
+    }
+
+    public function delete(string $path, callable $handler): void
+    {
+        $this->routes['DELETE'][$path] = $handler;
+    }
+
     public function dispatch(string $method, string $uri): void
     {
         $path = self::normalise($uri);
 
         foreach ($this->routes[$method] ?? [] as $route => $handler) {
-            // A parameter matches anything but a slash, so `/tickets/{id}` does
-            // not swallow `/tickets/12/log`.
-            $pattern = preg_replace('#\{(\w+)\}#', '(?P<$1>[^/]+)', $route);
+            $parameters = self::match($route, $path);
 
-            if (preg_match('#^' . $pattern . '$#', $path, $matches) === 1) {
-                $parameters = array_filter($matches, static fn($key) => !is_int($key), ARRAY_FILTER_USE_KEY);
-                $handler(...array_values($parameters));
+            if ($parameters !== null) {
+                $handler(...$parameters);
 
                 return;
             }
         }
 
-        self::notFound();
+        // The address exists, but not for this verb: a GET to something that
+        // only takes a post. Saying so is more use than "nothing here".
+        foreach ($this->routes as $otherMethod => $routes) {
+            if ($otherMethod === $method) {
+                continue;
+            }
+
+            foreach (array_keys($routes) as $route) {
+                if (self::match($route, $path) !== null) {
+                    throw new HttpError(405, __('That address does not take a request like this one.'));
+                }
+            }
+        }
+
+        throw HttpError::notFound(__('There is no such page.'));
+    }
+
+    /**
+     * The parameters of a route that matches a path, or null.
+     *
+     * A parameter matches anything but a slash, so `/tickets/{id}` does not
+     * swallow `/tickets/12/log`.
+     *
+     * @return list<string>|null
+     */
+    private static function match(string $route, string $path): ?array
+    {
+        $pattern = preg_replace('#\{(\w+)\}#', '(?P<$1>[^/]+)', $route);
+
+        if (preg_match('#^' . $pattern . '$#', $path, $matches) !== 1) {
+            return null;
+        }
+
+        return array_values(array_filter($matches, static fn($key) => !is_int($key), ARRAY_FILTER_USE_KEY));
     }
 
     /**
@@ -63,27 +104,5 @@ class Router
         }
 
         return rtrim($path, '/') ?: '/';
-    }
-
-    /**
-     * The 404 page draws itself, with its colours written out rather than taken
-     * from the stylesheet: on an address that does not exist there is no promise
-     * that a static file under it resolves either. If the palette changes, these
-     * few values have to be carried over by hand.
-     */
-    private static function notFound(): void
-    {
-        http_response_code(404);
-
-        echo '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8">'
-            . '<meta name="viewport" content="width=device-width, initial-scale=1">'
-            . '<title>404 — CantoTrack</title>'
-            . '<style>body{margin:0;min-height:100vh;display:flex;align-items:center;justify-content:center;'
-            . 'background:#f4f6fb;color:#16202f;font:16px/1.6 system-ui,-apple-system,"Segoe UI",sans-serif}'
-            . 'main{text-align:center;padding:48px}h1{font-size:64px;margin:0;color:#1a5fbf}'
-            . 'p{color:#5a6474}a{color:#1a5fbf}</style></head>'
-            . '<body><main><h1>404</h1><p>There is no such page.</p>'
-            . '<p><a href="' . htmlspecialchars((string) Config::get('app.base_url', ''), ENT_QUOTES, 'UTF-8')
-            . '/">Back to the board</a></p></main></body></html>';
     }
 }

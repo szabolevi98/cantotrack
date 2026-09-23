@@ -111,8 +111,7 @@ class Auth
         self::require();
 
         if (!self::isAdmin()) {
-            http_response_code(403);
-            exit('This page is for administrators.');
+            throw HttpError::forbidden(__('This page is for administrators.'));
         }
     }
 }

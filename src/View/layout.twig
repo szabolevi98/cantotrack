@@ -7,13 +7,14 @@
     controller has to remember to say so.
 #}
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ locale }}"{{ theme != 'system' ? ' data-theme="' ~ theme ~ '"' : '' }}>
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}{{ app_name }}{% endblock %}</title>
-    <link rel="icon" href="{{ url('assets/favicon.svg') }}" type="image/svg+xml">
-    <link rel="stylesheet" href="{{ url('assets/css/app.css') }}">
+    <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+    <script src="{{ asset('js/app.js') }}" defer></script>
 </head>
 <body class="app">
 <aside class="sidebar">
@@ -51,7 +52,12 @@
             <strong>{{ current_user.name }}</strong>
             <small>{{ current_user.role == 'admin' ? 'Administrator' : 'Member' }}</small>
         </span>
-        <a class="sidebar__logout" href="{{ url('/logout') }}" title="Sign out">Sign out</a>
+        {# A form, because signing out changes something: a link would let any
+           page on the internet sign somebody out with an image tag. #}
+        <form class="sidebar__logout" method="post" action="{{ url('/logout') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <button class="link-button link-button--quiet" type="submit">{{ 'Sign out'|t }}</button>
+        </form>
     </div>
 </aside>
 

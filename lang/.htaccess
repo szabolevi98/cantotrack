@@ -1,0 +1,20 @@
+# This folder is not to be served over the web.
+#
+# Installed properly the document root is `web/`, so this folder is out of reach
+# to begin with. The file is here for when the PROJECT ROOT ends up under the
+# web server instead — which is exactly the case on a development machine
+# (http://localhost/cantotrack/web), and what a botched deployment looks like.
+#
+# Without it these were downloadable over HTTP:
+#   * config/config.ini — the database password,
+#   * var/log — the log files,
+#   * the SQL under database/, which says what the schema is.
+#
+# `Require all denied` is Apache 2.4 syntax; the other branch is the fallback.
+<IfModule mod_authz_core.c>
+    Require all denied
+</IfModule>
+<IfModule !mod_authz_core.c>
+    Order allow,deny
+    Deny from all
+</IfModule>

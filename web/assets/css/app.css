@@ -1,5 +1,6 @@
-/* Built by bin/build_css.php — do not edit.
- * Edit the sources under src/View/Css/ and run the script again. */
+/* Built by bin/build_assets.php — do not edit.
+ * Edit the sources under src/View/Css/ and run the script again.
+ */
 
 /*
  * The palette the whole interface draws from. Changing the theme should be a
@@ -366,6 +367,18 @@ button {
     }
 }
 
+/* Signing out is a form, dressed as the quiet link it used to be. */
+.sidebar__logout .link-button--quiet {
+    padding: 0;
+    color: rgba(var(--ct-sidebar-text-rgb), 0.8);
+    font-size: 0.82rem;
+}
+
+.sidebar__logout .link-button--quiet:hover {
+    color: var(--ct-sidebar-text-active);
+    text-decoration: underline;
+}
+
 /*
  * The pieces a page is put together from: the two-column split on a detail
  * page, the filter strip above a list, the fact list beside a ticket, and the
@@ -667,6 +680,30 @@ label {
 .button[disabled] {
     opacity: 0.55;
     cursor: not-allowed;
+}
+
+.button--small {
+    padding: 4px 10px;
+    font-size: 0.8rem;
+}
+
+/*
+ * The button beside a select that submits itself. Without a script it is the
+ * only way to send the form, so it is there. With one, it only appears once a
+ * keyboard has changed the select — a mouse choice sends the form at once.
+ */
+.js .autosubmit__button {
+    display: none;
+}
+
+.js .is-pending .autosubmit__button {
+    display: inline-flex;
+}
+
+/* Whatever only makes sense without a script: the "reload" buttons that a
+   script replaces with a fetch. */
+.js .nojs-only {
+    display: none;
 }
 
 /*
@@ -1319,4 +1356,16 @@ label {
 
 .auth__card .button {
     margin-top: 6px;
+}
+
+/* The error page borrows the sign-in card: the same field, a number instead of
+   the mark. */
+.error-page__code {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--ct-primary);
+    font-size: 2.6rem;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
 }

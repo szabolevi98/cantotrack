@@ -3,7 +3,7 @@
 namespace CantoTrack\Controller;
 
 use CantoTrack\Core\Auth;
-use CantoTrack\Core\Config;
+use CantoTrack\Core\Controller;
 use CantoTrack\Core\Session;
 use CantoTrack\Core\View;
 use CantoTrack\Model\EpicRepository;
@@ -18,7 +18,7 @@ use CantoTrack\Model\TicketRepository;
  * each other's work is one where the same thing gets built twice, and the
  * sharper the walls the more often that happens.
  */
-class ProjectController
+class ProjectController extends Controller
 {
     public function index(): void
     {
@@ -46,6 +46,25 @@ class ProjectController
             'counts' => $tickets->countsByStatus($id),
             'statuses' => TicketRepository::STATUSES,
             'epics' => (new EpicRepository())->forProject($id),
+        ]);
+    }
+
+    /**
+     * What a ticket form offers once a project is chosen: its open epics. Asked
+     * for by the form's script, so choosing a project does not reload the page
+     * and lose what was already typed.
+     */
+    public function options(int $id): void
+    {
+        Auth::require();
+
+        $this->projectOr404($id);
+
+        $this->json([
+            'epics' => array_map(
+                static fn(array $epic): array => ['value' => (int) $epic['id'], 'label' => $epic['title']],
+                (new EpicRepository())->openForProject($id)
+            ),
         ]);
     }
 
@@ -141,16 +160,9 @@ class ProjectController
         $project = (new ProjectRepository())->find($id);
 
         if ($project === null) {
-            http_response_code(404);
-            exit('There is no such project.');
+            $this->notFound(__('There is no such project.'));
         }
 
         return $project;
-    }
-
-    private function redirect(string $path): never
-    {
-        header('Location: ' . rtrim((string) Config::get('app.base_url'), '/') . $path);
-        exit;
     }
 }

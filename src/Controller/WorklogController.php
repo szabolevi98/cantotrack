@@ -3,7 +3,7 @@
 namespace CantoTrack\Controller;
 
 use CantoTrack\Core\Auth;
-use CantoTrack\Core\Config;
+use CantoTrack\Core\Controller;
 use CantoTrack\Core\Format;
 use CantoTrack\Core\Session;
 use CantoTrack\Model\TicketRepository;
@@ -17,7 +17,7 @@ use CantoTrack\Model\WorklogRepository;
  * else's, because a mistyped entry from a colleague who is on holiday is
  * otherwise wrong until they come back.
  */
-class WorklogController
+class WorklogController extends Controller
 {
     /** Logged from the ticket page: the form posts here and comes straight back. */
     public function create(int $ticketId): void
@@ -27,8 +27,7 @@ class WorklogController
         $ticket = (new TicketRepository())->find($ticketId);
 
         if ($ticket === null) {
-            http_response_code(404);
-            exit('There is no such ticket.');
+            $this->notFound(__('There is no such ticket.'));
         }
 
         $minutes = $this->minutesFromForm();
@@ -79,7 +78,7 @@ class WorklogController
         (new WorklogRepository())->update($id, (string) $date, (int) $minutes, (string) ($_POST['note'] ?? ''));
 
         Session::flash('Worklog updated.');
-        $this->redirect($this->backTo((string) ($_POST['back'] ?? ''), '/tickets/' . $worklog['ticket_id']));
+        $this->back('/tickets/' . $worklog['ticket_id']);
     }
 
     public function delete(int $id): void
@@ -90,7 +89,7 @@ class WorklogController
         (new WorklogRepository())->delete($id);
 
         Session::flash('Worklog deleted.', 'warning');
-        $this->redirect($this->backTo((string) ($_POST['back'] ?? ''), '/tickets/' . $worklog['ticket_id']));
+        $this->back('/tickets/' . $worklog['ticket_id']);
     }
 
     /**
@@ -102,13 +101,11 @@ class WorklogController
         $worklog = (new WorklogRepository())->find($id);
 
         if ($worklog === null) {
-            http_response_code(404);
-            exit('There is no such worklog.');
+            $this->notFound(__('There is no such worklog.'));
         }
 
         if ((int) $worklog['user_id'] !== (int) Auth::id() && !Auth::isAdmin()) {
-            http_response_code(403);
-            exit('Those are somebody else\'s hours.');
+            $this->forbidden(__('Those are somebody else’s hours.'));
         }
 
         return $worklog;
@@ -140,16 +137,5 @@ class WorklogController
         // createFromFormat accepts "2026-02-31" and rolls it into March, so the
         // result is compared back against what was typed.
         return ($date !== false && $date->format('Y-m-d') === $given) ? $given : null;
-    }
-
-    private function backTo(string $given, string $fallback): string
-    {
-        return str_starts_with($given, '/') && !str_starts_with($given, '//') ? $given : $fallback;
-    }
-
-    private function redirect(string $path): never
-    {
-        header('Location: ' . rtrim((string) Config::get('app.base_url'), '/') . $path);
-        exit;
     }
 }

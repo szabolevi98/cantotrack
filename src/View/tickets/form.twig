@@ -26,7 +26,7 @@
                 <input type="hidden" name="project_id" value="{{ ticket.project_id }}">
             {% else %}
                 <select id="project_id" class="field" name="project_id" required
-                        onchange="this.form.action = '{{ url('/tickets/create') }}'; this.form.method = 'get'; this.form.submit()">
+                        data-options-url="{{ url('/projects/{id}/options') }}">
                     <option value="">Pick a project</option>
                     {% for project in projects %}
                         <option value="{{ project.id }}"{{ project_id == project.id ? ' selected' : '' }}>
@@ -34,14 +34,19 @@
                         </option>
                     {% endfor %}
                 </select>
-                {# Choosing a project reloads the form as a GET, which is how the
-                   epic list below can be the chosen project's. It costs a round
-                   trip and needs no JavaScript to fetch anything. #}
-                <p class="hint">Choosing a project loads its epics.</p>
+                {# With a script, choosing a project fetches its epics into the
+                   list below. Without one, this button reloads the form for the
+                   chosen project — the one case where the choice needs a trip. #}
+                <p class="hint nojs-only">
+                    <button class="button button--small" type="submit" formmethod="get"
+                            formaction="{{ url('/tickets/create') }}" formnovalidate name="reload" value="1">
+                        {{ 'Load the project’s epics'|t }}
+                    </button>
+                </p>
             {% endif %}
 
             <label for="epic_id">Epic</label>
-            <select id="epic_id" class="field" name="epic_id">
+            <select id="epic_id" class="field" name="epic_id" data-options="epics">
                 <option value="">No epic</option>
                 {% for epic in epics %}
                     <option value="{{ epic.id }}"{{ ticket.epic_id|default(0) == epic.id ? ' selected' : '' }}>{{ epic.title }}</option>

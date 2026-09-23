@@ -126,6 +126,15 @@ check('a signed-out visitor is sent to the login page',
 // An address that does not exist.
 $missing = request($baseUrl . '/nothing-here', [], $jar);
 check('an unknown address answers 404', $missing['status'] === 404, 'status ' . $missing['status']);
+check('with the error page rather than a line of text',
+    str_contains($missing['body'], 'error-page') && str_contains($missing['body'], 'assets/css/app.css'));
+
+// No page runs a script it did not ship: that is what makes an escaping
+// mistake survivable.
+check('every page says it runs only its own scripts',
+    str_contains($login['headers'], "script-src 'self'"));
+check('and the login page links the script it does ship',
+    str_contains($login['body'], 'assets/js/app.js?v='));
 
 if ($email === null || $password === null) {
     printf('%sSkipping the sign-in checks: pass --email= and --password= to run them.%s', PHP_EOL, PHP_EOL);
@@ -427,7 +436,14 @@ if ($email === null || $password === null) {
     check('a deactivated person is off the assignee list',
         !str_contains(request($baseUrl . '/tickets/create', [], $jar)['body'], 'value="' . $colleagueId . '"'));
 
-    $out = request($baseUrl . '/logout', [], $jar);
+    // A GET must not sign anybody out: an <img src=".../logout"> on any page
+    // on the internet would otherwise do it.
+    $getOut = request($baseUrl . '/logout', [], $jar);
+    check('a GET to the sign-out address does not sign out',
+        $getOut['status'] === 405 && request($baseUrl . '/', [], $jar)['status'] === 200,
+        'status ' . $getOut['status']);
+
+    $out = request($baseUrl . '/logout', ['_token' => $token], $jar);
     check('signing out redirects to the login page',
         $out['status'] === 302 && str_contains($out['headers'], '/login'));
 

@@ -43,7 +43,7 @@
                 worked on is deleted.
             </p>
             <form method="post" action="{{ url('/epics/' ~ epic.id ~ '/delete') }}"
-                  onsubmit="return confirm('Delete this epic? Its tickets stay in the project.')">
+                  data-confirm="{{ 'Delete this epic? Its tickets stay in the project.'|t }}">
                 <input type="hidden" name="_token" value="{{ csrf_token }}">
                 <button class="button button--danger" type="submit">Delete epic</button>
             </form>

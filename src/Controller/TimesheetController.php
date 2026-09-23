@@ -3,6 +3,7 @@
 namespace CantoTrack\Controller;
 
 use CantoTrack\Core\Auth;
+use CantoTrack\Core\Controller;
 use CantoTrack\Core\Config;
 use CantoTrack\Core\View;
 use CantoTrack\Model\UserRepository;
@@ -19,7 +20,7 @@ use DateTimeImmutable;
  * not something to be kept from each other. Editing is a different matter and
  * lives in the worklog controller.
  */
-class TimesheetController
+class TimesheetController extends Controller
 {
     public function index(): void
     {

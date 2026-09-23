@@ -3,6 +3,7 @@
 namespace CantoTrack\Controller;
 
 use CantoTrack\Core\Auth;
+use CantoTrack\Core\Controller;
 use CantoTrack\Core\View;
 use CantoTrack\Model\ProjectRepository;
 use CantoTrack\Model\TicketRepository;
@@ -14,7 +15,7 @@ use CantoTrack\Model\TicketRepository;
  * numbers is one people look at once. What belongs here is what somebody needs
  * to answer "what am I doing today".
  */
-class DashboardController
+class DashboardController extends Controller
 {
     public function index(): void
     {

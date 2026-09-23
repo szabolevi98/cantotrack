@@ -3,6 +3,7 @@
 namespace CantoTrack\Controller;
 
 use CantoTrack\Core\Auth;
+use CantoTrack\Core\Controller;
 use CantoTrack\Core\Config;
 use CantoTrack\Core\Session;
 use CantoTrack\Core\View;
@@ -14,7 +15,7 @@ use CantoTrack\Core\View;
  * is wrong. Telling the two apart is a small kindness to whoever mistyped, and a
  * list of valid addresses to everybody else.
  */
-class LoginController
+class LoginController extends Controller
 {
     public function show(): void
     {

@@ -80,7 +80,7 @@
                                 {% if entry.user_id == current_user.id or is_admin %}
                                     <form class="log__delete" method="post"
                                           action="{{ url('/worklogs/' ~ entry.id ~ '/delete') }}"
-                                          onsubmit="return confirm('Delete this {{ entry.minutes|duration }} entry?')">
+                                          data-confirm="{{ 'Delete this {duration} entry?'|t({duration: entry.minutes|duration}) }}">
                                         <input type="hidden" name="_token" value="{{ csrf_token }}">
                                         <input type="hidden" name="back" value="/tickets/{{ ticket.id }}">
                                         <button class="link-button" type="submit" title="Delete this entry">×</button>
@@ -140,7 +140,7 @@
                     <h2 class="card__title">Delete</h2>
                     <p class="card__body">This takes the hours logged against it as well.</p>
                     <form method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/delete') }}"
-                          onsubmit="return confirm('Delete {{ ticket.project_code }}-{{ ticket.number }} and its worklogs?')">
+                          data-confirm="{{ 'Delete {key}?'|t({key: ticket.project_code ~ '-' ~ ticket.number}) }}">
                         <input type="hidden" name="_token" value="{{ csrf_token }}">
                         <button class="button button--danger" type="submit">Delete ticket</button>
                     </form>

@@ -1,0 +1,28 @@
+{#
+    Every error the application answers with: no such page, not yours, not
+    allowed, something broke.
+
+    It stands on its own like the login page rather than extending the layout,
+    because an error can be the answer to somebody who is not signed in, and
+    the layout's sidebar needs a user.
+#}
+<!DOCTYPE html>
+<html lang="{{ locale }}"{{ theme != 'system' ? ' data-theme="' ~ theme ~ '"' : '' }}>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ status }} — {{ app_name }}</title>
+    <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
+    <link rel="stylesheet" href="{{ asset('css/app.css') }}">
+</head>
+<body class="auth">
+<main class="auth__card error-page">
+    <span class="error-page__code">{{ status }}</span>
+    <h1>{{ title|t }}</h1>
+    <p class="auth__lead">{{ message }}</p>
+    <p>
+        <a class="button button--primary" href="{{ url('/') }}">{{ 'Back to the dashboard'|t }}</a>
+    </p>
+</main>
+</body>
+</html>

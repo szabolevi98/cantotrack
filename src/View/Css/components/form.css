@@ -99,3 +99,27 @@ label {
     opacity: 0.55;
     cursor: not-allowed;
 }
+
+.button--small {
+    padding: 4px 10px;
+    font-size: 0.8rem;
+}
+
+/*
+ * The button beside a select that submits itself. Without a script it is the
+ * only way to send the form, so it is there. With one, it only appears once a
+ * keyboard has changed the select — a mouse choice sends the form at once.
+ */
+.js .autosubmit__button {
+    display: none;
+}
+
+.js .is-pending .autosubmit__button {
+    display: inline-flex;
+}
+
+/* Whatever only makes sense without a script: the "reload" buttons that a
+   script replaces with a fetch. */
+.js .nojs-only {
+    display: none;
+}

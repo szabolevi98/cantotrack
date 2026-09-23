@@ -5,18 +5,13 @@
  *
  * The order below matters and is deliberate — configuration, then error
  * handling, then the session, then the one CSRF gate, and only then the routes.
+ * The routes themselves are in src/routes.php.
  */
 
-use CantoTrack\Controller\DashboardController;
-use CantoTrack\Controller\EpicController;
-use CantoTrack\Controller\LoginController;
-use CantoTrack\Controller\PeopleController;
-use CantoTrack\Controller\ProjectController;
-use CantoTrack\Controller\TicketController;
-use CantoTrack\Controller\TimesheetController;
-use CantoTrack\Controller\WorklogController;
 use CantoTrack\Core\Config;
 use CantoTrack\Core\Csrf;
+use CantoTrack\Core\ErrorPage;
+use CantoTrack\Core\HttpError;
 use CantoTrack\Core\Logger;
 use CantoTrack\Core\Router;
 use CantoTrack\Core\Session;
@@ -42,21 +37,43 @@ set_error_handler(static function (int $level, string $message, string $file, in
     return true;
 });
 
+/*
+ * One place every failure is answered from. An HttpError is a request that
+ * asked for something that is not there or not theirs — expected, and not
+ * logged. Anything else is a fault, and goes to the log with where it happened.
+ */
 set_exception_handler(static function (\Throwable $e): void {
-    Logger::error('Uncaught: ' . $e->getMessage(), ['file' => $e->getFile(), 'line' => $e->getLine()]);
+    if ($e instanceof HttpError) {
+        ErrorPage::render($e->status, $e->getMessage());
 
-    http_response_code(500);
-    echo 'Something went wrong. It has been written to the log.';
+        return;
+    }
+
+    Logger::error('Uncaught: ' . $e->getMessage(), [
+        'file' => $e->getFile(),
+        'line' => $e->getLine(),
+        'path' => $_SERVER['REQUEST_URI'] ?? '',
+    ]);
+
+    ErrorPage::render(500, __('Something went wrong. It has been written to the log.'));
 });
 
 /*
- * No page of this application has any business inside somebody else's frame.
- * Framed, every signed-in page is a clickjacking surface: through a transparent
- * frame a colleague would delete, approve or reassign in their own name while
- * believing they clicked something else.
+ * No page of this application has any business inside somebody else's frame,
+ * and none runs a script it did not ship itself.
+ *
+ * `script-src 'self'` is the one that matters most: there is not a single
+ * inline script or event handler in the markup, so text that somebody manages
+ * to get onto a page — a ticket title, a comment, a name — cannot run even if
+ * it slipped past the escaping. Styles allow inline attributes, because the
+ * progress bars are a width, and a width is not an attack.
  */
 header('X-Frame-Options: DENY');
-header("Content-Security-Policy: frame-ancestors 'none'");
+header(
+    "Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+    . "img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; form-action 'self'; "
+    . "base-uri 'self'; object-src 'none'; frame-ancestors 'none'"
+);
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: same-origin');
 
@@ -66,79 +83,27 @@ Session::start();
  * One CSRF gate for every post, rather than a check in each controller. A check
  * that has to be remembered in thirty places is a check that is missing in one
  * of them, and that one is the form that deletes something.
+ *
+ * The token comes in the form, or — for the few requests the page's own
+ * script sends — in a header. The API and the incoming integrations are the
+ * exceptions: they carry no session cookie at all, and prove who they are with
+ * a token or a signature of their own, which is checked where they arrive.
  */
-if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && !Csrf::validate($_POST['_token'] ?? null)) {
-    // 403 rather than one of the codes a framework invented for this: an
-    // unknown status code is answered by Apache with a 500 of its own, which
-    // turns "your session expired" into "something is broken".
-    http_response_code(403);
-    exit('Your session expired. Go back, reload the page and try again.');
+$path = Router::normalise($_SERVER['REQUEST_URI'] ?? '/');
+$exempt = str_starts_with($path, '/api/') || str_starts_with($path, '/integrations/');
+
+if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && !$exempt) {
+    $given = $_POST['_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
+
+    if (!Csrf::validate(is_string($given) ? $given : null)) {
+        // 403 rather than one of the codes a framework invented for this: an
+        // unknown status code is answered by Apache with a 500 of its own,
+        // which turns "your session expired" into "something is broken".
+        throw HttpError::forbidden(__('Your session expired. Go back, reload the page and try again.'));
+    }
 }
 
 $router = new Router();
-
-// ---------------------------------------------------------------------------
-// Signing in
-// ---------------------------------------------------------------------------
-$router->get('/login', static fn() => (new LoginController())->show());
-$router->post('/login', static fn() => (new LoginController())->submit());
-$router->get('/logout', static fn() => (new LoginController())->logout());
-
-// ---------------------------------------------------------------------------
-// The application
-// ---------------------------------------------------------------------------
-$router->get('/', static fn() => (new DashboardController())->index());
-
-// ---------------------------------------------------------------------------
-// Projects and the epics inside them
-//
-// The create routes come before the {id} ones: "create" would otherwise match
-// as an id, and the form would answer "there is no such project".
-// ---------------------------------------------------------------------------
-$router->get('/projects', static fn() => (new ProjectController())->index());
-$router->get('/projects/create', static fn() => (new ProjectController())->createForm());
-$router->post('/projects/create', static fn() => (new ProjectController())->create());
-$router->get('/projects/{id}', static fn($id) => (new ProjectController())->show((int) $id));
-$router->get('/projects/{id}/edit', static fn($id) => (new ProjectController())->editForm((int) $id));
-$router->post('/projects/{id}', static fn($id) => (new ProjectController())->update((int) $id));
-$router->post('/projects/{id}/delete', static fn($id) => (new ProjectController())->delete((int) $id));
-
-$router->get('/projects/{id}/epics/create', static fn($id) => (new EpicController())->createForm((int) $id));
-$router->post('/projects/{id}/epics/create', static fn($id) => (new EpicController())->create((int) $id));
-$router->get('/epics/{id}', static fn($id) => (new EpicController())->show((int) $id));
-$router->get('/epics/{id}/edit', static fn($id) => (new EpicController())->editForm((int) $id));
-$router->post('/epics/{id}', static fn($id) => (new EpicController())->update((int) $id));
-$router->post('/epics/{id}/delete', static fn($id) => (new EpicController())->delete((int) $id));
-
-// ---------------------------------------------------------------------------
-// Tickets
-// ---------------------------------------------------------------------------
-$router->get('/tickets', static fn() => (new TicketController())->index());
-$router->get('/tickets/create', static fn() => (new TicketController())->createForm());
-$router->post('/tickets/create', static fn() => (new TicketController())->create());
-$router->get('/tickets/{id}', static fn($id) => (new TicketController())->show((int) $id));
-$router->get('/tickets/{id}/edit', static fn($id) => (new TicketController())->editForm((int) $id));
-$router->post('/tickets/{id}', static fn($id) => (new TicketController())->update((int) $id));
-$router->post('/tickets/{id}/status', static fn($id) => (new TicketController())->changeStatus((int) $id));
-$router->post('/tickets/{id}/delete', static fn($id) => (new TicketController())->delete((int) $id));
-
-// ---------------------------------------------------------------------------
-// The hours
-// ---------------------------------------------------------------------------
-$router->post('/tickets/{id}/log', static fn($id) => (new WorklogController())->create((int) $id));
-$router->post('/worklogs/{id}', static fn($id) => (new WorklogController())->update((int) $id));
-$router->post('/worklogs/{id}/delete', static fn($id) => (new WorklogController())->delete((int) $id));
-
-$router->get('/timesheet', static fn() => (new TimesheetController())->index());
-
-// ---------------------------------------------------------------------------
-// The people, for administrators
-// ---------------------------------------------------------------------------
-$router->get('/people', static fn() => (new PeopleController())->index());
-$router->get('/people/create', static fn() => (new PeopleController())->createForm());
-$router->post('/people/create', static fn() => (new PeopleController())->create());
-$router->get('/people/{id}/edit', static fn($id) => (new PeopleController())->editForm((int) $id));
-$router->post('/people/{id}', static fn($id) => (new PeopleController())->update((int) $id));
-$router->post('/people/{id}/password', static fn($id) => (new PeopleController())->resetPassword((int) $id));
+require dirname(__DIR__) . '/src/routes.php';
 
 $router->dispatch($_SERVER['REQUEST_METHOD'] ?? 'GET', $_SERVER['REQUEST_URI'] ?? '/');

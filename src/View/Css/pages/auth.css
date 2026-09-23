@@ -50,3 +50,15 @@
 .auth__card .button {
     margin-top: 6px;
 }
+
+/* The error page borrows the sign-in card: the same field, a number instead of
+   the mark. */
+.error-page__code {
+    display: block;
+    margin-bottom: 6px;
+    color: var(--ct-primary);
+    font-size: 2.6rem;
+    font-weight: 700;
+    line-height: 1;
+    font-variant-numeric: tabular-nums;
+}

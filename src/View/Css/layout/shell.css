@@ -220,3 +220,15 @@
         padding: 20px 16px 40px;
     }
 }
+
+/* Signing out is a form, dressed as the quiet link it used to be. */
+.sidebar__logout .link-button--quiet {
+    padding: 0;
+    color: rgba(var(--ct-sidebar-text-rgb), 0.8);
+    font-size: 0.82rem;
+}
+
+.sidebar__logout .link-button--quiet:hover {
+    color: var(--ct-sidebar-text-active);
+    text-decoration: underline;
+}

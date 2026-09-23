@@ -53,7 +53,7 @@
                 against them. Archiving keeps all of that and takes it out of the way.
             </p>
             <form method="post" action="{{ url('/projects/' ~ project.id ~ '/delete') }}"
-                  onsubmit="return confirm('Delete {{ project.code }} and everything in it?')">
+                  data-confirm="{{ 'Delete {code} and everything in it?'|t({code: project.code}) }}">
                 <input type="hidden" name="_token" value="{{ csrf_token }}">
                 <button class="button button--danger" type="submit">Delete {{ project.code }}</button>
             </form>

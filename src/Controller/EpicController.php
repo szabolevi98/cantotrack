@@ -34,7 +34,7 @@ class EpicController extends Controller
 
     public function createForm(int $projectId): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         View::render('epics/form.twig', [
             'project' => $this->projectOr404($projectId),
@@ -45,7 +45,7 @@ class EpicController extends Controller
 
     public function create(int $projectId): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $project = $this->projectOr404($projectId);
         $title = trim((string) ($_POST['title'] ?? ''));
@@ -68,7 +68,7 @@ class EpicController extends Controller
 
     public function editForm(int $id): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $epic = $this->epicOr404($id);
 
@@ -81,7 +81,7 @@ class EpicController extends Controller
 
     public function update(int $id): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $epic = $this->epicOr404($id);
         $title = trim((string) ($_POST['title'] ?? ''));
@@ -104,7 +104,7 @@ class EpicController extends Controller
 
     public function delete(int $id): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $epic = $this->epicOr404($id);
         (new EpicRepository())->delete($id);

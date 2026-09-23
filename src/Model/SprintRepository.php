@@ -2,6 +2,7 @@
 
 namespace CantoTrack\Model;
 
+use CantoTrack\Core\Access;
 use CantoTrack\Core\DatabaseConnection;
 use PDO;
 
@@ -40,7 +41,7 @@ class SprintRepository
 
     public function find(int $id): ?array
     {
-        $statement = $this->db->prepare('SELECT * FROM sprints WHERE id = :id');
+        $statement = $this->db->prepare('SELECT * FROM sprints WHERE id = :id' . Access::sql('project_id'));
         $statement->execute(['id' => $id]);
 
         return $statement->fetch() ?: null;

@@ -8,7 +8,7 @@
 {% block subheading %}<p class="content__sub">{{ 'What is on your plate today.'|t }}</p>{% endblock %}
 
 {% block actions %}
-    <a class="button button--primary" href="{{ url('/tickets/create') }}">{{ 'New ticket'|t }}</a>
+    {% if can_work %}<a class="button button--primary" href="{{ url('/tickets/create') }}">{{ 'New ticket'|t }}</a>{% endif %}
 {% endblock %}
 
 {% block content %}

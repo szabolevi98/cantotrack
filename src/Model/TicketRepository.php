@@ -2,6 +2,7 @@
 
 namespace CantoTrack\Model;
 
+use CantoTrack\Core\Access;
 use CantoTrack\Core\DatabaseConnection;
 use PDO;
 
@@ -72,7 +73,7 @@ class TicketRepository
 
     public function find(int $id): ?array
     {
-        $statement = $this->db->prepare(self::SELECT . ' WHERE t.id = :id');
+        $statement = $this->db->prepare(self::SELECT . ' WHERE t.id = :id' . Access::sql('t.project_id'));
         $statement->execute(['id' => $id]);
 
         return $statement->fetch() ?: null;
@@ -85,7 +86,7 @@ class TicketRepository
             return null;
         }
 
-        $statement = $this->db->prepare(self::SELECT . ' WHERE p.code = :code AND t.number = :number');
+        $statement = $this->db->prepare(self::SELECT . ' WHERE p.code = :code AND t.number = :number' . Access::sql('t.project_id'));
         $statement->execute(['code' => $m[1], 'number' => (int) $m[2]]);
 
         return $statement->fetch() ?: null;
@@ -132,6 +133,12 @@ class TicketRepository
     {
         $where = [];
         $parameters = [];
+
+        // Only what the signed-in person may see, whatever else is asked for.
+        $visible = Access::where('t.project_id');
+        if ($visible !== null) {
+            $where[] = $visible;
+        }
 
         if (!empty($filters['project_id'])) {
             $where[] = 't.project_id = :project_id';
@@ -517,7 +524,7 @@ class TicketRepository
     public function planning(int $projectId): array
     {
         $statement = $this->db->prepare(
-            self::SELECT . ' WHERE t.project_id = :project
+            self::SELECT . ' WHERE t.project_id = :project' . Access::sql('t.project_id') . '
                AND (s.category <> \'done\' OR (t.sprint_id IS NOT NULL AND sp.state <> \'closed\'))
              ORDER BY t.`rank`, t.id'
         );

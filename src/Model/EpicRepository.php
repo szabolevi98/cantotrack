@@ -2,6 +2,7 @@
 
 namespace CantoTrack\Model;
 
+use CantoTrack\Core\Access;
 use CantoTrack\Core\DatabaseConnection;
 use PDO;
 
@@ -55,7 +56,7 @@ class EpicRepository
 
     public function find(int $id): ?array
     {
-        $statement = $this->db->prepare('SELECT * FROM epics WHERE id = :id');
+        $statement = $this->db->prepare('SELECT * FROM epics WHERE id = :id' . Access::sql('project_id'));
         $statement->execute(['id' => $id]);
 
         return $statement->fetch() ?: null;

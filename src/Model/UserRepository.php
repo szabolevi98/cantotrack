@@ -237,7 +237,7 @@ class UserRepository
 
     private static function role(string $role): string
     {
-        return $role === 'admin' ? 'admin' : 'member';
+        return in_array($role, ['admin', 'guest'], true) ? $role : 'member';
     }
 
     /** Every row a query without parameters returns. */

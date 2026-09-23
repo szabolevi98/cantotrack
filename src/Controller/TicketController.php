@@ -187,7 +187,7 @@ class TicketController extends Controller
 
     public function createForm(): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $projectId = (int) $this->idQuery('project');
 
@@ -198,7 +198,7 @@ class TicketController extends Controller
 
     public function create(): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         try {
             $id = (new TicketService())->create($_POST, (int) Auth::id());
@@ -214,7 +214,7 @@ class TicketController extends Controller
 
     public function editForm(int $id): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $ticket = $this->ticketOr404($id);
         $ticket['labels'] = implode(', ', (new LabelRepository())->forTicket($id));
@@ -224,7 +224,7 @@ class TicketController extends Controller
 
     public function update(int $id): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $ticket = $this->ticketOr404($id);
 
@@ -253,7 +253,7 @@ class TicketController extends Controller
     /** The one-click move along the board, from the ticket page or the board. */
     public function changeStatus(int $id): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $this->ticketOr404($id);
 
@@ -278,7 +278,7 @@ class TicketController extends Controller
      */
     public function bulk(): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $ids = array_values(array_unique(array_filter(
             array_map('intval', (array) ($_POST['ids'] ?? [])),
@@ -360,7 +360,7 @@ class TicketController extends Controller
      */
     public function move(int $id): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $this->ticketOr404($id);
 

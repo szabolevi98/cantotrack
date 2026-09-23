@@ -79,6 +79,8 @@ $router->get('/projects/{id}', static fn($id) => (new ProjectController())->show
 $router->get('/projects/{id}/edit', static fn($id) => (new ProjectController())->editForm((int) $id));
 $router->get('/projects/{id}/options', static fn($id) => (new ProjectController())->options((int) $id));
 $router->post('/projects/{id}', static fn($id) => (new ProjectController())->update((int) $id));
+$router->post('/projects/{id}/members', static fn($id) => (new ProjectController())->addMember((int) $id));
+$router->post('/projects/{id}/members/{user}/delete', static fn($id, $user) => (new ProjectController())->removeMember((int) $id, (int) $user));
 $router->post('/projects/{id}/delete', static fn($id) => (new ProjectController())->delete((int) $id));
 
 // Planning: the backlog, the sprints, and each sprint's report.

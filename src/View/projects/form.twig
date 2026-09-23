@@ -45,6 +45,18 @@
             </label>
 
             {% if editing %}
+                <fieldset class="choice">
+                    <legend>{{ 'Who sees it'|t }}</legend>
+                    <label class="check">
+                        <input type="radio" name="visibility" value="team"{{ project.visibility|default('team') == 'team' ? ' checked' : '' }}>
+                        {{ 'The team — every member, and the guests added below'|t }}
+                    </label>
+                    <label class="check">
+                        <input type="radio" name="visibility" value="private"{{ project.visibility|default('') == 'private' ? ' checked' : '' }}>
+                        {{ 'Private — only the people added below, and the administrators'|t }}
+                    </label>
+                </fieldset>
+
                 <label class="check">
                     <input type="checkbox" name="is_archived" value="1"{{ project.is_archived ? ' checked' : '' }}>
                     {{ 'Archived — hidden from the lists, and takes no new tickets'|t }}
@@ -59,6 +71,42 @@
     </section>
 
     {% if editing %}
+        <section class="card card--narrow" id="members">
+            <h2 class="card__title">{{ 'Members'|t }}</h2>
+            <p class="card__body">
+                {{ project.visibility == 'private'
+                    ? 'Only these people, and the administrators, can see the project.'|t
+                    : 'Every member of the team sees this project. Add guests here — somebody from the client, say — to let them read and comment on it.'|t }}
+            </p>
+            {% if members is not empty %}
+                <ul class="split-list">
+                    {% for member in members %}
+                        <li>
+                            <span>{{ member.name }}{% if member.role == 'guest' %} <span class="badge badge--amber">{{ 'Guest'|t }}</span>{% endif %}{% if not member.is_active %} <span class="badge badge--muted">{{ 'Deactivated'|t }}</span>{% endif %}</span>
+                            <span class="muted">{{ member.email }}</span>
+                            <form method="post" action="{{ url('/projects/' ~ project.id ~ '/members/' ~ member.id ~ '/delete') }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                <button class="link-button" type="submit" aria-label="{{ 'Take {name} off the project'|t({name: member.name}) }}">×</button>
+                            </form>
+                        </li>
+                    {% endfor %}
+                </ul>
+            {% endif %}
+            {% set member_ids = members|column('id') %}
+            {% set addable = people|filter(p => p.id not in member_ids and p.role != 'admin') %}
+            {% if addable is not empty %}
+                <form class="form__row form__row--inline" method="post" action="{{ url('/projects/' ~ project.id ~ '/members') }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                    <select class="field" name="user_id" aria-label="{{ 'Person'|t }}">
+                        {% for person in addable %}
+                            <option value="{{ person.id }}">{{ person.name }}{% if person.role == 'guest' %} ({{ 'guest'|t }}){% endif %}</option>
+                        {% endfor %}
+                    </select>
+                    <button class="button" type="submit">{{ 'Add'|t }}</button>
+                </form>
+            {% endif %}
+        </section>
+
         {#
             The columns. Each is a small form of its own, so changing one never
             submits the others; the order is changed a step at a time, which

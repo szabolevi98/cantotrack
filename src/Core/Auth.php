@@ -7,10 +7,12 @@ use CantoTrack\Model\UserRepository;
 /**
  * Who is signed in, and what they are allowed to do.
  *
- * Two roles, no more: an **admin** may set up projects and people, a **member**
- * works on tickets and logs time against them. A tracker this size does not earn
- * a permission matrix, and one that cannot be explained in a sentence is one
- * nobody configures correctly.
+ * Three roles, no more: an **admin** may set up projects and people, a
+ * **member** works on tickets and logs time against them, and a **guest**
+ * (somebody from a client, say) reads and comments on the projects they were
+ * added to. Which projects anybody sees is Access's business. A tracker this
+ * size does not earn a permission matrix, and one that cannot be explained in
+ * a sentence is one nobody configures correctly.
  */
 class Auth
 {
@@ -68,6 +70,7 @@ class Auth
         Session::regenerate();
         Session::put(self::KEY, (int) $user['id']);
         self::$user = $user;
+        Access::reset();
 
         (new UserRepository())->touchLastLogin((int) $user['id']);
     }
@@ -80,6 +83,7 @@ class Auth
     public static function actAs(array $user): void
     {
         self::$user = $user;
+        Access::reset();
 
         if (!empty($user['locale'])) {
             I18n::setLocale((string) $user['locale']);
@@ -89,6 +93,7 @@ class Auth
     public static function logout(): void
     {
         self::$user = null;
+        Access::reset();
         Session::destroy();
     }
 
@@ -131,6 +136,7 @@ class Auth
     public static function refresh(): void
     {
         self::$user = null;
+        Access::reset();
     }
 
     public static function id(): ?int
@@ -162,6 +168,19 @@ class Auth
 
         header('Location: ' . Config::get('app.base_url') . '/login');
         exit;
+    }
+
+    /**
+     * As require(), and then refuses a guest: for everything that changes the
+     * work — tickets, hours, sprints — rather than talks about it.
+     */
+    public static function requireMember(): void
+    {
+        self::require();
+
+        if ((self::user()['role'] ?? '') === 'guest') {
+            throw HttpError::forbidden(__('Guests can read and comment, but not change the work.'));
+        }
     }
 
     /** As above, and then refuses anyone who is not an admin. */

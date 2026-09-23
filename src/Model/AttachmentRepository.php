@@ -2,6 +2,7 @@
 
 namespace CantoTrack\Model;
 
+use CantoTrack\Core\Access;
 use CantoTrack\Core\DatabaseConnection;
 use PDO;
 
@@ -28,7 +29,9 @@ class AttachmentRepository
 
     public function find(int $id): ?array
     {
-        $statement = $this->db->prepare('SELECT * FROM attachments WHERE id = :id');
+        $statement = $this->db->prepare(
+            'SELECT a.* FROM attachments a JOIN tickets t ON t.id = a.ticket_id WHERE a.id = :id' . Access::sql('t.project_id')
+        );
         $statement->execute(['id' => $id]);
 
         return $statement->fetch() ?: null;

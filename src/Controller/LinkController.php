@@ -13,7 +13,7 @@ class LinkController extends Controller
 {
     public function create(int $ticketId): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         try {
             (new LinkService())->link($ticketId, $this->input('kind'), $this->input('key'), Auth::id());
@@ -26,7 +26,7 @@ class LinkController extends Controller
 
     public function delete(int $id): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $link = (new LinkRepository())->find($id);
 

@@ -2,6 +2,7 @@
 
 namespace CantoTrack\Model;
 
+use CantoTrack\Core\Access;
 use CantoTrack\Core\DatabaseConnection;
 use PDO;
 
@@ -27,9 +28,7 @@ class ProjectRepository
                 LEFT JOIN tickets t ON t.project_id = p.id
                 LEFT JOIN statuses s ON s.id = t.status_id';
 
-        if (!$includeArchived) {
-            $sql .= ' WHERE p.is_archived = 0';
-        }
+        $sql .= ' WHERE ' . ($includeArchived ? 'TRUE' : 'p.is_archived = 0') . Access::sql('p.id');
 
         $sql .= ' GROUP BY p.id ORDER BY p.is_archived, p.name';
 
@@ -39,16 +38,47 @@ class ProjectRepository
     public function find(int $id): ?array
     {
         $statement = $this->db->prepare(
-            'SELECT p.*, c.name AS client_name FROM projects p LEFT JOIN clients c ON c.id = p.client_id WHERE p.id = :id'
+            'SELECT p.*, c.name AS client_name FROM projects p LEFT JOIN clients c ON c.id = p.client_id WHERE p.id = :id' . Access::sql('p.id')
         );
         $statement->execute(['id' => $id]);
 
         return $statement->fetch() ?: null;
     }
 
+    /** The people added to a project, by name. */
+    public function members(int $projectId): array
+    {
+        $statement = $this->db->prepare(
+            'SELECT u.id, u.name, u.email, u.role, u.is_active, m.added_at
+             FROM project_members m JOIN users u ON u.id = m.user_id
+             WHERE m.project_id = :project ORDER BY u.name'
+        );
+        $statement->execute(['project' => $projectId]);
+
+        return $statement->fetchAll();
+    }
+
+    public function addMember(int $projectId, int $userId): void
+    {
+        $this->db->prepare('INSERT IGNORE INTO project_members (project_id, user_id) VALUES (:project, :user)')
+            ->execute(['project' => $projectId, 'user' => $userId]);
+    }
+
+    public function removeMember(int $projectId, int $userId): void
+    {
+        $this->db->prepare('DELETE FROM project_members WHERE project_id = :project AND user_id = :user')
+            ->execute(['project' => $projectId, 'user' => $userId]);
+    }
+
+    public function setVisibility(int $projectId, string $visibility): void
+    {
+        $this->db->prepare('UPDATE projects SET visibility = :visibility WHERE id = :id')
+            ->execute(['visibility' => $visibility === 'private' ? 'private' : 'team', 'id' => $projectId]);
+    }
+
     public function findByCode(string $code): ?array
     {
-        $statement = $this->db->prepare('SELECT * FROM projects WHERE code = :code');
+        $statement = $this->db->prepare('SELECT * FROM projects WHERE code = :code' . Access::sql('id'));
         $statement->execute(['code' => strtoupper(trim($code))]);
 
         return $statement->fetch() ?: null;

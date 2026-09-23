@@ -9,6 +9,7 @@
     <p class="content__sub">
         <span class="project__code">{{ project.code }}</span>
         {% if project.is_archived %}<span class="badge badge--muted">{{ 'Archived'|t }}</span>{% endif %}
+        {% if project.visibility == 'private' %}<span class="badge badge--violet">{{ 'Private'|t }}</span>{% endif %}
         {% if project.description %}{{ project.description }}{% endif %}
     </p>
 {% endblock %}
@@ -16,7 +17,7 @@
 {% block actions %}
     <a class="button" href="{{ url('/projects/' ~ project.id ~ '/backlog') }}">{{ 'Backlog & sprints'|t }}</a>
     <a class="button" href="{{ url('/projects/' ~ project.id ~ '/epics/create') }}">{{ 'New epic'|t }}</a>
-    <a class="button button--primary" href="{{ url('/tickets/create?project=' ~ project.id) }}">{{ 'New ticket'|t }}</a>
+    {% if can_work %}<a class="button button--primary" href="{{ url('/tickets/create?project=' ~ project.id) }}">{{ 'New ticket'|t }}</a>{% endif %}
     {% if is_admin %}
         <a class="button" href="{{ url('/projects/' ~ project.id ~ '/edit') }}">{{ 'Settings'|t }}</a>
     {% endif %}
@@ -160,7 +161,7 @@
                     <section class="board__column" data-status-id="{{ status.id }}"
                              aria-label="{{ status.name|t }}{{ lane.title ? ' — ' ~ lane.title : '' }}">
                         {% for ticket in lane.columns[status.id]|default([]) %}
-                            <article class="ticket-card" draggable="true" data-ticket-id="{{ ticket.id }}">
+                            <article class="ticket-card" draggable="{{ can_work ? 'true' : 'false' }}" data-ticket-id="{{ ticket.id }}">
                                 <div class="ticket-card__top">
                                     <span class="ticket-card__key">{{ ui.type_icon(ticket.type) }} {{ ui.ticket_key(ticket) }}</span>
                                     <span>
@@ -193,7 +194,7 @@
                                     </span>
                                 </div>
 
-                                {{ ui.move(ticket, statuses, '/projects/' ~ project.id) }}
+                                {% if can_work %}{{ ui.move(ticket, statuses, '/projects/' ~ project.id) }}{% endif %}
                             </article>
                         {% endfor %}
 

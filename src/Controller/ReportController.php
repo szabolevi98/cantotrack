@@ -20,7 +20,7 @@ class ReportController extends Controller
 {
     public function index(): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $filters = $this->filters();
         $group = array_key_exists($_GET['group'] ?? '', ReportRepository::GROUPS) ? $_GET['group'] : 'project';
@@ -55,7 +55,7 @@ class ReportController extends Controller
      */
     public function export(): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $filters = $this->filters();
         $rows = (new ReportRepository())->rows($filters);

@@ -2,6 +2,7 @@
 
 namespace CantoTrack\Service;
 
+use CantoTrack\Core\Access;
 use CantoTrack\Core\Config;
 use CantoTrack\Core\DatabaseConnection;
 use CantoTrack\Core\I18n;
@@ -109,6 +110,16 @@ class Notifier
         }
 
         foreach ($told as $userId => $reason) {
+            // Nobody hears about a ticket in a project they cannot see — a
+            // watcher taken off a private project, a guest @mentioned in one
+            // they were never added to.
+            $person = $this->users->find($userId);
+            $visible = $person === null ? [] : Access::forUser($person);
+
+            if ($visible !== null && !in_array((int) ($ticket['project_id'] ?? 0), $visible, true)) {
+                continue;
+            }
+
             $notificationId = $this->notifications->create([
                 'user_id' => $userId,
                 'ticket_id' => $ticketId,

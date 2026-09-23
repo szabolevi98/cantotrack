@@ -2,6 +2,7 @@
 
 namespace CantoTrack\Controller;
 
+use CantoTrack\Core\Access;
 use CantoTrack\Core\Auth;
 use CantoTrack\Core\ClientIp;
 use CantoTrack\Core\Controller;
@@ -132,6 +133,7 @@ class ApiController extends Controller
      */
     public function createTicket(): never
     {
+        $this->member();
         $input = $this->body();
         $input['project_id'] = (int) $this->projectOr404((string) ($input['project'] ?? ''))['id'];
 
@@ -148,6 +150,7 @@ class ApiController extends Controller
      */
     public function updateTicket(string $key): never
     {
+        $this->member();
         $ticket = $this->ticketOr404($key);
         $input = $this->body();
         $service = new TicketService();
@@ -189,6 +192,7 @@ class ApiController extends Controller
     /** ?from=2026-09-01&to=2026-09-30&user=3 — one's own when no user is given. */
     public function worklogs(): never
     {
+        $this->member();
         $from = $this->date((string) ($_GET['from'] ?? ''), date('Y-m-d', strtotime('monday this week')));
         $to = $this->date((string) ($_GET['to'] ?? ''), date('Y-m-d'));
         $userId = ctype_digit((string) ($_GET['user'] ?? '')) ? (int) $_GET['user'] : (int) Auth::id();
@@ -206,6 +210,7 @@ class ApiController extends Controller
     /** {"time": "1h 30m", "date": "2026-09-22", "note": "…", "remaining": "2h", "billable": true} */
     public function logWork(string $key): never
     {
+        $this->member();
         $ticket = $this->ticketOr404($key);
         $input = $this->body();
 
@@ -224,6 +229,7 @@ class ApiController extends Controller
 
     public function deleteWorklog(int $id): never
     {
+        $this->member();
         $worklog = (new WorklogRepository())->find($id);
 
         if ($worklog === null) {
@@ -309,6 +315,14 @@ class ApiController extends Controller
         }
 
         return $data;
+    }
+
+    /** Guests read and comment; the rest of the API is for the team. */
+    private function member(): void
+    {
+        if (Access::isGuest()) {
+            $this->forbidden(__('Guests can read and comment, but not change the work.'));
+        }
     }
 
     private function date(string $given, string $default): string

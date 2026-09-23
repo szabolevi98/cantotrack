@@ -2,6 +2,7 @@
 
 namespace CantoTrack\Model;
 
+use CantoTrack\Core\Access;
 use CantoTrack\Core\DatabaseConnection;
 use PDO;
 
@@ -31,7 +32,8 @@ class CommentRepository
     public function find(int $id): ?array
     {
         $statement = $this->db->prepare(
-            'SELECT c.*, u.name AS user_name FROM comments c JOIN users u ON u.id = c.user_id WHERE c.id = :id'
+            'SELECT c.*, u.name AS user_name FROM comments c JOIN users u ON u.id = c.user_id JOIN tickets t ON t.id = c.ticket_id
+             WHERE c.id = :id' . Access::sql('t.project_id')
         );
         $statement->execute(['id' => $id]);
 

@@ -2,6 +2,7 @@
 
 namespace CantoTrack\Model;
 
+use CantoTrack\Core\Access;
 use CantoTrack\Core\DatabaseConnection;
 use PDO;
 
@@ -34,14 +35,14 @@ class LinkRepository
              JOIN tickets o ON o.id = l.target_id
              JOIN projects p ON p.id = o.project_id
              JOIN statuses s ON s.id = o.status_id
-             WHERE l.source_id = :a
+             WHERE l.source_id = :a' . Access::sql('o.project_id') . '
              UNION ALL
              SELECT l.id, l.kind, \'in\', o.id, o.number, o.title, p.code, s.category, s.name, s.colour
              FROM ticket_links l
              JOIN tickets o ON o.id = l.source_id
              JOIN projects p ON p.id = o.project_id
              JOIN statuses s ON s.id = o.status_id
-             WHERE l.target_id = :b
+             WHERE l.target_id = :b' . Access::sql('o.project_id') . '
              ORDER BY kind, other_code, other_number'
         );
         $statement->execute(['a' => $ticketId, 'b' => $ticketId]);
@@ -51,7 +52,9 @@ class LinkRepository
 
     public function find(int $id): ?array
     {
-        $statement = $this->db->prepare('SELECT * FROM ticket_links WHERE id = :id');
+        $statement = $this->db->prepare(
+            'SELECT l.* FROM ticket_links l JOIN tickets t ON t.id = l.source_id WHERE l.id = :id' . Access::sql('t.project_id')
+        );
         $statement->execute(['id' => $id]);
 
         return $statement->fetch() ?: null;

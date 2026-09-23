@@ -5,7 +5,7 @@
 {% block heading %}{{ 'Tickets'|t }}{% endblock %}
 
 {% block actions %}
-    <a class="button button--primary" href="{{ url('/tickets/create') }}">{{ 'New ticket'|t }}</a>
+    {% if can_work %}<a class="button button--primary" href="{{ url('/tickets/create') }}">{{ 'New ticket'|t }}</a>{% endif %}
 {% endblock %}
 
 {% block content %}
@@ -169,7 +169,7 @@
         {% endif %}
     </section>
 
-    {% if tickets is not empty %}
+    {% if tickets is not empty and can_work %}
         {# The change for the ticked rows. Only what is chosen changes; the
            rest of each ticket stays as it is. #}
         <div class="bulk__bar card" data-bulk-bar>

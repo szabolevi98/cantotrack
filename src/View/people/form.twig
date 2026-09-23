@@ -26,6 +26,9 @@
                 <option value="member"{{ person.role|default('member') == 'member' ? ' selected' : '' }}>
                     Member — works tickets and logs time
                 </option>
+                <option value="guest"{{ person.role|default('') == 'guest' ? ' selected' : '' }}>
+                    Guest — reads and comments on the projects they are added to
+                </option>
                 <option value="admin"{{ person.role|default('') == 'admin' ? ' selected' : '' }}>
                     Administrator — and sets up projects and people
                 </option>

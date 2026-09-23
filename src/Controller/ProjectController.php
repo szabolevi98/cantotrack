@@ -235,6 +235,7 @@ class ProjectController extends Controller
 
         $id = $projects->create($code, $name, $this->input('description'));
         $projects->setBilling($id, (new ClientRepository())->findOrCreate($this->input('client')), isset($_POST['billable_default']));
+        $projects->setVisibility($id, $this->input('visibility'));
 
         $this->flash(__('Project {code} created.', ['code' => $code]));
         $this->redirect('/projects/' . $id);
@@ -251,10 +252,46 @@ class ProjectController extends Controller
         ]);
     }
 
+    /** Adds somebody to a project: for a private one, or for a guest. */
+    public function addMember(int $id): void
+    {
+        Auth::requireAdmin();
+
+        $this->projectOr404($id);
+        $person = (new UserRepository())->findActive((int) $this->idInput('user_id'));
+
+        if ($person === null) {
+            $this->flash(__('There is no such active account.'), 'danger');
+            $this->redirect('/projects/' . $id . '/edit#members');
+        }
+
+        (new ProjectRepository())->addMember($id, (int) $person['id']);
+
+        $this->flash(__('{name} is a member of the project now.', ['name' => $person['name']]));
+        $this->redirect('/projects/' . $id . '/edit#members');
+    }
+
+    public function removeMember(int $id, int $userId): void
+    {
+        Auth::requireAdmin();
+
+        $this->projectOr404($id);
+        (new ProjectRepository())->removeMember($id, $userId);
+
+        $this->flash(__('Taken off the project.'), 'warning');
+        $this->redirect('/projects/' . $id . '/edit#members');
+    }
+
     /** The settings form, with the clients it offers. */
     private function renderForm(array $context, int $status = 200): void
     {
-        $this->render('projects/form.twig', $context + ['clients' => (new ClientRepository())->all()], $status);
+        $projectId = (int) ($context['project']['id'] ?? 0);
+
+        $this->render('projects/form.twig', $context + [
+            'clients' => (new ClientRepository())->all(),
+            'members' => $projectId > 0 ? (new ProjectRepository())->members($projectId) : [],
+            'people' => (new UserRepository())->active(),
+        ], $status);
     }
 
     public function update(int $id): void

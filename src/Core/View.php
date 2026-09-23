@@ -55,6 +55,10 @@ class View
         $twig->addGlobal('base_url', rtrim((string) Config::get('app.base_url', ''), '/'));
         $twig->addGlobal('current_user', Auth::user());
         $twig->addGlobal('is_admin', Auth::isAdmin());
+        // Whether the signed-in person may change the work, or is a guest who
+        // reads and comments. The pages leave out what a guest would only be
+        // refused.
+        $twig->addGlobal('can_work', Auth::check() && (Auth::user()['role'] ?? '') !== 'guest');
         $twig->addGlobal('csrf_token', Csrf::token());
         $twig->addGlobal('current_path', Router::normalise($_SERVER['REQUEST_URI'] ?? '/'));
         $twig->addGlobal('flash', Session::takeFlash());

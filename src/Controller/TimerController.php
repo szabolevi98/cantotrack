@@ -13,7 +13,7 @@ class TimerController extends Controller
 {
     public function start(int $ticketId): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         try {
             $logged = (new TimerService())->start((int) Auth::id(), $ticketId);
@@ -32,7 +32,7 @@ class TimerController extends Controller
 
     public function stop(): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         try {
             $logged = (new TimerService())->stop((int) Auth::id(), $this->input('note'));
@@ -52,7 +52,7 @@ class TimerController extends Controller
 
     public function discard(): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         (new TimerService())->discard((int) Auth::id());
 

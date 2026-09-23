@@ -2,6 +2,7 @@
 
 namespace CantoTrack\Model;
 
+use CantoTrack\Core\Access;
 use CantoTrack\Core\DatabaseConnection;
 use PDO;
 
@@ -23,7 +24,7 @@ class NotificationRepository
              JOIN tickets t ON t.id = n.ticket_id
              JOIN projects p ON p.id = t.project_id
              LEFT JOIN users a ON a.id = n.actor_id
-             WHERE n.user_id = :user
+             WHERE n.user_id = :user' . Access::sql('p.id') . '
              ORDER BY n.created_at DESC, n.id DESC
              LIMIT ' . max(1, $limit) . ' OFFSET ' . max(0, $offset)
         );
@@ -34,7 +35,10 @@ class NotificationRepository
 
     public function unreadCount(int $userId): int
     {
-        $statement = $this->db->prepare('SELECT COUNT(*) FROM notifications WHERE user_id = :user AND read_at IS NULL');
+        $statement = $this->db->prepare(
+            'SELECT COUNT(*) FROM notifications n JOIN tickets t ON t.id = n.ticket_id
+             WHERE n.user_id = :user AND n.read_at IS NULL' . Access::sql('t.project_id')
+        );
         $statement->execute(['user' => $userId]);
 
         return (int) $statement->fetchColumn();

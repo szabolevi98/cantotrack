@@ -30,7 +30,7 @@ class TimesheetController extends Controller
 {
     public function index(): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $monday = $this->mondayOf((string) ($_GET['week'] ?? ''));
         $sunday = $monday->modify('+6 days');
@@ -176,7 +176,7 @@ class TimesheetController extends Controller
      */
     public function saveGrid(): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $userId = (int) ($this->idInput('user') ?? Auth::id());
 
@@ -256,7 +256,7 @@ class TimesheetController extends Controller
     /** Handing one's own week in. */
     public function submit(): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $monday = $this->mondayOf($this->input('week'))->format('Y-m-d');
 
@@ -302,7 +302,7 @@ class TimesheetController extends Controller
 
     public function addAbsence(): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $userId = (int) ($this->idInput('user') ?? Auth::id());
 
@@ -322,7 +322,7 @@ class TimesheetController extends Controller
 
     public function removeAbsence(int $id): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $calendar = new Calendar();
         $absence = $calendar->findAbsence($id);

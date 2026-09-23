@@ -23,7 +23,7 @@ class WorklogController extends Controller
     /** Logged from the ticket page: the form posts here and comes straight back. */
     public function create(int $ticketId): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         if ((new TicketRepository())->find($ticketId) === null) {
             $this->notFound(__('There is no such ticket.'));
@@ -50,7 +50,7 @@ class WorklogController extends Controller
 
     public function update(int $id): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $worklog = $this->mineOr403($id);
 
@@ -75,7 +75,7 @@ class WorklogController extends Controller
 
     public function delete(int $id): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $worklog = $this->mineOr403($id);
 

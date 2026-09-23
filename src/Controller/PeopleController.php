@@ -51,7 +51,7 @@ class PeopleController extends Controller
 
         $name = trim((string) ($_POST['name'] ?? ''));
         $email = mb_strtolower(trim((string) ($_POST['email'] ?? '')));
-        $role = ($_POST['role'] ?? 'member') === 'admin' ? 'admin' : 'member';
+        $role = in_array($_POST['role'] ?? '', ['admin', 'guest'], true) ? (string) $_POST['role'] : 'member';
         $users = new UserRepository();
 
         $error = match (true) {
@@ -103,7 +103,7 @@ class PeopleController extends Controller
         $person = $this->personOr404($id);
         $name = trim((string) ($_POST['name'] ?? ''));
         $email = mb_strtolower(trim((string) ($_POST['email'] ?? '')));
-        $role = ($_POST['role'] ?? 'member') === 'admin' ? 'admin' : 'member';
+        $role = in_array($_POST['role'] ?? '', ['admin', 'guest'], true) ? (string) $_POST['role'] : 'member';
         $isActive = isset($_POST['is_active']);
         $users = new UserRepository();
 

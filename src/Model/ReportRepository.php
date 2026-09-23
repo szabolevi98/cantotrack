@@ -2,6 +2,7 @@
 
 namespace CantoTrack\Model;
 
+use CantoTrack\Core\Access;
 use CantoTrack\Core\DatabaseConnection;
 use PDO;
 
@@ -114,6 +115,12 @@ class ReportRepository
     private function conditions(array $filters): array
     {
         $where = ['w.work_date BETWEEN :from AND :to'];
+
+        // Hours in a project somebody cannot see are not in their reports.
+        $visible = Access::where('p.id');
+        if ($visible !== null) {
+            $where[] = $visible;
+        }
         $parameters = ['from' => $filters['from'], 'to' => $filters['to']];
 
         foreach (['project_id' => 'p.id', 'client_id' => 'p.client_id', 'user_id' => 'w.user_id'] as $key => $column) {

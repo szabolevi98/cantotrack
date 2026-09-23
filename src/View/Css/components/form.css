@@ -190,3 +190,34 @@ summary.link-button::-webkit-details-marker {
     text-overflow: ellipsis;
     white-space: nowrap;
 }
+
+/* A choice of a few, each with its sentence: radio buttons in a column. */
+.choice {
+    display: grid;
+    gap: 6px;
+    margin: 16px 0 8px;
+    padding: 0;
+    border: 0;
+}
+
+.choice legend {
+    margin-bottom: 4px;
+    font-weight: 600;
+}
+
+.choice .check {
+    margin: 0;
+}
+
+/* A select and its button on one line. */
+.form__row--inline {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-top: 12px;
+}
+
+.form__row--inline .field {
+    flex: 1;
+    min-width: 0;
+}

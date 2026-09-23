@@ -44,6 +44,10 @@
             { path: '/timesheet', label: 'Timesheet' },
             { path: '/reports', label: 'Reports' }
         ] %}
+        {# A guest has no hours and no reports to look at. #}
+        {% if not can_work %}
+            {% set items = items|filter(item => item.path not in ['/timesheet', '/reports']) %}
+        {% endif %}
 
         {% for item in items %}
             {# The dashboard is the only path that has to match exactly: every

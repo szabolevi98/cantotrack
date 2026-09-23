@@ -40,7 +40,7 @@ class SprintController extends Controller
 
     public function create(int $projectId): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $this->projectOr404($projectId);
 
@@ -83,7 +83,7 @@ class SprintController extends Controller
 
     public function update(int $id): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $sprint = $this->sprintOr404($id);
 
@@ -99,7 +99,7 @@ class SprintController extends Controller
 
     public function start(int $id): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $sprint = $this->sprintOr404($id);
 
@@ -115,7 +115,7 @@ class SprintController extends Controller
 
     public function close(int $id): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $sprint = $this->sprintOr404($id);
 
@@ -131,7 +131,7 @@ class SprintController extends Controller
 
     public function delete(int $id): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $sprint = $this->sprintOr404($id);
 
@@ -148,7 +148,7 @@ class SprintController extends Controller
     /** One ticket into a sprint, or back to the backlog. */
     public function assign(int $ticketId): void
     {
-        Auth::require();
+        Auth::requireMember();
 
         $ticket = (new TicketRepository())->find($ticketId);
         if ($ticket === null) {

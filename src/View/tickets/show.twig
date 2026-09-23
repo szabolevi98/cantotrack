@@ -29,8 +29,10 @@
             {{ watching ? 'Following'|t : 'Follow'|t }}{% if watchers > 0 %} · {{ watchers }}{% endif %}
         </button>
     </form>
-    {{ ui.move(ticket, statuses, '/tickets/' ~ ticket.id) }}
-    <a class="button" href="{{ url('/tickets/' ~ ticket.id ~ '/edit') }}">{{ 'Edit'|t }}</a>
+    {% if can_work %}
+        {{ ui.move(ticket, statuses, '/tickets/' ~ ticket.id) }}
+        <a class="button" href="{{ url('/tickets/' ~ ticket.id ~ '/edit') }}">{{ 'Edit'|t }}</a>
+    {% endif %}
 {% endblock %}
 
 {% block content %}
@@ -135,6 +137,7 @@
                         {% endfor %}
                     </ul>
                 {% endif %}
+                {% if can_work %}
                 <form class="link-form" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/links') }}">
                     <input type="hidden" name="_token" value="{{ csrf_token }}">
                     <span>{{ 'This ticket'|t }}</span>
@@ -147,6 +150,7 @@
                            placeholder="CT-14" aria-label="{{ 'Ticket'|t }}" pattern="[A-Za-z][A-Za-z0-9]{1,9}-[0-9]+">
                     <button class="button button--small" type="submit">{{ 'Link'|t }}</button>
                 </form>
+                {% endif %}
             </section>
 
             {#
@@ -225,6 +229,7 @@
                 {% endif %}
             </section>
 
+            {% if can_work %}
             <section class="card">
                 <h2 class="card__title">{{ 'Log time'|t }}</h2>
                 {#
@@ -310,6 +315,7 @@
                     </ul>
                 {% endif %}
             </section>
+            {% endif %}
         </div>
 
         <aside class="split__side">
@@ -323,8 +329,8 @@
 
                     <dt>{{ 'Sprint'|t }}</dt>
                     <dd>
-                        {% if ticket.sprint_state == 'closed' %}
-                            {{ ticket.sprint_name }}
+                        {% if ticket.sprint_state == 'closed' or not can_work %}
+                            {{ ticket.sprint_name|default('Backlog'|t) }}
                         {% else %}
                             <form class="move" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/sprint') }}">
                                 <input type="hidden" name="_token" value="{{ csrf_token }}">

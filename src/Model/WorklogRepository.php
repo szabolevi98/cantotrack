@@ -2,6 +2,7 @@
 
 namespace CantoTrack\Model;
 
+use CantoTrack\Core\Access;
 use CantoTrack\Core\DatabaseConnection;
 use PDO;
 
@@ -37,7 +38,7 @@ class WorklogRepository
 
     public function find(int $id): ?array
     {
-        $statement = $this->db->prepare(self::SELECT . ' WHERE w.id = :id');
+        $statement = $this->db->prepare(self::SELECT . ' WHERE w.id = :id' . Access::sql('p.id', 'w.user_id'));
         $statement->execute(['id' => $id]);
 
         return $statement->fetch() ?: null;
@@ -59,7 +60,7 @@ class WorklogRepository
     public function forRange(int $userId, string $from, string $to): array
     {
         $statement = $this->db->prepare(
-            self::SELECT . ' WHERE w.user_id = :user AND w.work_date BETWEEN :from AND :to
+            self::SELECT . ' WHERE w.user_id = :user AND w.work_date BETWEEN :from AND :to' . Access::sql('p.id', 'w.user_id') . '
              ORDER BY w.work_date, w.id'
         );
 
@@ -104,7 +105,7 @@ class WorklogRepository
              FROM worklogs w
              JOIN tickets t ON t.id = w.ticket_id
              JOIN projects p ON p.id = t.project_id
-             WHERE w.user_id = :user AND w.work_date BETWEEN :from AND :to
+             WHERE w.user_id = :user AND w.work_date BETWEEN :from AND :to' . Access::sql('p.id', 'w.user_id') . '
              GROUP BY p.id
              ORDER BY minutes DESC'
         );
@@ -117,8 +118,8 @@ class WorklogRepository
     public function totalMinutes(int $userId, string $from, string $to): int
     {
         $statement = $this->db->prepare(
-            'SELECT COALESCE(SUM(minutes), 0) FROM worklogs
-             WHERE user_id = :user AND work_date BETWEEN :from AND :to'
+            'SELECT COALESCE(SUM(w.minutes), 0) FROM worklogs w JOIN tickets t ON t.id = w.ticket_id
+             WHERE w.user_id = :user AND w.work_date BETWEEN :from AND :to' . Access::sql('t.project_id', 'w.user_id')
         );
 
         $statement->execute(['user' => $userId, 'from' => $from, 'to' => $to]);

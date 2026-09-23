@@ -2,6 +2,7 @@
 
 namespace CantoTrack\Model;
 
+use CantoTrack\Core\Access;
 use CantoTrack\Core\DatabaseConnection;
 use PDO;
 
@@ -70,6 +71,12 @@ class EventRepository
      */
     public function recent(int $limit = 20, ?array $projectIds = null): array
     {
+        // Never more than the signed-in person may see, whatever was asked for.
+        $visible = Access::projectIds();
+        if ($visible !== null) {
+            $projectIds = $projectIds === null ? $visible : array_values(array_intersect($projectIds, $visible));
+        }
+
         $only = $projectIds === null ? '' : ' AND t.project_id IN (' . ($projectIds === [] ? '0' : implode(',', array_map('intval', $projectIds))) . ')';
 
         $statement = $this->db->prepare(

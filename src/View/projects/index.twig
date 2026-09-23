@@ -52,6 +52,7 @@
                             <span class="muted">No tickets yet</span>
                         {% endif %}
                         {% if project.is_archived %}<span class="badge badge--muted">Archived</span>{% endif %}
+                        {% if project.visibility == 'private' %}<span class="badge badge--violet">{{ 'Private'|t }}</span>{% endif %}
                     </div>
                 </a>
             {% endfor %}

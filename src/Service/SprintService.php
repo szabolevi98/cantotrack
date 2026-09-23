@@ -174,7 +174,9 @@ class SprintService
      */
     public function burndown(array $sprint): array
     {
-        $tickets = $this->sprints->tickets((int) $sprint['id']);
+        // A closed sprint's unfinished tickets have moved on; they are counted
+        // as still open to its last day, which is what they were.
+        $tickets = array_merge($this->sprints->tickets((int) $sprint['id']), $this->sprints->carriedOut($sprint));
         $byPoints = self::points($tickets) > 0;
         $size = static fn(array $t): int => $byPoints ? (int) $t['story_points'] : 1;
 

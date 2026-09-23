@@ -47,6 +47,23 @@ final class SprintServiceTest extends DatabaseTestCase
         $this->sprints->start($this->sprintWith([2]));
     }
 
+    public function testAClosedSprintsBurndownStillCountsTheWorkItHandedOn(): void
+    {
+        $sprint = $this->sprintWith([3, 5]);
+        $this->sprints->start($sprint);
+        $repository = new SprintRepository($this->db);
+        $ids = array_column($repository->tickets((int) $sprint['id']), 'id');
+        $this->tickets->changeStatus((int) $ids[0], 'done');
+
+        $this->sprints->close((array) $repository->find((int) $sprint['id']), null, $this->me);
+        $burndown = $this->sprints->burndown((array) $repository->find((int) $sprint['id']));
+
+        // The five points that went back to the backlog were never done in it.
+        $last = end($burndown['days']);
+        self::assertSame(8, $burndown['total']);
+        self::assertSame(5, $last === false ? null : $last['remaining']);
+    }
+
     public function testClosingSendsUnfinishedWorkOn(): void
     {
         $sprint = $this->sprintWith([3, 5]);

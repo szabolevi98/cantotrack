@@ -123,6 +123,35 @@ class SprintRepository
         return $statement->fetchAll();
     }
 
+    /**
+     * The tickets a closed sprint handed on unfinished — to the next sprint
+     * or back to the backlog — found by the line their history got when it
+     * closed. They are no longer in the sprint, but they were its work, and a
+     * burndown without them ends at zero for a sprint that did not finish.
+     */
+    public function carriedOut(array $sprint): array
+    {
+        if ($sprint['closed_at'] === null) {
+            return [];
+        }
+
+        $statement = $this->db->prepare(
+            'SELECT DISTINCT t.id, t.story_points, NULL AS closed_at, \'todo\' AS category
+             FROM ticket_events e JOIN tickets t ON t.id = e.ticket_id
+             WHERE t.project_id = :project AND e.kind = \'sprint\' AND e.old_value = :name
+               AND e.created_at >= :closed - INTERVAL 1 MINUTE
+               AND (t.sprint_id IS NULL OR t.sprint_id <> :sprint)'
+        );
+        $statement->execute([
+            'project' => $sprint['project_id'],
+            'name' => $sprint['name'],
+            'closed' => $sprint['closed_at'],
+            'sprint' => $sprint['id'],
+        ]);
+
+        return $statement->fetchAll();
+    }
+
     /** Sets the sprint of some tickets at once (null: back to the backlog). */
     public function assign(array $ticketIds, ?int $sprintId): void
     {

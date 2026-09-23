@@ -135,7 +135,7 @@ class AttachmentController extends Controller
      * `files[]` for several. PHP spreads the second across five parallel
      * arrays; this puts each file back together.
      *
-     * @return list<array{name: mixed, tmp_name: mixed, error: mixed, size: mixed}>
+     * @return list<array<string, mixed>>
      */
     private static function files(): array
     {

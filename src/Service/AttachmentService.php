@@ -86,7 +86,7 @@ class AttachmentService
     /**
      * Takes one uploaded file — an entry of $_FILES — onto a ticket.
      *
-     * @param array{name?: mixed, tmp_name?: mixed, error?: mixed, size?: mixed} $upload
+     * @param array<string, mixed> $upload
      * @throws ValidationError
      */
     public function store(int $ticketId, int $userId, array $upload): array

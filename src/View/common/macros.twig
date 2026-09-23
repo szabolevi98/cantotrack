@@ -241,7 +241,8 @@
     {%- elseif event.kind == 'detached' -%}
         {{ '{who} removed the attachment {name}'|t({who: who, name: event.old_value}) }}
     {%- elseif event.kind == 'linked' -%}
-        {{ '{who} linked {key}'|t({who: who, key: event.new_value}) }} <span class="muted">({{ event.field|t }})</span>
+        {%- set phrases = {blocks: 'blocks', blocked_by: 'is blocked by', relates: 'relates to', duplicates: 'duplicates', duplicated_by: 'is duplicated by'} -%}
+        {{ '{who} linked it: {how} {key}'|t({who: who, how: (phrases[event.field]|default(event.field))|t, key: event.new_value}) }}
     {%- elseif event.kind == 'unlinked' -%}
         {{ '{who} removed the link to {key}'|t({who: who, key: event.old_value}) }}
     {%- elseif event.kind == 'commit' -%}

@@ -14,10 +14,12 @@ use CantoTrack\Controller\AttachmentController;
 use CantoTrack\Controller\CommentController;
 use CantoTrack\Controller\DashboardController;
 use CantoTrack\Controller\EpicController;
+use CantoTrack\Controller\LinkController;
 use CantoTrack\Controller\LoginController;
 use CantoTrack\Controller\PeopleController;
 use CantoTrack\Controller\ProfileController;
 use CantoTrack\Controller\ProjectController;
+use CantoTrack\Controller\SprintController;
 use CantoTrack\Controller\TicketController;
 use CantoTrack\Controller\TimesheetController;
 use CantoTrack\Controller\WorklogController;
@@ -52,6 +54,15 @@ $router->get('/projects/{id}/options', static fn($id) => (new ProjectController(
 $router->post('/projects/{id}', static fn($id) => (new ProjectController())->update((int) $id));
 $router->post('/projects/{id}/delete', static fn($id) => (new ProjectController())->delete((int) $id));
 
+// Planning: the backlog, the sprints, and each sprint's report.
+$router->get('/projects/{id}/backlog', static fn($id) => (new SprintController())->backlog((int) $id));
+$router->post('/projects/{id}/sprints', static fn($id) => (new SprintController())->create((int) $id));
+$router->get('/sprints/{id}', static fn($id) => (new SprintController())->show((int) $id));
+$router->post('/sprints/{id}', static fn($id) => (new SprintController())->update((int) $id));
+$router->post('/sprints/{id}/start', static fn($id) => (new SprintController())->start((int) $id));
+$router->post('/sprints/{id}/close', static fn($id) => (new SprintController())->close((int) $id));
+$router->post('/sprints/{id}/delete', static fn($id) => (new SprintController())->delete((int) $id));
+
 // A project's columns, from its settings page.
 $router->post('/projects/{id}/statuses', static fn($id) => (new ProjectController())->createStatus((int) $id));
 $router->post('/statuses/{id}', static fn($id) => (new ProjectController())->updateStatus((int) $id));
@@ -84,6 +95,11 @@ $router->get('/t/{key}', static fn($key) => (new TicketController())->byKey((str
 $router->post('/tickets/{id}/attachments', static fn($id) => (new AttachmentController())->upload((int) $id));
 $router->get('/attachments/{id}', static fn($id) => (new AttachmentController())->download((int) $id));
 $router->post('/attachments/{id}/delete', static fn($id) => (new AttachmentController())->delete((int) $id));
+
+$router->post('/tickets/{id}/links', static fn($id) => (new LinkController())->create((int) $id));
+$router->post('/links/{id}/delete', static fn($id) => (new LinkController())->delete((int) $id));
+
+$router->post('/tickets/{id}/sprint', static fn($id) => (new SprintController())->assign((int) $id));
 
 $router->post('/tickets/{id}/comments', static fn($id) => (new CommentController())->create((int) $id));
 $router->post('/comments/{id}', static fn($id) => (new CommentController())->update((int) $id));

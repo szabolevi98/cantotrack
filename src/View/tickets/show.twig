@@ -97,6 +97,49 @@
             </section>
 
             {#
+                How this ticket depends on others. Each link reads from this
+                ticket's end — "blocks CT-7", "is blocked by CT-3" — whichever
+                end it was made from.
+            #}
+            {% set link_phrases = {
+                'blocks-out': 'blocks', 'blocks-in': 'is blocked by',
+                'relates-out': 'relates to', 'relates-in': 'relates to',
+                'duplicates-out': 'duplicates', 'duplicates-in': 'is duplicated by'
+            } %}
+            <section class="card" id="links">
+                <h2 class="card__title">{{ 'Links'|t }}</h2>
+                {% if links is not empty %}
+                    <ul class="links">
+                        {% for link in links %}
+                            <li class="links__item">
+                                <span class="links__kind">{{ link_phrases[link.kind ~ '-' ~ link.direction]|t }}</span>
+                                <a class="ticket-key" href="{{ url('/tickets/' ~ link.other_id) }}">{{ link.other_code }}-{{ link.other_number }}</a>
+                                <a class="links__title{{ link.other_category == 'done' ? ' links__title--done' : '' }}" href="{{ url('/tickets/' ~ link.other_id) }}">{{ link.other_title }}</a>
+                                {{ ui.status(link.other_status, link.other_colour) }}
+                                <form method="post" action="{{ url('/links/' ~ link.id ~ '/delete') }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                    <input type="hidden" name="from" value="{{ ticket.id }}">
+                                    <button class="link-button" type="submit" aria-label="{{ 'Remove this link'|t }}" title="{{ 'Remove this link'|t }}">×</button>
+                                </form>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+                <form class="link-form" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/links') }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                    <span>{{ 'This ticket'|t }}</span>
+                    <select class="field field--inline" name="kind" aria-label="{{ 'How'|t }}">
+                        {% for kind, phrase in {blocks: 'blocks', blocked_by: 'is blocked by', relates: 'relates to', duplicates: 'duplicates', duplicated_by: 'is duplicated by'} %}
+                            <option value="{{ kind }}">{{ phrase|t }}</option>
+                        {% endfor %}
+                    </select>
+                    <input class="field field--inline link-form__key" type="text" name="key" required
+                           placeholder="CT-14" aria-label="{{ 'Ticket'|t }}" pattern="[A-Za-z][A-Za-z0-9]{1,9}-[0-9]+">
+                    <button class="button button--small" type="submit">{{ 'Link'|t }}</button>
+                </form>
+            </section>
+
+            {#
                 What was said and what happened, in one stream — see
                 TicketController::timeline for why they are read together.
             #}
@@ -221,7 +264,29 @@
             <section class="card">
                 <dl class="facts">
                     <dt>{{ 'Status'|t }}</dt>
-                    <dd>{{ ui.status(ticket.status_name, ticket.status_colour) }}</dd>
+                    <dd>
+                        {{ ui.status(ticket.status_name, ticket.status_colour) }}
+                        {% if ticket.blocked_by > 0 %}<span class="badge badge--red" title="{{ 'Blocked by an unfinished ticket'|t }}">{{ 'Blocked'|t }}</span>{% endif %}
+                    </dd>
+
+                    <dt>{{ 'Sprint'|t }}</dt>
+                    <dd>
+                        {% if ticket.sprint_state == 'closed' %}
+                            {{ ticket.sprint_name }}
+                        {% else %}
+                            <form class="move" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/sprint') }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                <input type="hidden" name="back" value="/tickets/{{ ticket.id }}">
+                                <select class="field field--inline move__select" name="sprint_id" data-autosubmit aria-label="{{ 'Sprint'|t }}">
+                                    <option value="">{{ 'Backlog'|t }}</option>
+                                    {% for sprint in sprints %}
+                                        <option value="{{ sprint.id }}"{{ ticket.sprint_id == sprint.id ? ' selected' : '' }}>{{ sprint.name }}</option>
+                                    {% endfor %}
+                                </select>
+                                <button class="button button--small autosubmit__button" type="submit">{{ 'Move'|t }}</button>
+                            </form>
+                        {% endif %}
+                    </dd>
 
                     <dt>{{ 'Type'|t }}</dt>
                     <dd class="facts__with-icon">{{ ui.type_icon(ticket.type) }} {{ ui.type_label(ticket.type) }}</dd>

@@ -1,0 +1,252 @@
+/*
+ * Planning: the backlog and its sprints, a sprint's report and its charts,
+ * the running sprint above the board, and the links between tickets.
+ */
+.plan__head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+.plan__head .card__title {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    margin-bottom: 2px;
+}
+
+.plan__dates {
+    margin: 0;
+    font-size: 0.84rem;
+}
+
+.plan__goal {
+    margin: 6px 0 0;
+    font-size: 0.9rem;
+}
+
+.plan__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+/* The running sprint stands out from the planned ones. */
+.plan--active {
+    border-color: var(--ct-primary-border);
+}
+
+.plan__tickets {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    border-top: 1px solid var(--ct-border);
+}
+
+.plan__ticket {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto 170px;
+    gap: 6px 12px;
+    align-items: center;
+    padding: 8px 2px;
+    border-bottom: 1px solid var(--ct-border);
+    font-size: 0.9rem;
+}
+
+.plan__ticket:last-child {
+    border-bottom: none;
+}
+
+.plan__key {
+    display: inline-flex;
+    gap: 5px;
+    align-items: center;
+}
+
+.plan__title {
+    overflow: hidden;
+    color: var(--ct-text);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.plan__meta {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.plan__move .move__select {
+    width: 100%;
+}
+
+/* The running sprint, above the board. */
+.sprint-bar {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px 20px;
+    align-items: center;
+    padding: 14px 18px;
+    border-color: var(--ct-primary-border);
+}
+
+.sprint-bar__what {
+    display: flex;
+    flex: 1 1 280px;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    align-items: baseline;
+}
+
+.sprint-bar__goal {
+    flex-basis: 100%;
+    color: var(--ct-muted);
+    font-size: 0.88rem;
+}
+
+.sprint-bar__progress {
+    display: flex;
+    flex: 1 1 200px;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 0.84rem;
+}
+
+/* ---------------------------------------------------------------------------
+ * The charts. Colours from the palette, so they follow it — and the dark
+ * theme — without a second definition.
+ * ------------------------------------------------------------------------- */
+.chart {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 6px 0;
+}
+
+.chart__grid {
+    stroke: var(--ct-border);
+    stroke-width: 1;
+}
+
+.chart__axis {
+    fill: var(--ct-muted);
+    font-size: 11px;
+}
+
+.chart__line {
+    stroke: var(--ct-primary);
+    stroke-width: 2.5;
+    stroke-linejoin: round;
+    stroke-linecap: round;
+}
+
+.chart__ideal {
+    stroke: var(--ct-muted);
+    stroke-width: 1.5;
+    stroke-dasharray: 5 5;
+}
+
+.chart__bar--committed {
+    fill: var(--ct-primary-border);
+}
+
+.chart__bar--completed {
+    fill: var(--ct-primary);
+}
+
+.chart__legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 14px;
+    align-items: center;
+    margin: 0 0 12px;
+    color: var(--ct-muted);
+    font-size: 0.82rem;
+}
+
+.chart__key {
+    display: inline-block;
+    width: 14px;
+    height: 10px;
+    margin-right: -8px;
+    border-radius: 3px;
+}
+
+.chart__key--line,
+.chart__key--completed {
+    background: var(--ct-primary);
+}
+
+.chart__key--committed {
+    background: var(--ct-primary-border);
+}
+
+.chart__key--ideal {
+    height: 0;
+    border-top: 2px dashed var(--ct-muted);
+    border-radius: 0;
+}
+
+.table--compact thead th,
+.table--compact tbody td {
+    padding: 7px 10px;
+}
+
+/* ---------------------------------------------------------------------------
+ * Links between tickets.
+ * ------------------------------------------------------------------------- */
+.links {
+    margin: 0 0 12px;
+    padding: 0;
+    list-style: none;
+}
+
+.links__item {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    align-items: center;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--ct-border);
+    font-size: 0.9rem;
+}
+
+.links__kind {
+    min-width: 110px;
+    color: var(--ct-muted);
+    font-size: 0.84rem;
+}
+
+.links__title {
+    flex: 1;
+    min-width: 0;
+    color: var(--ct-text);
+}
+
+.links__title--done {
+    color: var(--ct-muted);
+    text-decoration: line-through;
+}
+
+.link-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+    font-size: 0.9rem;
+}
+
+.link-form__key {
+    width: 120px;
+    font-family: var(--ct-mono);
+}
+
+@media (max-width: 760px) {
+    .plan__ticket {
+        grid-template-columns: auto minmax(0, 1fr);
+    }
+}

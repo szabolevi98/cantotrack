@@ -51,10 +51,17 @@ class TicketRepository
                    (SELECT COALESCE(SUM(w.minutes), 0) FROM worklogs w WHERE w.ticket_id = t.id) AS logged_minutes,
                    (SELECT GROUP_CONCAT(l.name ORDER BY l.name SEPARATOR \'\n\')
                       FROM ticket_labels tl JOIN labels l ON l.id = tl.label_id
-                     WHERE tl.ticket_id = t.id) AS label_names
+                     WHERE tl.ticket_id = t.id) AS label_names,
+                   sp.name AS sprint_name,
+                   sp.state AS sprint_state,
+                   (SELECT COUNT(*) FROM ticket_links bl
+                      JOIN tickets bt ON bt.id = bl.source_id
+                      JOIN statuses bs ON bs.id = bt.status_id
+                     WHERE bl.target_id = t.id AND bl.kind = \'blocks\' AND bs.category <> \'done\') AS blocked_by
             FROM tickets t
             JOIN projects p ON p.id = t.project_id
             JOIN statuses s ON s.id = t.status_id
+            LEFT JOIN sprints sp ON sp.id = t.sprint_id
             LEFT JOIN epics e ON e.id = t.epic_id
             LEFT JOIN users a ON a.id = t.assignee_id
             LEFT JOIN users r ON r.id = t.reporter_id';
@@ -160,6 +167,15 @@ class TicketRepository
 
         if (!empty($filters['no_epic'])) {
             $where[] = 't.epic_id IS NULL';
+        }
+
+        if (!empty($filters['sprint_id'])) {
+            $where[] = 't.sprint_id = :sprint_id';
+            $parameters['sprint_id'] = (int) $filters['sprint_id'];
+        }
+
+        if (!empty($filters['backlog_only'])) {
+            $where[] = 't.sprint_id IS NULL';
         }
 
         if (!empty($filters['type']) && in_array($filters['type'], self::TYPES, true)) {
@@ -464,5 +480,29 @@ class TicketRepository
     public function openFor(int $userId, int $limit = 25): array
     {
         return $this->search(['assignee_id' => $userId, 'open_only' => true], $limit);
+    }
+
+    /**
+     * A project's planning view: every ticket that is not finished, and every
+     * ticket of a sprint that is still open, keyed by sprint (0 for the
+     * backlog) and in rank order — the order the board uses too.
+     *
+     * @return array<int, list<array>>
+     */
+    public function planning(int $projectId): array
+    {
+        $statement = $this->db->prepare(
+            self::SELECT . ' WHERE t.project_id = :project
+               AND (s.category <> \'done\' OR (t.sprint_id IS NOT NULL AND sp.state <> \'closed\'))
+             ORDER BY t.`rank`, t.id'
+        );
+        $statement->execute(['project' => $projectId]);
+
+        $grouped = [];
+        foreach ($statement->fetchAll() as $ticket) {
+            $grouped[(int) ($ticket['sprint_id'] ?? 0)][] = $ticket;
+        }
+
+        return $grouped;
     }
 }

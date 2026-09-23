@@ -13,12 +13,15 @@ use CantoTrack\Model\CommentRepository;
 use CantoTrack\Model\EpicRepository;
 use CantoTrack\Model\EventRepository;
 use CantoTrack\Model\LabelRepository;
+use CantoTrack\Model\LinkRepository;
 use CantoTrack\Model\ProjectRepository;
+use CantoTrack\Model\SprintRepository;
 use CantoTrack\Model\StatusRepository;
 use CantoTrack\Model\TicketRepository;
 use CantoTrack\Model\UserRepository;
 use CantoTrack\Model\WorklogRepository;
 use CantoTrack\Service\AttachmentService;
+use CantoTrack\Service\LinkService;
 use CantoTrack\Service\TicketService;
 
 /**
@@ -97,6 +100,12 @@ class TicketController extends Controller
             'ticket' => $ticket,
             'labels' => (new LabelRepository())->forTicket($id),
             'attachments' => (new AttachmentRepository())->forTicket($id),
+            'links' => (new LinkRepository())->forTicket($id),
+            'link_kinds' => array_keys(LinkService::OFFERED),
+            'sprints' => array_values(array_filter(
+                (new SprintRepository())->forProject((int) $ticket['project_id']),
+                static fn(array $s): bool => $s['state'] !== 'closed'
+            )),
             'max_upload_mb' => intdiv(AttachmentService::maxBytes(), 1048576),
             'people' => (new UserRepository())->active(),
             'statuses' => (new StatusRepository())->forProject((int) $ticket['project_id']),

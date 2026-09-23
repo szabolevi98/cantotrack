@@ -1,0 +1,140 @@
+{% extends 'layout.twig' %}
+{% import 'common/macros.twig' as ui %}
+
+{% block title %}{{ sprint.name }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ sprint.name }}{% endblock %}
+{% block subheading %}
+    <p class="content__sub">
+        <a href="{{ url('/projects/' ~ project.id) }}">{{ project.name }}</a>
+        · {% if sprint.starts_on %}{{ sprint.starts_on|day }} — {{ sprint.ends_on|day }}{% else %}{{ 'No dates yet'|t }}{% endif %}
+        {% if sprint.state == 'active' %}<span class="badge badge--blue">{{ 'Running'|t }}</span>{% endif %}
+        {% if sprint.state == 'closed' %}<span class="badge badge--green">{{ 'Closed'|t }}</span>{% endif %}
+    </p>
+{% endblock %}
+
+{% block actions %}
+    <a class="button" href="{{ url('/projects/' ~ project.id ~ '/backlog') }}">{{ 'Backlog & sprints'|t }}</a>
+    {% if sprint.state == 'active' %}
+        <a class="button" href="{{ url('/projects/' ~ project.id) }}">{{ 'Board'|t }}</a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    {% set done = tickets|filter(t => t.status_category == 'done') %}
+    {% set points = tickets|reduce((sum, t) => sum + (t.story_points ?? 0), 0) %}
+    {% set done_points = done|reduce((sum, t) => sum + (t.story_points ?? 0), 0) %}
+
+    {% if sprint.goal %}
+        <p class="flash">{{ 'Goal'|t }}: {{ sprint.goal }}</p>
+    {% endif %}
+
+    <div class="stats">
+        <div class="stat">
+            <div class="stat__label">{{ 'Done'|t }}</div>
+            <div class="stat__value">{{ done|length }} / {{ tickets|length }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat__label">{{ 'Points done'|t }}</div>
+            <div class="stat__value">{{ done_points }} / {{ points }}</div>
+        </div>
+        {% if sprint.committed_count is not null %}
+            <div class="stat">
+                <div class="stat__label">{{ 'Committed at the start'|t }}</div>
+                <div class="stat__value">{{ burndown.unit == 'points' ? sprint.committed_points : sprint.committed_count }}</div>
+            </div>
+        {% endif %}
+        {% if sprint.state == 'active' and sprint.ends_on %}
+            {% set left = ((sprint.ends_on|date('U') - 'today'|date('U')) / 86400)|round %}
+            <div class="stat{{ left < 0 ? ' stat--alert' : '' }}">
+                <div class="stat__label">{{ 'Days left'|t }}</div>
+                <div class="stat__value">{{ max(0, left) }}</div>
+            </div>
+        {% endif %}
+    </div>
+
+    {% if sprint.state != 'planned' %}
+        <section class="card">
+            <h2 class="card__title">{{ 'Burndown'|t }}</h2>
+            {{ burndown_chart(burndown) }}
+            <p class="chart__legend">
+                <span class="chart__key chart__key--line"></span>{{ burndown.unit == 'points' ? 'Points left'|t : 'Tickets left'|t }}
+                <span class="chart__key chart__key--ideal"></span>{{ 'A steady pace'|t }}
+            </p>
+        </section>
+    {% endif %}
+
+    <div class="split">
+        <section class="card card--flush split__main">
+            <header class="card__head"><h2 class="card__title">{{ 'Tickets'|t }}</h2></header>
+            {% if tickets is empty %}
+                <p class="card__empty">{{ 'Nothing in this sprint.'|t }}</p>
+            {% else %}
+                <table class="table">
+                    <thead><tr>
+                        <th class="table__key">{{ 'Ticket'|t }}</th><th>{{ 'Title'|t }}</th><th>{{ 'Status'|t }}</th>
+                        <th>{{ 'Assignee'|t }}</th><th class="table__number">{{ 'Points'|t }}</th>
+                    </tr></thead>
+                    <tbody>
+                    {% for ticket in tickets %}
+                        <tr>
+                            <td class="table__key">{{ ui.type_icon(ticket.type) }} {{ ui.ticket_key(ticket) }}</td>
+                            <td><a href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a></td>
+                            <td>{{ ui.status(ticket.status_name, ticket.status_colour) }}</td>
+                            <td>{{ ui.person(ticket.assignee_name) }}</td>
+                            <td class="table__number">{{ ticket.story_points ?? '—' }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </section>
+
+        <aside class="split__side">
+            {% if sprint.state == 'active' %}
+                <section class="card">
+                    <h2 class="card__title">{{ 'Close the sprint'|t }}</h2>
+                    {% set open = tickets|length - done|length %}
+                    <p class="card__body">
+                        {{ open > 0 ? plural('{count} ticket is not finished.', '{count} tickets are not finished.', open) : 'Everything in it is finished.'|t }}
+                    </p>
+                    <form method="post" action="{{ url('/sprints/' ~ sprint.id ~ '/close') }}"
+                          data-confirm="{{ 'Close {name}?'|t({name: sprint.name}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                        {% if open > 0 %}
+                            <label for="carry_to">{{ 'The unfinished ones go to'|t }}</label>
+                            <select id="carry_to" class="field" name="carry_to">
+                                <option value="">{{ 'The backlog'|t }}</option>
+                                {% for next in planned %}<option value="{{ next.id }}">{{ next.name }}</option>{% endfor %}
+                            </select>
+                        {% endif %}
+                        <button class="button button--primary" type="submit">{{ 'Close sprint'|t }}</button>
+                    </form>
+                </section>
+            {% endif %}
+
+            {% if sprint.state != 'closed' %}
+                <section class="card">
+                    <h2 class="card__title">{{ 'Edit'|t }}</h2>
+                    <form method="post" action="{{ url('/sprints/' ~ sprint.id) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                        <label for="name">{{ 'Name'|t }}</label>
+                        <input id="name" class="field" type="text" name="name" value="{{ sprint.name }}" maxlength="80" required>
+                        <label for="goal">{{ 'Goal'|t }}</label>
+                        <input id="goal" class="field" type="text" name="goal" value="{{ sprint.goal }}" maxlength="500">
+                        <div class="form__row">
+                            <div>
+                                <label for="starts_on">{{ 'Starts'|t }}</label>
+                                <input id="starts_on" class="field" type="date" name="starts_on" value="{{ sprint.starts_on }}">
+                            </div>
+                            <div>
+                                <label for="ends_on">{{ 'Ends'|t }}</label>
+                                <input id="ends_on" class="field" type="date" name="ends_on" value="{{ sprint.ends_on }}">
+                            </div>
+                        </div>
+                        <button class="button" type="submit">{{ 'Save'|t }}</button>
+                    </form>
+                </section>
+            {% endif %}
+        </aside>
+    </div>
+{% endblock %}

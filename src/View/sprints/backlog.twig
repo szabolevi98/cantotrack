@@ -1,0 +1,167 @@
+{% extends 'layout.twig' %}
+{% import 'common/macros.twig' as ui %}
+{% import _self as plan %}
+
+{% block title %}{{ 'Backlog'|t }} — {{ project.code }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Backlog & sprints'|t }}{% endblock %}
+{% block subheading %}
+    <p class="content__sub"><a href="{{ url('/projects/' ~ project.id) }}">{{ project.name }}</a></p>
+{% endblock %}
+
+{% block actions %}
+    <a class="button" href="{{ url('/projects/' ~ project.id) }}">{{ 'Board'|t }}</a>
+    <a class="button button--primary" href="{{ url('/tickets/create?project=' ~ project.id) }}">{{ 'New ticket'|t }}</a>
+{% endblock %}
+
+{#
+    One ticket in a plan: what it is, where it stands, and the one control
+    that moves it between the backlog and the sprints.
+#}
+{% macro row(ticket, sprints, project) %}
+    {% import 'common/macros.twig' as ui %}
+    <li class="plan__ticket">
+        <span class="plan__key">{{ ui.type_icon(ticket.type) }} {{ ui.ticket_key(ticket) }}</span>
+        <a class="plan__title" href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a>
+        <span class="plan__meta">
+            {% if ticket.blocked_by > 0 %}<span class="badge badge--red" title="{{ 'Blocked by an unfinished ticket'|t }}">{{ 'Blocked'|t }}</span>{% endif %}
+            {{ ui.priority(ticket.priority) }}
+            {{ ui.status(ticket.status_name, ticket.status_colour) }}
+            {% if ticket.assignee_name %}<span class="person__mark" title="{{ ticket.assignee_name }}">{{ ticket.assignee_name|initials }}</span>{% endif %}
+            <span class="points" title="{{ 'Story points'|t }}">{{ ticket.story_points ?? '–' }}</span>
+        </span>
+        <form class="plan__move" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/sprint') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <input type="hidden" name="back" value="/projects/{{ project.id }}/backlog">
+            <select class="field field--inline move__select" name="sprint_id" data-autosubmit
+                    aria-label="{{ 'Sprint of {key}'|t({key: ticket.project_code ~ '-' ~ ticket.number}) }}">
+                <option value="">{{ 'Backlog'|t }}</option>
+                {% for sprint in sprints %}
+                    <option value="{{ sprint.id }}"{{ ticket.sprint_id == sprint.id ? ' selected' : '' }}>{{ sprint.name }}</option>
+                {% endfor %}
+            </select>
+            <button class="button button--small autosubmit__button" type="submit">{{ 'Move'|t }}</button>
+        </form>
+    </li>
+{% endmacro %}
+
+{% block content %}
+    {% set active = sprints|filter(s => s.state == 'active')|first %}
+
+    {% for sprint in sprints %}
+        {% set items = tickets[sprint.id]|default([]) %}
+        <section class="card plan{{ sprint.state == 'active' ? ' plan--active' : '' }}">
+            <header class="plan__head">
+                <div>
+                    <h2 class="card__title">
+                        {{ sprint.name }}
+                        {% if sprint.state == 'active' %}<span class="badge badge--blue">{{ 'Running'|t }}</span>{% endif %}
+                    </h2>
+                    <p class="plan__dates muted">
+                        {% if sprint.starts_on %}{{ sprint.starts_on|day }} — {{ sprint.ends_on|day }}{% else %}{{ 'No dates yet'|t }}{% endif %}
+                        · {{ plural('{count} ticket', '{count} tickets', items|length) }}
+                        · {{ plural('{count} point', '{count} points', sprint.points) }}
+                    </p>
+                    {% if sprint.goal %}<p class="plan__goal">{{ sprint.goal }}</p>{% endif %}
+                </div>
+                <div class="plan__actions">
+                    {% if sprint.state == 'planned' and not active %}
+                        <form method="post" action="{{ url('/sprints/' ~ sprint.id ~ '/start') }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                            <button class="button button--primary button--small" type="submit">{{ 'Start sprint'|t }}</button>
+                        </form>
+                    {% endif %}
+                    <a class="button button--small" href="{{ url('/sprints/' ~ sprint.id) }}">{{ sprint.state == 'active' ? 'Burndown'|t : 'Details'|t }}</a>
+                    {% if sprint.state == 'planned' %}
+                        <form method="post" action="{{ url('/sprints/' ~ sprint.id ~ '/delete') }}"
+                              data-confirm="{{ 'Delete {name}? Its tickets go back to the backlog.'|t({name: sprint.name}) }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                            <button class="link-button link-button--text" type="submit">{{ 'Delete'|t }}</button>
+                        </form>
+                    {% endif %}
+                </div>
+            </header>
+
+            {% if items is empty %}
+                <p class="card__body muted">{{ 'Nothing in this sprint yet. Move tickets in from the backlog below.'|t }}</p>
+            {% else %}
+                <ol class="plan__tickets">
+                    {% for ticket in items %}{{ plan.row(ticket, sprints, project) }}{% endfor %}
+                </ol>
+            {% endif %}
+        </section>
+    {% endfor %}
+
+    <section class="card plan">
+        <header class="plan__head">
+            <div>
+                <h2 class="card__title">{{ 'Backlog'|t }}</h2>
+                <p class="plan__dates muted">
+                    {{ 'Everything not in a sprint and not yet finished, in the order of the board.'|t }}
+                    {{ plural('{count} ticket', '{count} tickets', tickets[0]|default([])|length) }}
+                </p>
+            </div>
+        </header>
+
+        {% if tickets[0]|default([]) is empty %}
+            <p class="card__body muted">{{ 'The backlog is empty.'|t }}</p>
+        {% else %}
+            <ol class="plan__tickets">
+                {% for ticket in tickets[0] %}{{ plan.row(ticket, sprints, project) }}{% endfor %}
+            </ol>
+        {% endif %}
+    </section>
+
+    <div class="split">
+        <section class="card split__main">
+            <h2 class="card__title">{{ 'Plan a sprint'|t }}</h2>
+            <form class="sprint-form" method="post" action="{{ url('/projects/' ~ project.id ~ '/sprints') }}">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <div class="form__row">
+                    <div>
+                        <label for="sprint-name">{{ 'Name'|t }}</label>
+                        <input id="sprint-name" class="field" type="text" name="name" maxlength="80"
+                               placeholder="{{ project.code }} {{ 'Sprint {number}'|t({number: sprints|length + closed|length + 1}) }}">
+                    </div>
+                    <div>
+                        <label for="starts_on">{{ 'Starts'|t }}</label>
+                        <input id="starts_on" class="field" type="date" name="starts_on" value="{{ today }}">
+                    </div>
+                    <div>
+                        <label for="ends_on">{{ 'Ends'|t }}</label>
+                        <input id="ends_on" class="field" type="date" name="ends_on" value="{{ in_two_weeks }}">
+                    </div>
+                </div>
+                <label for="goal">{{ 'Goal'|t }}</label>
+                <input id="goal" class="field" type="text" name="goal" maxlength="500"
+                       placeholder="{{ 'What this sprint is for, in one sentence'|t }}">
+                <button class="button button--primary" type="submit">{{ 'Plan sprint'|t }}</button>
+            </form>
+        </section>
+
+        <section class="card split__side">
+            <h2 class="card__title">{{ 'Velocity'|t }}</h2>
+            {% if velocity is empty %}
+                <p class="card__body muted">{{ 'Once a sprint has been closed, what each one set out to do and what it did shows here.'|t }}</p>
+            {% else %}
+                {% set by_points = velocity|reduce((sum, s) => sum + s.committed_points, 0) > 0 %}
+                {{ velocity_chart(velocity, by_points) }}
+                <p class="chart__legend">
+                    <span class="chart__key chart__key--committed"></span>{{ 'Committed'|t }}
+                    <span class="chart__key chart__key--completed"></span>{{ 'Completed'|t }}
+                </p>
+                <table class="table table--compact">
+                    <thead><tr><th>{{ 'Sprint'|t }}</th><th class="table__number">{{ 'Committed'|t }}</th><th class="table__number">{{ 'Completed'|t }}</th></tr></thead>
+                    <tbody>
+                    {% for sprint in velocity|reverse %}
+                        <tr>
+                            <td><a href="{{ url('/sprints/' ~ sprint.id) }}">{{ sprint.name }}</a></td>
+                            <td class="table__number">{{ by_points ? sprint.committed_points : sprint.committed_count }}</td>
+                            <td class="table__number">{{ by_points ? sprint.completed_points : sprint.completed_count }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </section>
+    </div>
+{% endblock %}

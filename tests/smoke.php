@@ -572,6 +572,68 @@ if ($email === null || $password === null) {
     @unlink($html);
 
     // ---------------------------------------------------------------------
+    // Links and sprints: one ticket blocking another, a sprint planned,
+    // started, burned down and closed.
+    // ---------------------------------------------------------------------
+    $blocker = request($baseUrl . '/tickets/create', [
+        '_token' => $token,
+        'project_id' => $projectId,
+        'title' => 'The ticket in the way',
+        'story_points' => '3',
+    ], $jar);
+    preg_match('#/tickets/(\d+)#', $blocker['headers'], $m);
+    $blockerId = (int) ($m[1] ?? 0);
+
+    request($baseUrl . '/tickets/' . $blockerId . '/links', ['_token' => $token, 'kind' => 'blocks', 'key' => $code . '-1'], $jar);
+    $blockedPage = request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'];
+    check(
+        'a ticket can block another, and the other one reads it from its end',
+        str_contains($blockedPage, 'is blocked by') && str_contains($blockedPage, $code . '-2')
+    );
+
+    $selfLink = request($baseUrl . '/tickets/' . $blockerId . '/links', ['_token' => $token, 'kind' => 'relates', 'key' => $code . '-2'], $jar);
+    check('a ticket cannot be linked to itself', str_contains(request($baseUrl . '/tickets/' . $blockerId, [], $jar)['body'], 'cannot be linked to itself'));
+
+    $planned = request($baseUrl . '/projects/' . $projectId . '/sprints', [
+        '_token' => $token,
+        'name' => 'Smoke sprint',
+        'starts_on' => date('Y-m-d', strtotime('-3 days')),
+        'ends_on' => date('Y-m-d', strtotime('+10 days')),
+        'goal' => 'Get the smoke test through',
+    ], $jar);
+    $backlog = request($baseUrl . '/projects/' . $projectId . '/backlog', [], $jar);
+    preg_match('#/sprints/(\d+)/start#', $backlog['body'], $m);
+    $sprintId = (int) ($m[1] ?? 0);
+    check('a sprint can be planned', $planned['status'] === 302 && $sprintId > 0 && str_contains($backlog['body'], 'Smoke sprint'));
+
+    request($baseUrl . '/tickets/' . $blockerId . '/sprint', ['_token' => $token, 'sprint_id' => $sprintId], $jar);
+    $started = request($baseUrl . '/sprints/' . $sprintId . '/start', ['_token' => $token], $jar);
+    $sprintBoard = request($baseUrl . '/projects/' . $projectId, [], $jar)['body'];
+    check(
+        'and started, after which the board is that sprint’s',
+        $started['status'] === 302
+        && str_contains($sprintBoard, 'sprint-bar')
+        && str_contains($sprintBoard, 'The ticket in the way')
+        && !str_contains($sprintBoard, '>Smoke test ticket<')
+    );
+    check(
+        'while everything is still one click away',
+        str_contains(request($baseUrl . '/projects/' . $projectId . '?scope=all', [], $jar)['body'], 'Smoke test ticket')
+    );
+
+    request($baseUrl . '/tickets/' . $blockerId . '/status', ['_token' => $token, 'status' => 'done'], $jar);
+    $report = request($baseUrl . '/sprints/' . $sprintId, [], $jar)['body'];
+    check('the sprint draws its burndown', str_contains($report, '<svg class="chart"') && str_contains($report, 'chart__line'));
+
+    $closed = request($baseUrl . '/sprints/' . $sprintId . '/close', ['_token' => $token, 'carry_to' => ''], $jar);
+    check(
+        'and closes, recording what it did',
+        $closed['status'] === 302
+        && str_contains(request($baseUrl . '/projects/' . $projectId . '/backlog', [], $jar)['body'], 'Velocity')
+        && !str_contains(request($baseUrl . '/projects/' . $projectId, [], $jar)['body'], 'sprint-bar')
+    );
+
+    // ---------------------------------------------------------------------
     // The hours
     // ---------------------------------------------------------------------
     $logged = request($baseUrl . '/tickets/' . $ticketId . '/log', [

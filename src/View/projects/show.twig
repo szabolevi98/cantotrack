@@ -43,12 +43,38 @@
         </details>
     {% endif %}
 
+    {% if active_sprint %}
+        {# The running sprint, which the board shows unless asked for
+           everything: what it is for, how long it has left, how far it got. #}
+        {% set progress = sprint_progress %}
+        <section class="card sprint-bar">
+            <div class="sprint-bar__what">
+                <strong>{{ active_sprint.name }}</strong>
+                {% if active_sprint.ends_on %}
+                    {% set left = ((active_sprint.ends_on|date('U') - 'today'|date('U')) / 86400)|round %}
+                    <span class="muted">{{ left >= 0 ? plural('{count} day left', '{count} days left', left) : 'Ended {day}'|t({day: active_sprint.ends_on|day}) }}</span>
+                {% endif %}
+                {% if active_sprint.goal %}<span class="sprint-bar__goal">{{ active_sprint.goal }}</span>{% endif %}
+            </div>
+            <div class="sprint-bar__progress">
+                <span class="muted">{{ '{done} of {total} done'|t({done: progress.done, total: progress.total}) }}{% if progress.points > 0 %} · {{ '{done} of {total} points'|t({done: progress.done_points, total: progress.points}) }}{% endif %}</span>
+                <span class="bar"><span class="bar__fill" style="width: {{ progress.total > 0 ? (progress.done / progress.total * 100)|round : 0 }}%"></span></span>
+            </div>
+            <nav class="segmented" aria-label="{{ 'Show'|t }}">
+                <a class="segmented__item{{ scope == 'sprint' ? ' is-active' : '' }}" href="{{ url('/projects/' ~ project.id) }}">{{ 'This sprint'|t }}</a>
+                <a class="segmented__item{{ scope == 'all' ? ' is-active' : '' }}" href="{{ url('/projects/' ~ project.id ~ '?scope=all') }}">{{ 'Everything'|t }}</a>
+            </nav>
+            <a class="button button--small" href="{{ url('/sprints/' ~ active_sprint.id) }}">{{ 'Burndown'|t }}</a>
+        </section>
+    {% endif %}
+
     {#
         The board's filters and how it is split, in the address like the
         ticket list's. They narrow what is drawn; the columns and their
         counts stay the project's.
     #}
     <form class="filters card board-filters" method="get" action="{{ url('/projects/' ~ project.id) }}">
+        {% if scope == 'all' and active_sprint %}<input type="hidden" name="scope" value="all">{% endif %}
         <input class="field field--inline filters__search" type="search" name="q" value="{{ filters.q }}"
                placeholder="{{ 'Filter the cards'|t }}" aria-label="{{ 'Filter the cards'|t }}">
 
@@ -136,7 +162,12 @@
                             <article class="ticket-card" draggable="true" data-ticket-id="{{ ticket.id }}">
                                 <div class="ticket-card__top">
                                     <span class="ticket-card__key">{{ ui.type_icon(ticket.type) }} {{ ui.ticket_key(ticket) }}</span>
-                                    {{ ui.priority(ticket.priority) }}
+                                    <span>
+                                        {% if ticket.blocked_by > 0 and ticket.status_category != 'done' %}
+                                            <span class="badge badge--red" title="{{ 'Blocked by an unfinished ticket'|t }}">{{ 'Blocked'|t }}</span>
+                                        {% endif %}
+                                        {{ ui.priority(ticket.priority) }}
+                                    </span>
                                 </div>
 
                                 <a class="ticket-card__title" href="{{ url('/tickets/' ~ ticket.id) }}" draggable="false">{{ ticket.title }}</a>
@@ -165,7 +196,7 @@
                             </article>
                         {% endfor %}
 
-                        {% if loop.parent.loop.last and more[status.id]|default(0) > 0 and not narrowed %}
+                        {% if loop.parent.loop.last and more[status.id]|default(0) > 0 and not narrowed and scope != 'sprint' %}
                             {# A done column only ever grows, so it shows the latest
                                and says how many more there are rather than drawing
                                two years of finished work on every visit. #}

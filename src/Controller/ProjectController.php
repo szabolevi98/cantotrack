@@ -9,6 +9,7 @@ use CantoTrack\Model\AttachmentRepository;
 use CantoTrack\Model\EpicRepository;
 use CantoTrack\Model\LabelRepository;
 use CantoTrack\Model\ProjectRepository;
+use CantoTrack\Model\SprintRepository;
 use CantoTrack\Model\StatusRepository;
 use CantoTrack\Model\TicketRepository;
 use CantoTrack\Model\UserRepository;
@@ -59,6 +60,15 @@ class ProjectController extends Controller
             'q' => trim((string) ($_GET['q'] ?? '')) ?: null,
         ];
         $lanesBy = in_array($_GET['lanes'] ?? '', ['epic', 'assignee'], true) ? $_GET['lanes'] : 'none';
+        $narrowed = array_filter($filters) !== [];
+
+        // With a sprint running, the board is that sprint's — the work the
+        // team said it would do — unless somebody asks for everything.
+        $active = (new SprintRepository())->active($id);
+        $scope = $active !== null && ($_GET['scope'] ?? '') !== 'all' ? 'sprint' : 'all';
+        if ($scope === 'sprint') {
+            $filters['sprint_id'] = (int) $active['id'];
+        }
 
         $board = (new TicketRepository())->board($id, $statuses, $filters);
 
@@ -73,11 +83,28 @@ class ProjectController extends Controller
             'who' => $who,
             'epic' => $epic,
             'filters' => $filters,
-            'narrowed' => array_filter($filters) !== [],
+            'narrowed' => $narrowed,
+            'active_sprint' => $active,
+            'sprint_progress' => $active === null ? null : $this->sprintProgress((int) $active['id']),
+            'scope' => $scope,
             'people' => (new UserRepository())->active(),
             'labels' => (new LabelRepository())->all(),
             'types' => TicketRepository::TYPES,
         ]);
+    }
+
+    /** How far the running sprint has got: tickets and points, done and all. */
+    private function sprintProgress(int $sprintId): array
+    {
+        $tickets = (new SprintRepository())->tickets($sprintId);
+        $done = array_filter($tickets, static fn(array $t): bool => $t['category'] === 'done');
+
+        return [
+            'total' => count($tickets),
+            'done' => count($done),
+            'points' => array_sum(array_map(static fn(array $t): int => (int) $t['story_points'], $tickets)),
+            'done_points' => array_sum(array_map(static fn(array $t): int => (int) $t['story_points'], $done)),
+        ];
     }
 
     /**

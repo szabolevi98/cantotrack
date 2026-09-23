@@ -66,6 +66,15 @@
             </select>
         {% endif %}
 
+        {% if releases is not empty %}
+            <select class="field field--inline" name="release" aria-label="{{ 'Release'|t }}">
+                <option value="">{{ 'Any release'|t }}</option>
+                {% for release in releases %}
+                    <option value="{{ release.id }}"{{ filters.release_id == release.id ? ' selected' : '' }}>{{ release.name }}{{ release.released_at ? ' ✓' : '' }}</option>
+                {% endfor %}
+            </select>
+        {% endif %}
+
         <select class="field field--inline" name="due" aria-label="{{ 'Due'|t }}">
             <option value="">{{ 'Any due date'|t }}</option>
             <option value="overdue"{{ filters.due == 'overdue' ? ' selected' : '' }}>{{ 'Overdue'|t }}</option>
@@ -208,6 +217,15 @@
                     <option value="">{{ 'Sprint…'|t }}</option>
                     <option value="backlog">{{ 'Backlog'|t }}</option>
                     {% for sprint in sprints %}<option value="{{ sprint.id }}">{{ sprint.name }}</option>{% endfor %}
+                </select>
+            {% endif %}
+
+            {% set coming = releases|filter(r => r.released_at is null) %}
+            {% if coming is not empty %}
+                <select class="field field--inline" name="set_release" aria-label="{{ 'Release'|t }}">
+                    <option value="">{{ 'Release…'|t }}</option>
+                    <option value="none">{{ 'No release'|t }}</option>
+                    {% for release in coming %}<option value="{{ release.id }}">{{ release.name }}</option>{% endfor %}
                 </select>
             {% endif %}
 

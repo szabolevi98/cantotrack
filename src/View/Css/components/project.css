@@ -158,3 +158,112 @@
     margin: 0;
     font-weight: 400;
 }
+
+/* ---------------------------------------------------------------------------
+ * The pages of a project, as tabs above them.
+ * ------------------------------------------------------------------------- */
+.project-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: 0 0 var(--ct-gap);
+    border-bottom: 1px solid var(--ct-border);
+}
+
+.project-tabs__item {
+    margin-bottom: -1px;
+    padding: 8px 14px;
+    border-bottom: 2px solid transparent;
+    color: var(--ct-muted);
+    font-weight: 600;
+}
+
+.project-tabs__item:hover {
+    color: var(--ct-text);
+    text-decoration: none;
+}
+
+.project-tabs__item.is-active {
+    border-bottom-color: var(--ct-primary);
+    color: var(--ct-primary);
+}
+
+/* ---------------------------------------------------------------------------
+ * Releases: a row each, what is in one, and its notes.
+ * ------------------------------------------------------------------------- */
+.releases {
+    display: grid;
+    gap: 12px;
+    margin: 0 0 var(--ct-gap);
+    padding: 0;
+    list-style: none;
+}
+
+.release-row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(180px, 280px);
+    gap: 6px 24px;
+    align-items: center;
+    margin: 0;
+}
+
+.release-row__name {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.05rem;
+}
+
+.release-row__about {
+    grid-column: 1;
+    margin: 0;
+    font-size: 0.9rem;
+}
+
+.release-row__progress {
+    display: grid;
+    grid-column: 2;
+    grid-row: 1 / span 2;
+    gap: 6px;
+    font-size: 0.85rem;
+}
+
+.release-row--out {
+    opacity: 0.8;
+}
+
+.card__head-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    padding: 20px 22px 12px;
+}
+
+.card__head-row .card__title {
+    margin: 0;
+}
+
+.release__bar {
+    flex: 0 0 140px;
+}
+
+.release__source {
+    margin-top: 12px;
+}
+
+.release__source textarea {
+    margin-top: 8px;
+}
+
+@media (max-width: 700px) {
+    .release-row {
+        grid-template-columns: 1fr;
+    }
+
+    .release-row__progress {
+        grid-column: 1;
+        grid-row: auto;
+    }
+}

@@ -107,6 +107,18 @@
                 {% endif %}
             </select>
 
+            <label for="release_id">{{ 'Release'|t }}</label>
+            <select id="release_id" class="field" name="release_id" data-options="releases">
+                <option value="">{{ 'No release'|t }}</option>
+                {% for release in releases %}
+                    <option value="{{ release.id }}"{{ values.release_id|default(0) == release.id ? ' selected' : '' }}>{{ release.name }}</option>
+                {% endfor %}
+                {# A release that went out since keeps the tickets that shipped in it. #}
+                {% if editing and ticket.release_id and ticket.release_id not in releases|column('id') %}
+                    <option value="{{ ticket.release_id }}"{{ values.release_id|default(0) == ticket.release_id ? ' selected' : '' }}>{{ ticket.release_name }}</option>
+                {% endif %}
+            </select>
+
             <label for="description">{{ 'Description'|t }}</label>
             <textarea id="description" class="field" name="description" rows="8">{{ values.description|default('') }}</textarea>
             <p class="hint">{{ 'Markdown works: **bold**, lists, `code`, tables. CT-14 links to that ticket.'|t }}</p>

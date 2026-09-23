@@ -181,6 +181,10 @@ class ProjectController extends Controller
                 static fn(array $epic): array => ['value' => (int) $epic['id'], 'label' => $epic['title']],
                 (new EpicRepository())->openForProject($id)
             ),
+            'releases' => array_map(
+                static fn(array $release): array => ['value' => (int) $release['id'], 'label' => $release['name']],
+                (new \CantoTrack\Model\ReleaseRepository())->unreleased($id)
+            ),
             'statuses' => array_map(
                 static fn(array $status): array => [
                     'value' => (int) $status['id'],

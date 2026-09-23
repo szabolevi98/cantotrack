@@ -4,13 +4,12 @@
 {% set search_project = {id: project.id, code: project.code} %}
 
 {% block title %}{{ 'Backlog'|t }} — {{ project.code }} — {{ app_name }}{% endblock %}
-{% block heading %}{{ 'Backlog & sprints'|t }}{% endblock %}
+{% block heading %}{{ project.name }}{% endblock %}
 {% block subheading %}
-    <p class="content__sub"><a href="{{ url('/projects/' ~ project.id) }}">{{ project.name }}</a></p>
+    <p class="content__sub"><span class="project__code">{{ project.code }}</span> {{ 'Backlog & sprints'|t }}</p>
 {% endblock %}
 
 {% block actions %}
-    <a class="button" href="{{ url('/projects/' ~ project.id) }}">{{ 'Board'|t }}</a>
     <a class="button button--primary" href="{{ url('/tickets/create?project=' ~ project.id) }}">{{ 'New ticket'|t }}</a>
 {% endblock %}
 
@@ -46,6 +45,8 @@
 {% endmacro %}
 
 {% block content %}
+    {% include 'common/project_tabs.twig' with {project: project, active: 'backlog'} only %}
+
     {% set active = sprints|filter(s => s.state == 'active')|first %}
 
     {% for sprint in sprints %}

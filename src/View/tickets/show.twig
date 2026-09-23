@@ -420,6 +420,14 @@
                         {% endif %}
                     </dd>
 
+                    <dt>{{ 'Release'|t }}</dt>
+                    <dd>
+                        {% if ticket.release_id %}
+                            <a href="{{ url('/releases/' ~ ticket.release_id) }}">{{ ticket.release_name }}</a>
+                            {% if ticket.release_released_at %}<span class="badge badge--green">{{ 'out'|t }}</span>{% endif %}
+                        {% else %}—{% endif %}
+                    </dd>
+
                     <dt>{{ 'Type'|t }}</dt>
                     <dd class="facts__with-icon">{{ ui.type_icon(ticket.type) }} {{ ui.type_label(ticket.type) }}</dd>
 

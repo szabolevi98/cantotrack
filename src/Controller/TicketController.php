@@ -15,6 +15,7 @@ use CantoTrack\Model\EventRepository;
 use CantoTrack\Model\LabelRepository;
 use CantoTrack\Model\LinkRepository;
 use CantoTrack\Model\ProjectRepository;
+use CantoTrack\Model\ReleaseRepository;
 use CantoTrack\Model\SprintRepository;
 use CantoTrack\Model\StatusRepository;
 use CantoTrack\Model\TicketRepository;
@@ -73,6 +74,7 @@ class TicketController extends Controller
                 static fn(array $s): bool => $s['state'] !== 'closed'
             )) : [],
             'saved' => $this->savedFilter(),
+            'releases' => $filters['project_id'] ? (new ReleaseRepository())->forProject($filters['project_id']) : [],
         ]);
     }
 
@@ -104,6 +106,7 @@ class TicketController extends Controller
             'due' => $_GET['due'] ?? null,
             'q' => trim((string) ($_GET['q'] ?? '')) ?: null,
             'open_only' => ($_GET['open'] ?? '') === '1',
+            'release_id' => $this->idQuery('release'),
         ];
     }
 
@@ -321,6 +324,11 @@ class TicketController extends Controller
             }
         }
 
+        $release = $this->input('set_release');
+        if ($release !== '') {
+            $changes['release_id'] = $release === 'none' ? null : (int) $release;
+        }
+
         $status = $this->input('set_status');
         $sprint = $this->input('set_sprint');
         $addLabel = $this->input('add_label');
@@ -453,6 +461,7 @@ class TicketController extends Controller
             'project_id' => $projectId,
             'projects' => (new ProjectRepository())->allWithCounts(),
             'epics' => $projectId > 0 ? (new EpicRepository())->openForProject($projectId) : [],
+            'releases' => $projectId > 0 ? (new ReleaseRepository())->unreleased($projectId) : [],
             'people' => (new UserRepository())->active(),
             'priorities' => TicketRepository::PRIORITIES,
             'types' => TicketRepository::TYPES,
@@ -476,6 +485,7 @@ class TicketController extends Controller
             'type' => $this->input('type', 'task'),
             'epic_id' => $this->idInput('epic_id'),
             'parent' => $this->input('parent'),
+            'release_id' => $this->idInput('release_id'),
             'title' => $this->input('title'),
             'description' => $this->input('description'),
             'status' => $this->input('status'),

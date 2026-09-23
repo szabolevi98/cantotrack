@@ -1,0 +1,29 @@
+{% extends 'layout.twig' %}
+
+{% block title %}{{ 'Edit release'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Edit release'|t }}{% endblock %}
+{% block subheading %}<p class="content__sub">{{ 'In {project}'|t({project: release.project_name ~ ' (' ~ release.project_code ~ ')'}) }}</p>{% endblock %}
+
+{% block content %}
+    {% if error|default(null) %}<p class="flash flash--danger">{{ error }}</p>{% endif %}
+
+    <section class="card card--narrow">
+        <form method="post" action="{{ url('/releases/' ~ release.id) }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            {% include 'releases/fields.twig' with {values: values} only %}
+            <div class="form__actions">
+                <button class="button button--primary" type="submit">{{ 'Save'|t }}</button>
+                <a class="button" href="{{ url('/releases/' ~ release.id) }}">{{ 'Cancel'|t }}</a>
+            </div>
+        </form>
+    </section>
+
+    <section class="card card--narrow">
+        <h2 class="card__title">{{ 'Delete this release'|t }}</h2>
+        <p class="card__body">{{ 'Its tickets stay in the project, in no release — nothing that was worked on is deleted.'|t }}</p>
+        <form method="post" action="{{ url('/releases/' ~ release.id ~ '/delete') }}" data-confirm="{{ 'Delete {name}? Its tickets stay in the project.'|t({name: release.name}) }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <button class="button button--danger" type="submit">{{ 'Delete release'|t }}</button>
+        </form>
+    </section>
+{% endblock %}

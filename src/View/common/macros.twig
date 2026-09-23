@@ -261,7 +261,7 @@
 {% macro event_line(event) %}
     {%- set who = event.user_name ?: 'Somebody'|t -%}
     {%- set fields = {
-        title: 'title', type: 'type', priority: 'priority', assignee: 'assignee', epic: 'epic', parent: 'parent',
+        title: 'title', type: 'type', priority: 'priority', assignee: 'assignee', epic: 'epic', parent: 'parent', release: 'release',
         estimate: 'estimate', due: 'due date', points: 'story points', labels: 'labels', description: 'description'
     } -%}
     {%- set field = (fields[event.field]|default(event.field))|t -%}

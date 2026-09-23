@@ -1,0 +1,56 @@
+{% extends 'layout.twig' %}
+{% set search_project = {id: project.id, code: project.code} %}
+
+{% block title %}{{ 'Releases'|t }} — {{ project.code }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ project.name }}{% endblock %}
+{% block subheading %}<p class="content__sub"><span class="project__code">{{ project.code }}</span> {{ 'What goes out together, and when.'|t }}</p>{% endblock %}
+
+{% block content %}
+    {% include 'common/project_tabs.twig' with {project: project, active: 'releases'} only %}
+
+    {% if error|default(null) %}<p class="flash flash--danger">{{ error }}</p>{% endif %}
+
+    {% if releases is empty %}
+        <section class="card">
+            <p class="card__body muted">{{ 'No releases yet. A release is a name — “1.4”, “Autumn relaunch” — and, if you know it, the day it goes out; the tickets that ship in it are put into it.'|t }}</p>
+        </section>
+    {% else %}
+        <ul class="releases">
+            {% for release in releases %}
+                {% set late = release.released_at is null and release.release_on and release.release_on < 'now'|date('Y-m-d') %}
+                <li class="card release-row{{ release.released_at ? ' release-row--out' : '' }}">
+                    <div class="release-row__name">
+                        <a href="{{ url('/releases/' ~ release.id) }}"><strong>{{ release.name }}</strong></a>
+                        {% if release.released_at %}
+                            <span class="badge badge--green">{{ 'Out {day}'|t({day: release.released_at|day}) }}</span>
+                        {% elseif late %}
+                            <span class="badge badge--red">{{ 'Late: due {day}'|t({day: release.release_on|day}) }}</span>
+                        {% elseif release.release_on %}
+                            <span class="badge">{{ 'Due {day}'|t({day: release.release_on|day}) }}</span>
+                        {% else %}
+                            <span class="badge badge--muted">{{ 'No date'|t }}</span>
+                        {% endif %}
+                    </div>
+                    {% if release.description %}<p class="release-row__about muted">{{ release.description|length > 140 ? release.description|slice(0, 140) ~ '…' : release.description }}</p>{% endif %}
+                    <div class="release-row__progress">
+                        <span class="muted">{{ '{done} of {count} done'|t({done: release.done_count, count: release.ticket_count}) }}{% if release.points > 0 %} · {{ plural('{count} point', '{count} points', release.points) }}{% endif %}</span>
+                        <span class="bar"><span class="bar__fill" style="width: {{ release.ticket_count > 0 ? (release.done_count / release.ticket_count * 100)|round : 0 }}%"></span></span>
+                    </div>
+                </li>
+            {% endfor %}
+        </ul>
+    {% endif %}
+
+    {% if can_work %}
+        <section class="card card--narrow">
+            <h2 class="card__title">{{ 'A new release'|t }}</h2>
+            <form method="post" action="{{ url('/projects/' ~ project.id ~ '/releases') }}">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                {% include 'releases/fields.twig' with {values: values} only %}
+                <div class="form__actions">
+                    <button class="button button--primary" type="submit">{{ 'Create release'|t }}</button>
+                </div>
+            </form>
+        </section>
+    {% endif %}
+{% endblock %}

@@ -10,6 +10,7 @@ use CantoTrack\Model\AttachmentRepository;
 use CantoTrack\Model\EpicRepository;
 use CantoTrack\Model\LabelRepository;
 use CantoTrack\Model\ProjectRepository;
+use CantoTrack\Model\ReleaseRepository;
 use CantoTrack\Model\SprintRepository;
 use CantoTrack\Model\StatusRepository;
 use CantoTrack\Model\TicketRepository;
@@ -79,6 +80,8 @@ class TicketService
             // A subtask is part of its parent's work, and so of its epic.
             'epic_id' => $parent !== null ? $parent['epic_id'] : $this->epic($input['epic_id'] ?? null, $projectId, null),
             'parent_id' => $parent !== null ? (int) $parent['id'] : null,
+            // A subtask ships with its parent.
+            'release_id' => $parent !== null ? $parent['release_id'] : $this->release($input, $projectId, null),
             'title' => $this->title($input['title'] ?? ''),
             'description' => (string) ($input['description'] ?? ''),
             'status_id' => (int) $status['id'],
@@ -155,6 +158,9 @@ class TicketService
                 ? $parent['epic_id']
                 : ($has('epic_id') ? $this->epic($input['epic_id'], $projectId, $ticket['epic_id']) : $ticket['epic_id']),
             'parent_id' => $parent === null ? null : (int) $parent['id'],
+            'release_id' => $parent !== null
+                ? $parent['release_id']
+                : ($has('release') || $has('release_id') ? $this->release($input, $projectId, $ticket['release_id']) : $ticket['release_id']),
             'title' => $has('title') ? $this->title($input['title']) : $ticket['title'],
             'description' => $has('description') ? (string) $input['description'] : (string) $ticket['description'],
             'priority' => $has('priority') ? $this->priority($input['priority']) : $ticket['priority'],
@@ -190,12 +196,50 @@ class TicketService
             $this->tickets->setSubtasksEpic($id, $data['epic_id'] === null ? null : (int) $data['epic_id']);
         }
 
+        if ((int) $data['release_id'] !== (int) $ticket['release_id']) {
+            $this->tickets->setSubtasksRelease($id, $data['release_id'] === null ? null : (int) $data['release_id']);
+        }
+
         if ($parent !== null && (int) $parent['id'] !== (int) $ticket['parent_id'] && $parent['sprint_id'] !== null
             && (int) $parent['sprint_id'] !== (int) $ticket['sprint_id']) {
             (new SprintService($this->db))->assign([$id], (int) $parent['sprint_id'], $actorId);
         }
 
         $this->recordChanges($ticket, (array) $this->tickets->find($id), $oldLabels, $newLabels, $actorId);
+    }
+
+    /**
+     * The release a ticket ships in — by its id or its name — or null for
+     * none. One of the project's own that is still coming; the one it is in
+     * already is kept even after it went out, so that editing a title does
+     * not take a shipped ticket out of what it shipped in.
+     *
+     * @param array<string, mixed> $input
+     * @throws ValidationError
+     */
+    private function release(array $input, int $projectId, mixed $current): ?int
+    {
+        $given = trim((string) ($input['release_id'] ?? $input['release'] ?? ''));
+
+        if ($given === '' || $given === '0') {
+            return null;
+        }
+
+        $release = (new ReleaseRepository($this->db))->resolve($projectId, $given);
+
+        if ($release === null) {
+            throw new ValidationError(__('The project has no release “{value}”.', ['value' => $given]));
+        }
+
+        if ($current !== null && (int) $release['id'] === (int) $current) {
+            return (int) $current;
+        }
+
+        if ($release['released_at'] !== null) {
+            throw new ValidationError(__('{name} is out already and takes no new tickets.', ['name' => $release['name']]));
+        }
+
+        return (int) $release['id'];
     }
 
     /**
@@ -325,6 +369,7 @@ class TicketService
             'assignee' => static fn(array $t): string => (string) ($t['assignee_name'] ?? ''),
             'epic' => static fn(array $t): string => (string) ($t['epic_title'] ?? ''),
             'parent' => static fn(array $t): string => $t['parent_id'] === null ? '' : $t['project_code'] . '-' . $t['parent_number'],
+            'release' => static fn(array $t): string => (string) ($t['release_name'] ?? ''),
             'estimate' => static fn(array $t): string => $t['estimate_minutes'] ? Format::duration((int) $t['estimate_minutes']) : '',
             'due' => static fn(array $t): string => (string) ($t['due_on'] ?? ''),
             'points' => static fn(array $t): string => $t['story_points'] === null ? '' : (string) $t['story_points'],

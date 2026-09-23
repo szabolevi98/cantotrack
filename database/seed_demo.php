@@ -371,6 +371,28 @@ $sprintService->assign([$made['approval'], $made['export'], $made['rounding'], $
 $sprintService->start((array) $sprints->find($sprintTwo));
 
 // ---------------------------------------------------------------------------
+// The releases: one out, one coming with the running sprint, one further off
+// ---------------------------------------------------------------------------
+$releaseService = new CantoTrack\Service\ReleaseService();
+$releaseRepository = new CantoTrack\Model\ReleaseRepository();
+$putIn = static function (int $release, array $names) use ($releaseRepository, $made): void {
+    $releaseRepository->assign(array_map(static fn(string $name): int => $made[$name], $names), $release);
+};
+
+$firstRelease = $releaseService->create($ctId, '1.0', 'A board, tickets on it, and time on the tickets.', $sprintOneStart->format('Y-m-d'), $sprintOneStart->modify('+11 days')->format('Y-m-d'));
+$putIn($firstRelease, ['board', 'numbering', 'filters', 'worklog', 'contrast']);
+$releaseService->release((array) $releaseRepository->find($firstRelease), null, $me);
+
+$nextRelease = $releaseService->create($ctId, '1.1', 'A week you can hand in, and see where it went.', $thisMonday->format('Y-m-d'), $day(9));
+$putIn($nextRelease, ['approval', 'timesheet', 'export', 'rounding', 'keyboard', 'mobile', 'dark']);
+
+$laterRelease = $releaseService->create($ctId, '1.2', 'For other programs: the API, webhooks, and an import.', '', $day(30));
+$putIn($laterRelease, ['api', 'webhooks', 'import']);
+
+$relaunch = $releaseService->create($webId, 'Relaunch', 'The new site, the shop, and every old address still working.', $thisMonday->modify('-14 days')->format('Y-m-d'), $day(16));
+$putIn($relaunch, ['copy', 'photos', 'templates', 'shop', 'redirects']);
+
+// ---------------------------------------------------------------------------
 // The hours: last week and this one
 // ---------------------------------------------------------------------------
 $entries = [
@@ -513,6 +535,9 @@ foreach ($made as $id) {
 // The first sprint's tickets were finished during it, a day or two apart,
 // so its burndown goes down the way a real one does.
 $finished = ['numbering' => 1, 'board' => 3, 'filters' => 4, 'contrast' => 7, 'worklog' => 8, 'checkout' => 9, 'dark' => 15];
+
+// 1.0 went out the day its sprint ended.
+$update('UPDATE releases SET released_at = :at WHERE id = :id', ['at' => $at($sprintOneStart->modify('+11 days'), '17:00:00'), 'id' => $firstRelease]);
 foreach ($finished as $name => $offset) {
     $when = $at($sprintOneStart->modify('+' . $offset . ' days'), '16:30:00');
     $update('UPDATE tickets SET closed_at = :at WHERE id = :id', ['at' => $when, 'id' => $made[$name]]);

@@ -36,6 +36,10 @@ deploy with `git pull`.
 - **Subtasks**, one level deep: a ticket broken into steps, each with its own
   person, column and hours. The parent shows how many are done and what the
   whole of it cost, and its subtasks follow it into its epic and its sprints.
+- **Releases**: what goes out together, and the day it is meant to. Each shows
+  how much of it is done; sending one out moves what is unfinished on to the
+  next, and its release notes — what was finished, as new, fixed and changed —
+  are written from the tickets, ready to be copied.
 - **Links between tickets** — blocks, relates to, duplicates. A ticket blocked by
   an unfinished one says so on the board.
 - **Private projects and guests.** A project is open to the team, or private to

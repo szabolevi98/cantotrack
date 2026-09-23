@@ -1,0 +1,115 @@
+{% extends 'layout.twig' %}
+{% import 'common/macros.twig' as ui %}
+{% set search_project = {id: project.id, code: project.code} %}
+
+{% block title %}{{ release.name }} — {{ project.code }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ release.name }}{% endblock %}
+
+{% block subheading %}
+    <p class="content__sub">
+        {{ 'Release of'|t }} <a href="{{ url('/projects/' ~ project.id ~ '/releases') }}">{{ project.name }}</a>
+        {% if release.released_at %}
+            <span class="badge badge--green">{{ 'Out {day}'|t({day: release.released_at|day}) }}</span>
+        {% elseif release.release_on %}
+            · {{ 'goes out {day}'|t({day: release.release_on|day}) }}
+        {% endif %}
+        {% if release.starts_on %}· {{ 'work from {day}'|t({day: release.starts_on|day}) }}{% endif %}
+    </p>
+{% endblock %}
+
+{% block actions %}
+    {% if can_work %}
+        <a class="button" href="{{ url('/tickets?project=' ~ project.id ~ '&release=' ~ release.id) }}">{{ 'In the ticket list'|t }}</a>
+        <a class="button" href="{{ url('/releases/' ~ release.id ~ '/edit') }}">{{ 'Edit'|t }}</a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    {% include 'common/project_tabs.twig' with {project: project, active: 'releases'} only %}
+
+    <div class="split">
+        <div class="split__main">
+            <section class="card card--flush">
+                <header class="card__head-row">
+                    <h2 class="card__title">{{ 'What is in it'|t }}</h2>
+                    <span class="muted">{{ '{done} of {count} done'|t({done: release.done_count, count: release.ticket_count}) }}</span>
+                    <span class="bar release__bar"><span class="bar__fill" style="width: {{ release.ticket_count > 0 ? (release.done_count / release.ticket_count * 100)|round : 0 }}%"></span></span>
+                </header>
+                {% if tickets is empty %}
+                    <p class="card__empty">{{ 'Nothing in it yet. A ticket is put into a release from its form, or from the ticket list, several at a time.'|t }}</p>
+                {% else %}
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th class="table__key">{{ 'Ticket'|t }}</th>
+                            <th>{{ 'Title'|t }}</th>
+                            <th>{{ 'Status'|t }}</th>
+                            <th>{{ 'Assignee'|t }}</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for ticket in tickets %}
+                            <tr>
+                                <td class="table__key">{{ ui.type_icon(ticket.type) }} {{ ui.ticket_key(ticket) }}</td>
+                                <td><a href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a>{{ ui.family(ticket) }} {{ ui.priority(ticket.priority) }}</td>
+                                <td>{{ ui.status(ticket.status_name, ticket.status_colour) }}</td>
+                                <td>{{ ui.person(ticket.assignee_name, ticket.assignee_id) }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                {% endif %}
+            </section>
+
+            {# The notes: what is finished in it, by kind — to be copied into a
+               changelog or an email as they are. #}
+            <section class="card" id="notes">
+                <h2 class="card__title">{{ 'Release notes'|t }}</h2>
+                <div class="card__body markdown">{{ notes|markdown }}</div>
+                <details class="release__source">
+                    <summary class="link-button link-button--text">{{ 'As Markdown, to copy'|t }}</summary>
+                    <textarea class="field field--code" rows="10" readonly data-select-on-focus aria-label="{{ 'Release notes'|t }}">{{ notes }}</textarea>
+                </details>
+            </section>
+        </div>
+
+        <aside class="split__side">
+            {% if release.description %}
+                <section class="card">
+                    <p class="card__body prose">{{ release.description|nl2br }}</p>
+                </section>
+            {% endif %}
+
+            {% if can_work %}
+                <section class="card">
+                    {% if release.released_at %}
+                        <h2 class="card__title">{{ 'Out'|t }}</h2>
+                        <p class="card__body">{{ 'It went out on {day}, with what was finished in it.'|t({day: release.released_at|day}) }}</p>
+                        <form method="post" action="{{ url('/releases/' ~ release.id ~ '/unrelease') }}"
+                              data-confirm="{{ 'Mark {name} as still coming?'|t({name: release.name}) }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                            <button class="button button--small" type="submit">{{ 'It did not go out after all'|t }}</button>
+                        </form>
+                    {% else %}
+                        <h2 class="card__title">{{ 'Send it out'|t }}</h2>
+                        <form method="post" action="{{ url('/releases/' ~ release.id ~ '/release') }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                            {% if unfinished > 0 %}
+                                <p class="card__body">{{ plural('{count} ticket in it is not finished. It moves on to:', '{count} tickets in it are not finished. They move on to:', unfinished) }}</p>
+                                <select class="field" name="move_to" aria-label="{{ 'Where the unfinished work goes'|t }}">
+                                    {% for other in others %}
+                                        <option value="{{ other.id }}">{{ other.name }}</option>
+                                    {% endfor %}
+                                    <option value="">{{ 'No release'|t }}</option>
+                                </select>
+                            {% else %}
+                                <p class="card__body">{{ 'Everything in it is finished.'|t }}</p>
+                            {% endif %}
+                            <button class="button button--primary" type="submit">{{ 'Release {name}'|t({name: release.name}) }}</button>
+                        </form>
+                    {% endif %}
+                </section>
+            {% endif %}
+        </aside>
+    </div>
+{% endblock %}

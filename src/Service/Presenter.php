@@ -49,6 +49,7 @@ final class Presenter
             'sprint' => $ticket['sprint_name'],
             'epic' => $ticket['epic_id'] === null ? null : ['id' => (int) $ticket['epic_id'], 'title' => $ticket['epic_title']],
             'parent' => $ticket['parent_id'] === null ? null : $ticket['project_code'] . '-' . $ticket['parent_number'],
+            'release' => $ticket['release_id'] === null ? null : $ticket['release_name'],
             'subtasks' => ['count' => (int) ($ticket['subtask_count'] ?? 0), 'done' => (int) ($ticket['subtasks_done'] ?? 0)],
             'story_points' => $ticket['story_points'] === null ? null : (int) $ticket['story_points'],
             'estimate_minutes' => $ticket['estimate_minutes'] === null ? null : (int) $ticket['estimate_minutes'],

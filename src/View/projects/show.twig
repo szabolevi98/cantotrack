@@ -15,7 +15,6 @@
 {% endblock %}
 
 {% block actions %}
-    <a class="button" href="{{ url('/projects/' ~ project.id ~ '/backlog') }}">{{ 'Backlog & sprints'|t }}</a>
     <a class="button" href="{{ url('/projects/' ~ project.id ~ '/epics/create') }}">{{ 'New epic'|t }}</a>
     {% if can_work %}
         <a class="button" href="{{ url('/projects/' ~ project.id ~ '/import') }}">{{ 'Import'|t }}</a>
@@ -27,6 +26,8 @@
 {% endblock %}
 
 {% block content %}
+    {% include 'common/project_tabs.twig' with {project: project, active: 'board'} only %}
+
     {% if epics is not empty %}
         <details class="card epics-card" open>
             <summary class="card__title">{{ 'Epics'|t }} <span class="muted">{{ epics|length }}</span></summary>

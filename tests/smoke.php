@@ -793,6 +793,20 @@ if ($email === null || $password === null) {
         str_contains($parentPage, 'This ticket has subtasks.') || !str_contains($parentPage, '/tickets/' . $ticketId . '/delete')
     );
 
+    // A release: made on the project's page, a ticket put into it from the
+    // list, and its notes waiting for it to be finished.
+    $releaseMade = request($baseUrl . '/projects/' . $projectId . '/releases', [
+        '_token' => $token, 'name' => 'Smoke 1.0', 'release_on' => date('Y-m-d', strtotime('+30 days')),
+    ], $jar);
+    $releaseId = preg_match('#/releases/(\d+)#', $releaseMade['headers'], $m) === 1 ? (int) $m[1] : 0;
+    check('a release can be made', $releaseMade['status'] === 302 && $releaseId > 0);
+    request($baseUrl . '/tickets/bulk', ['_token' => $token, 'ids' => [$ticketId], 'set_release' => (string) $releaseId], $jar);
+    $releasePage = request($baseUrl . '/releases/' . $releaseId, [], $jar)['body'];
+    check(
+        'and tickets put into it from the list',
+        str_contains($releasePage, $code . '-1') && str_contains($releasePage, 'Release notes')
+    );
+
     $timesheet = request($baseUrl . '/timesheet?view=days', [], $jar);
     check('the timesheet answers', $timesheet['status'] === 200, 'status ' . $timesheet['status']);
     check(

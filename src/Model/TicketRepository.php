@@ -56,6 +56,8 @@ class TicketRepository
                      WHERE tl.ticket_id = t.id) AS label_names,
                    sp.name AS sprint_name,
                    sp.state AS sprint_state,
+                   rl.name AS release_name,
+                   rl.released_at AS release_released_at,
                    pt.number AS parent_number,
                    pt.title AS parent_title,
                    (SELECT COUNT(*) FROM tickets c WHERE c.parent_id = t.id) AS subtask_count,
@@ -73,6 +75,7 @@ class TicketRepository
             JOIN statuses s ON s.id = t.status_id
             LEFT JOIN sprints sp ON sp.id = t.sprint_id
             LEFT JOIN tickets pt ON pt.id = t.parent_id
+            LEFT JOIN releases rl ON rl.id = t.release_id
             LEFT JOIN epics e ON e.id = t.epic_id
             LEFT JOIN users a ON a.id = t.assignee_id
             LEFT JOIN users r ON r.id = t.reporter_id';
@@ -157,6 +160,11 @@ class TicketRepository
         if (!empty($filters['epic_id'])) {
             $where[] = 't.epic_id = :epic_id';
             $parameters['epic_id'] = (int) $filters['epic_id'];
+        }
+
+        if (!empty($filters['release_id'])) {
+            $where[] = 't.release_id = :release_id';
+            $parameters['release_id'] = (int) $filters['release_id'];
         }
 
         if (!empty($filters['parent_id'])) {
@@ -394,10 +402,10 @@ class TicketRepository
 
             $statement = $this->db->prepare(
                 'INSERT INTO tickets
-                    (project_id, number, type, epic_id, parent_id, title, description, status_id, priority,
+                    (project_id, number, type, epic_id, parent_id, release_id, title, description, status_id, priority,
                      assignee_id, reporter_id, estimate_minutes, due_on, story_points, `rank`, closed_at)
                  VALUES
-                    (:project_id, :number, :type, :epic_id, :parent_id, :title, :description, :status_id, :priority,
+                    (:project_id, :number, :type, :epic_id, :parent_id, :release_id, :title, :description, :status_id, :priority,
                      :assignee_id, :reporter_id, :estimate_minutes, :due_on, :story_points, :rank, :closed_at)'
             );
 
@@ -410,6 +418,7 @@ class TicketRepository
                 'story_points' => $data['story_points'] ?? null,
                 'epic_id' => $data['epic_id'] ?: null,
                 'parent_id' => ($data['parent_id'] ?? null) ?: null,
+                'release_id' => ($data['release_id'] ?? null) ?: null,
                 'title' => trim((string) $data['title']),
                 'description' => trim((string) ($data['description'] ?? '')) ?: null,
                 'status_id' => (int) $data['status_id'],
@@ -446,6 +455,7 @@ class TicketRepository
                 type = :type,
                 epic_id = :epic_id,
                 parent_id = :parent_id,
+                release_id = :release_id,
                 title = :title,
                 description = :description,
                 priority = :priority,
@@ -463,6 +473,7 @@ class TicketRepository
             'story_points' => $data['story_points'] ?? null,
             'epic_id' => $data['epic_id'] ?: null,
             'parent_id' => ($data['parent_id'] ?? null) ?: null,
+            'release_id' => ($data['release_id'] ?? null) ?: null,
             'title' => trim((string) $data['title']),
             'description' => trim((string) ($data['description'] ?? '')) ?: null,
             'priority' => in_array($data['priority'] ?? '', self::PRIORITIES, true) ? $data['priority'] : 'normal',
@@ -550,6 +561,13 @@ class TicketRepository
     {
         $this->db->prepare('UPDATE tickets SET epic_id = :epic WHERE parent_id = :parent')
             ->execute(['epic' => $epicId, 'parent' => $parentId]);
+    }
+
+    /** And its release: the steps of a ticket ship with it. */
+    public function setSubtasksRelease(int $parentId, ?int $releaseId): void
+    {
+        $this->db->prepare('UPDATE tickets SET release_id = :release WHERE parent_id = :parent')
+            ->execute(['release' => $releaseId, 'parent' => $parentId]);
     }
 
     public function hasWorklogs(int $id): bool

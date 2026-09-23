@@ -129,7 +129,7 @@ class ApiController extends Controller
      * {"project": "CT", "title": "…", "description": "…", "type": "bug",
      *  "priority": "high", "status": "To do", "assignee_id": 3,
      *  "labels": ["api"], "estimate": "2h", "due_on": "2026-10-01",
-     *  "story_points": 3, "epic_id": 4, "parent": "CT-12"}
+     *  "story_points": 3, "epic_id": 4, "parent": "CT-12", "release": "1.4"}
      */
     public function createTicket(): never
     {

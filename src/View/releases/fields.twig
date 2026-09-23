@@ -1,0 +1,17 @@
+{# A release's own fields, on the new-release form and the edit form alike. #}
+<label for="name">{{ 'Name'|t }}</label>
+<input id="name" class="field" type="text" name="name" value="{{ values.name|default('') }}" maxlength="60" required placeholder="1.4">
+
+<div class="form__row">
+    <div>
+        <label for="starts_on">{{ 'Work starts'|t }}</label>
+        <input id="starts_on" class="field" type="date" name="starts_on" value="{{ values.starts_on|default('') }}">
+    </div>
+    <div>
+        <label for="release_on">{{ 'Goes out'|t }}</label>
+        <input id="release_on" class="field" type="date" name="release_on" value="{{ values.release_on|default('') }}">
+    </div>
+</div>
+
+<label for="description">{{ 'What it is about'|t }}</label>
+<textarea id="description" class="field" name="description" rows="3" placeholder="{{ 'Optional — the first lines of its release notes.'|t }}">{{ values.description|default('') }}</textarea>

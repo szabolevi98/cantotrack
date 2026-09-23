@@ -1,0 +1,14 @@
+{#
+    The pages of one project, as tabs: the board, the plan, what goes out and
+    when. `active` is the one shown.
+#}
+<nav class="project-tabs" aria-label="{{ project.code }}">
+    {% for key, tab in {
+        board: {path: '', label: 'Board'},
+        backlog: {path: '/backlog', label: 'Backlog & sprints'},
+        releases: {path: '/releases', label: 'Releases'},
+    } %}
+        <a class="project-tabs__item{{ active == key ? ' is-active' : '' }}" href="{{ url('/projects/' ~ project.id ~ tab.path) }}"
+           {{ active == key ? 'aria-current="page"' : '' }}>{{ tab.label|t }}</a>
+    {% endfor %}
+</nav>

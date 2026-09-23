@@ -62,3 +62,11 @@
     line-height: 1;
     font-variant-numeric: tabular-nums;
 }
+
+/* The notice reCAPTCHA asks for, small under the form. */
+.auth__note {
+    margin: 14px 0 0;
+    color: var(--ct-muted);
+    font-size: 0.75rem;
+    text-align: center;
+}

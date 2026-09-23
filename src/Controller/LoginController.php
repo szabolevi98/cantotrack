@@ -6,6 +6,7 @@ use CantoTrack\Core\Auth;
 use CantoTrack\Core\ClientIp;
 use CantoTrack\Core\Controller;
 use CantoTrack\Core\LoginThrottle;
+use CantoTrack\Core\Recaptcha;
 use CantoTrack\Core\Session;
 use CantoTrack\Model\UserRepository;
 use CantoTrack\Service\TwoFactor;
@@ -31,7 +32,7 @@ class LoginController extends Controller
         // something the controller did not pass is an error rather than an
         // empty string — which is the point of the setting, and means the
         // controller has to say "no error" out loud.
-        $this->render('auth/login.twig', ['email' => '', 'error' => null]);
+        $this->render('auth/login.twig', ['recaptcha_key' => Recaptcha::forPage()] + ['email' => '', 'error' => null]);
     }
 
     public function submit(): void
@@ -44,12 +45,24 @@ class LoginController extends Controller
         // Checked before the password, so that an address under attack costs
         // the attacker nothing more than this sentence — not a hash per guess.
         if ($throttle->isBlocked($email, $ip)) {
-            $this->render('auth/login.twig', [
+            $this->render('auth/login.twig', ['recaptcha_key' => Recaptcha::forPage()] + [
                 'email' => $email,
                 'error' => __('Too many failed attempts. Wait {minutes} minutes and try again.', [
                     'minutes' => LoginThrottle::WINDOW_MINUTES,
                 ]),
             ], 429);
+
+            return;
+        }
+
+        // Before the password: a script that fails the check learns nothing
+        // about the account, and costs no hash.
+        if (!Recaptcha::verify($this->input('recaptcha_token'), 'login')) {
+            $this->render('auth/login.twig', [
+                'email' => $email,
+                'error' => __('The check that you are a person and not a script did not go through. Try again.'),
+                'recaptcha_key' => Recaptcha::forPage(),
+            ], 403);
 
             return;
         }
@@ -61,7 +74,7 @@ class LoginController extends Controller
 
             // 401 rather than 200, so that the failure is visible to anything
             // reading the response rather than only to a person looking at it.
-            $this->render('auth/login.twig', [
+            $this->render('auth/login.twig', ['recaptcha_key' => Recaptcha::forPage()] + [
                 'email' => $email,
                 'error' => __('That email address and password do not match an account.'),
             ], 401);
@@ -109,7 +122,7 @@ class LoginController extends Controller
 
         if ($throttle->isBlocked($email, $ip)) {
             Session::forget(self::PENDING);
-            $this->render('auth/login.twig', [
+            $this->render('auth/login.twig', ['recaptcha_key' => Recaptcha::forPage()] + [
                 'email' => $email,
                 'error' => __('Too many failed attempts. Wait {minutes} minutes and try again.', ['minutes' => LoginThrottle::WINDOW_MINUTES]),
             ], 429);

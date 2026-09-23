@@ -82,6 +82,31 @@
     }
 
     /*
+     * data-recaptcha — a form that asks reCAPTCHA for a token when it is
+     * sent, and goes once it has one. The token is fetched at the last
+     * moment because it is only good for two minutes. If Google's script did
+     * not load (blocked, offline), the form goes without, and the server says
+     * why it was refused.
+     */
+    document.addEventListener('submit', function (event) {
+        var form = event.target;
+
+        if (!form.dataset || !form.dataset.recaptcha || form.dataset.recaptchaDone || !window.grecaptcha) {
+            return;
+        }
+
+        event.preventDefault();
+
+        window.grecaptcha.ready(function () {
+            window.grecaptcha.execute(form.dataset.recaptchaKey, {action: form.dataset.recaptcha}).then(function (token) {
+                form.elements.recaptcha_token.value = token;
+                form.dataset.recaptchaDone = '1';
+                form.submit();
+            });
+        });
+    });
+
+    /*
      * data-autosubmit — a select that sends its form when it changes.
      *
      * With a mouse or a finger that is immediate: somebody opened the list and

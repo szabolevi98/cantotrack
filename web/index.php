@@ -10,6 +10,7 @@
 
 use CantoTrack\Core\Config;
 use CantoTrack\Core\ConflictError;
+use CantoTrack\Core\Csp;
 use CantoTrack\Core\Csrf;
 use CantoTrack\Core\ErrorPage;
 use CantoTrack\Core\HttpError;
@@ -101,20 +102,11 @@ set_exception_handler(static function (\Throwable $e): void {
 
 /*
  * No page of this application has any business inside somebody else's frame,
- * and none runs a script it did not ship itself.
- *
- * `script-src 'self'` is the one that matters most: there is not a single
- * inline script or event handler in the markup, so text that somebody manages
- * to get onto a page — a ticket title, a comment, a name — cannot run even if
- * it slipped past the escaping. Styles allow inline attributes, because the
- * progress bars are a width, and a width is not an attack.
+ * and none runs a script it did not ship itself — see Csp for the policy, and
+ * for the one page that widens it.
  */
 header('X-Frame-Options: DENY');
-header(
-    "Content-Security-Policy: default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
-    . "img-src 'self' data: blob:; font-src 'self'; connect-src 'self'; form-action 'self'; "
-    . "base-uri 'self'; object-src 'none'; frame-ancestors 'none'"
-);
+Csp::send();
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: same-origin');
 

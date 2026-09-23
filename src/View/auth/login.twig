@@ -10,8 +10,10 @@
         <p class="flash flash--danger" role="alert">{{ error }}</p>
     {% endif %}
 
-    <form method="post" action="{{ url('/login') }}" novalidate>
+    <form method="post" action="{{ url('/login') }}" novalidate
+          {% if recaptcha_key|default(null) %}data-recaptcha="login" data-recaptcha-key="{{ recaptcha_key }}"{% endif %}>
         <input type="hidden" name="_token" value="{{ csrf_token }}">
+        <input type="hidden" name="recaptcha_token" value="">
 
         <label for="email">{{ 'Email address'|t }}</label>
         <input id="email" class="field" type="email" name="email" value="{{ email }}"
@@ -25,4 +27,7 @@
     </form>
 
     <p class="auth__back"><a href="{{ url('/password/forgot') }}">{{ 'Forgot your password?'|t }}</a></p>
+    {% if recaptcha_key|default(null) %}
+        <p class="auth__note">{{ 'This page is protected by reCAPTCHA; Google’s privacy policy and terms apply.'|t }}</p>
+    {% endif %}
 {% endblock %}

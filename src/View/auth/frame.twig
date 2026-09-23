@@ -13,6 +13,9 @@
     <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <script src="{{ asset('js/app.js') }}" defer></script>
+    {% if recaptcha_key|default(null) %}
+        <script src="https://www.google.com/recaptcha/api.js?render={{ recaptcha_key|url_encode }}" defer></script>
+    {% endif %}
 </head>
 <body class="auth">
 <main class="auth__card">

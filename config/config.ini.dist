@@ -58,6 +58,15 @@ max_mb = 10
 ; machine that sends to itself, allow the private ones.
 allow_private = false
 
+[recaptcha]
+; Google reCAPTCHA v3 on the sign-in and lost-password forms: invisible, a
+; score per submission, and anything under min_score refused. Off while
+; either key is empty. Keys from https://www.google.com/recaptcha/admin (v3),
+; with the site's domain on them — never commit them.
+site_key =
+secret_key =
+min_score = 0.5
+
 ; Behind a CDN or a reverse proxy, the address a visitor really comes from is
 ; in a header — believed only from the proxies listed here. For Cloudflare:
 ; its published ranges, and HTTP_CF_CONNECTING_IP. Used by the sign-in limit.

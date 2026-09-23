@@ -9,6 +9,7 @@ use CantoTrack\Core\DatabaseConnection;
 use CantoTrack\Core\LoginThrottle;
 use CantoTrack\Core\Mailer;
 use CantoTrack\Core\Password;
+use CantoTrack\Core\Recaptcha;
 use CantoTrack\Model\UserRepository;
 
 /**
@@ -29,7 +30,7 @@ class PasswordResetController extends Controller
 
     public function form(): void
     {
-        $this->render('auth/forgot.twig', ['sent' => false, 'mail' => Mailer::isConfigured(), 'email' => '']);
+        $this->render('auth/forgot.twig', ['recaptcha_key' => Recaptcha::forPage(), 'robot' => false] + ['sent' => false, 'mail' => Mailer::isConfigured(), 'email' => '']);
     }
 
     public function send(): void
@@ -39,7 +40,13 @@ class PasswordResetController extends Controller
         $ip = ClientIp::get();
 
         if ($throttle->isBlocked($email, $ip)) {
-            $this->render('auth/forgot.twig', ['sent' => true, 'mail' => true, 'email' => $email], 429);
+            $this->render('auth/forgot.twig', ['recaptcha_key' => Recaptcha::forPage(), 'robot' => false] + ['sent' => true, 'mail' => true, 'email' => $email], 429);
+
+            return;
+        }
+
+        if (!Recaptcha::verify($this->input('recaptcha_token'), 'password_reset')) {
+            $this->render('auth/forgot.twig', ['recaptcha_key' => Recaptcha::forPage(), 'robot' => true, 'sent' => false, 'mail' => Mailer::isConfigured(), 'email' => $email], 403);
 
             return;
         }
@@ -71,7 +78,7 @@ class PasswordResetController extends Controller
             );
         }
 
-        $this->render('auth/forgot.twig', ['sent' => true, 'mail' => Mailer::isConfigured(), 'email' => $email]);
+        $this->render('auth/forgot.twig', ['recaptcha_key' => Recaptcha::forPage(), 'robot' => false] + ['sent' => true, 'mail' => Mailer::isConfigured(), 'email' => $email]);
     }
 
     public function resetForm(string $token): void

@@ -333,6 +333,84 @@ class TimesheetController extends Controller
         $this->redirect('/timesheet?view=grid&week=' . $from . '&user=' . $userId);
     }
 
+    /**
+     * The team's week: a row a person, a column a day, each day measured
+     * against that person's own week — so a part-timer's Friday is not a
+     * short day, and a holiday is not a gap. Beside each row, where their
+     * week stands, and for an administrator the approval right there.
+     *
+     * Narrowed to one project it is that project's hours, and the colours
+     * go: a day's share of one project says nothing about the day.
+     */
+    public function team(): void
+    {
+        Auth::requireMember();
+
+        $monday = $this->mondayOf((string) ($_GET['week'] ?? ''));
+        $from = $monday->format('Y-m-d');
+        $to = $monday->modify('+6 days')->format('Y-m-d');
+        $project = null;
+
+        if (ctype_digit((string) ($_GET['project'] ?? '')) && (int) $_GET['project'] > 0) {
+            $project = (new \CantoTrack\Model\ProjectRepository())->find((int) $_GET['project']);
+        }
+
+        $calendar = new Calendar();
+        $logged = (new WorklogRepository())->minutesByUserAndDay($from, $to, $project === null ? null : (int) $project['id']);
+        $states = (new WeekReview())->forWeek($from);
+        $dates = [];
+
+        for ($i = 0; $i < 7; $i++) {
+            $dates[] = $monday->modify('+' . $i . ' days')->format('Y-m-d');
+        }
+
+        $rows = [];
+        $dayTotals = array_fill_keys($dates, 0);
+
+        foreach ((new UserRepository())->active() as $person) {
+            if ($person['role'] === 'guest') {
+                continue;
+            }
+
+            $days = $calendar->days($person, $from, $to);
+            $cells = [];
+            $total = 0;
+            $expected = 0;
+
+            foreach ($dates as $date) {
+                $minutes = $logged[(int) $person['id']][$date] ?? 0;
+                $cells[$date] = $days[$date] + ['minutes' => $minutes];
+                $total += $minutes;
+                $expected += $date <= date('Y-m-d') ? $days[$date]['expected'] : 0;
+                $dayTotals[$date] += $minutes;
+            }
+
+            $rows[] = [
+                'person' => $person,
+                'cells' => $cells,
+                'total' => $total,
+                // Measured up to today: Thursday's hours are not missing on a Tuesday.
+                'expected' => $expected,
+                'week_expected' => array_sum(array_column($days, 'expected')),
+                'state' => $states[(int) $person['id']] ?? null,
+            ];
+        }
+
+        $this->render('timesheet/team.twig', [
+            'rows' => $rows,
+            'dates' => $dates,
+            'day_totals' => $dayTotals,
+            'monday' => $from,
+            'sunday' => $to,
+            'today' => date('Y-m-d'),
+            'previous_week' => $monday->modify('-7 days')->format('Y-m-d'),
+            'next_week' => $monday->modify('+7 days')->format('Y-m-d'),
+            'has_next' => $monday->modify('+7 days') <= new DateTimeImmutable('today'),
+            'project' => $project,
+            'projects' => (new \CantoTrack\Model\ProjectRepository())->allWithCounts(),
+        ]);
+    }
+
     /** Handing one's own week in. */
     public function submit(): void
     {

@@ -1,0 +1,117 @@
+{% extends 'layout.twig' %}
+
+{% set week_query = 'week=' ~ monday ~ (project ? '&project=' ~ project.id : '') %}
+
+{% block title %}{{ 'The team’s week'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'The team’s week'|t }}{% endblock %}
+{% block subheading %}
+    <p class="content__sub">{{ monday|day }} — {{ sunday|day }}{% if project %} · {{ project.code }} — {{ project.name }}{% endif %}</p>
+{% endblock %}
+
+{% block actions %}
+    <a class="button" href="{{ url('/timesheet') }}">{{ 'Your week'|t }}</a>
+    <a class="button" href="{{ url('/timesheet/team?week=' ~ previous_week ~ (project ? '&project=' ~ project.id : '')) }}">← {{ 'Previous'|t }}</a>
+    <a class="button" href="{{ url('/timesheet/team' ~ (project ? '?project=' ~ project.id : '')) }}">{{ 'This week'|t }}</a>
+    {% if has_next %}
+        <a class="button" href="{{ url('/timesheet/team?week=' ~ next_week ~ (project ? '&project=' ~ project.id : '')) }}">{{ 'Next'|t }} →</a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    <form class="filters card" method="get" action="{{ url('/timesheet/team') }}">
+        <input type="hidden" name="week" value="{{ monday }}">
+        <label class="check--inline" for="project">{{ 'Hours in'|t }}</label>
+        <select id="project" class="field field--inline" name="project" data-autosubmit>
+            <option value="">{{ 'Every project'|t }}</option>
+            {% for one in projects %}
+                <option value="{{ one.id }}"{{ project and project.id == one.id ? ' selected' : '' }}>{{ one.code }} — {{ one.name }}</option>
+            {% endfor %}
+        </select>
+        <button class="button autosubmit__button" type="submit">{{ 'Show'|t }}</button>
+    </form>
+
+    <section class="card card--flush">
+        <div class="table-scroll">
+            <table class="table team-week{{ project ? ' team-week--project' : '' }}">
+                <thead>
+                <tr>
+                    <th>{{ 'Person'|t }}</th>
+                    {% for date in dates %}
+                        <th class="table__number{{ date == today ? ' team-week__today' : '' }}">{{ date|date('D')|t }} <span class="muted">{{ date|date('j') }}</span></th>
+                    {% endfor %}
+                    <th class="table__number">{{ 'Week'|t }}</th>
+                    <th>{{ 'Handed in'|t }}</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for row in rows %}
+                    <tr>
+                        <td><a href="{{ url('/timesheet?week=' ~ monday ~ '&user=' ~ row.person.id) }}">{{ row.person.name }}</a></td>
+                        {% for date, cell in row.cells %}
+                            {# Short, full or over, against that person's own
+                               day; a day off says why; the future says nothing. #}
+                            {% set mood = date > today ? 'future'
+                                : (cell.expected == 0 ? (cell.minutes > 0 ? 'extra' : 'off')
+                                : (cell.minutes >= cell.expected ? (cell.minutes > cell.expected + 60 ? 'over' : 'full')
+                                : (cell.minutes == 0 ? 'empty' : 'short'))) %}
+                            <td class="table__number team-week__cell team-week__cell--{{ mood }}"
+                                title="{{ cell.holiday ?: (cell.absence ? {vacation: 'Day off', sick: 'Ill', other: 'Away'}[cell.absence]|t : (cell.expected > 0 ? 'Of {expected}'|t({expected: cell.expected|duration}) : '')) }}">
+                                {% if cell.minutes > 0 %}{{ cell.minutes|duration }}
+                                {% elseif cell.holiday %}<span class="team-week__why">{{ 'Holiday'|t }}</span>
+                                {% elseif cell.absence %}<span class="team-week__why">{{ {vacation: 'Day off', sick: 'Ill', other: 'Away'}[cell.absence]|t }}</span>
+                                {% elseif mood == 'empty' %}0m
+                                {% else %}<span class="muted">—</span>{% endif %}
+                            </td>
+                        {% endfor %}
+                        <td class="table__number">
+                            <strong>{{ row.total|duration }}</strong>
+                            {% if not project and row.week_expected > 0 %}
+                                <span class="muted">/ {{ row.week_expected|duration }}</span>
+                                <span class="bar bar--thin"><span class="bar__fill{{ row.total >= row.expected ? ' bar__fill--full' : '' }}" style="width: {{ min(100, (row.total / row.week_expected * 100)|round) }}%"></span></span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if row.state is null %}
+                                <span class="muted">{{ 'Not yet'|t }}</span>
+                            {% elseif row.state.state == 'approved' %}
+                                <span class="badge badge--green">{{ 'Approved'|t }}</span>
+                            {% elseif row.state.state == 'rejected' %}
+                                <span class="badge badge--amber" title="{{ row.state.comment }}">{{ 'Sent back'|t }}</span>
+                            {% else %}
+                                <span class="badge badge--blue">{{ 'Waiting'|t }}</span>
+                                {% if is_admin %}
+                                    <form class="team-week__approve" method="post" action="{{ url('/timesheet/review') }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                        <input type="hidden" name="user" value="{{ row.person.id }}">
+                                        <input type="hidden" name="week" value="{{ monday }}">
+                                        <input type="hidden" name="back" value="/timesheet/team?{{ week_query }}">
+                                        <button class="link-button link-button--text" type="submit" name="decision" value="approve">{{ 'Approve'|t }}</button>
+                                    </form>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+                <tfoot>
+                <tr>
+                    <th>{{ 'Everybody'|t }}</th>
+                    {% for date in dates %}<th class="table__number">{{ day_totals[date] > 0 ? day_totals[date]|duration : '—' }}</th>{% endfor %}
+                    <th class="table__number">{{ day_totals|reduce((sum, m) => sum + m, 0)|duration }}</th>
+                    <th></th>
+                </tr>
+                </tfoot>
+            </table>
+        </div>
+    </section>
+
+    {% if not project %}
+        <p class="hint team-week__legend">
+            <span class="team-week__key team-week__cell--full"></span>{{ 'the day’s hours'|t }}
+            <span class="team-week__key team-week__cell--short"></span>{{ 'short'|t }}
+            <span class="team-week__key team-week__cell--empty"></span>{{ 'nothing logged'|t }}
+            <span class="team-week__key team-week__cell--over"></span>{{ 'an hour or more over'|t }}
+            — {{ 'each against the person’s own working week, with holidays and days away counted out.'|t }}
+        </p>
+    {% endif %}
+{% endblock %}

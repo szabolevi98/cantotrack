@@ -15,6 +15,7 @@
         <a class="segmented__item{{ view == 'grid' ? ' is-active' : '' }}" href="{{ url('/timesheet?view=grid&' ~ week_query) }}">{{ 'Grid'|t }}</a>
         <a class="segmented__item{{ view == 'calendar' ? ' is-active' : '' }}" href="{{ url('/timesheet?view=calendar&' ~ week_query) }}">{{ 'Calendar'|t }}</a>
     </nav>
+    <a class="button" href="{{ url('/timesheet/team?week=' ~ monday) }}">{{ 'The team'|t }}</a>
     <a class="button" href="{{ url('/timesheet?view=' ~ view ~ '&week=' ~ previous_week ~ '&user=' ~ person.id) }}">← {{ 'Previous'|t }}</a>
     <a class="button" href="{{ url('/timesheet?view=' ~ view ~ '&user=' ~ person.id) }}">{{ 'This week'|t }}</a>
     {% if has_next %}

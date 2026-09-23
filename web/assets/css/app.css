@@ -3413,6 +3413,81 @@ kbd {
     text-align: center;
 }
 
+/* The team's week: a cell per person and day, tinted by how the day went
+   against that person's own working day. */
+.team-week td,
+.team-week th {
+    white-space: nowrap;
+}
+
+.team-week__today {
+    color: var(--ct-primary);
+}
+
+.team-week__cell {
+    font-variant-numeric: tabular-nums;
+}
+
+.team-week__cell--full {
+    background: var(--ct-success-soft);
+}
+
+.team-week__cell--short {
+    background: var(--ct-warning-soft);
+}
+
+.team-week__cell--empty {
+    background: var(--ct-danger-soft);
+    color: var(--ct-danger);
+}
+
+.team-week__cell--over {
+    background: var(--ct-violet-soft);
+}
+
+.team-week__cell--off,
+.team-week__cell--future {
+    background: var(--ct-bg);
+}
+
+.team-week--project .team-week__cell {
+    background: none;
+    color: inherit;
+}
+
+.team-week__why {
+    color: var(--ct-muted);
+    font-size: 0.78rem;
+}
+
+.team-week__approve {
+    display: inline;
+    margin-left: 6px;
+}
+
+.bar--thin {
+    display: block;
+    height: 4px;
+    margin-top: 4px;
+}
+
+.team-week__legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    align-items: center;
+}
+
+.team-week__key {
+    display: inline-block;
+    width: 14px;
+    height: 14px;
+    border: 1px solid var(--ct-border);
+    border-radius: 4px;
+    margin-left: 6px;
+    vertical-align: -2px;
+}
+
 /* The reports page: quick links to the last months, and each row's share. */
 .report-months {
     display: flex;

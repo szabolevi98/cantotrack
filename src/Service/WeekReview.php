@@ -66,6 +66,24 @@ class WeekReview
         ]);
     }
 
+    /**
+     * Where everybody's week stands: user id => its row in timesheet_weeks.
+     *
+     * @return array<int, array<string, mixed>>
+     */
+    public function forWeek(string $monday): array
+    {
+        $statement = $this->db->prepare('SELECT * FROM timesheet_weeks WHERE week_start = :week');
+        $statement->execute(['week' => $monday]);
+        $states = [];
+
+        foreach ($statement->fetchAll() as $row) {
+            $states[(int) $row['user_id']] = $row;
+        }
+
+        return $states;
+    }
+
     /** The weeks waiting for somebody to look at them, with what is in them. */
     public function pending(): array
     {

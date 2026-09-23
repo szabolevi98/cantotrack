@@ -172,6 +172,7 @@ $router->get('/timesheet', static fn() => (new TimesheetController())->index());
 $router->post('/timesheet/grid', static fn() => (new TimesheetController())->saveGrid());
 $router->post('/timesheet/submit', static fn() => (new TimesheetController())->submit());
 $router->get('/timesheet/approvals', static fn() => (new TimesheetController())->approvals());
+$router->get('/timesheet/team', static fn() => (new TimesheetController())->team());
 $router->post('/timesheet/review', static fn() => (new TimesheetController())->review());
 $router->post('/absences', static fn() => (new TimesheetController())->addAbsence());
 $router->post('/absences/{id}/delete', static fn($id) => (new TimesheetController())->removeAbsence((int) $id));

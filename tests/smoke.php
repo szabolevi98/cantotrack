@@ -832,6 +832,9 @@ if ($email === null || $password === null) {
     @unlink($sheetFile);
     check('and as a spreadsheet', $xlsx['status'] === 200 && str_contains($sheet, $code . '-1'));
 
+    $teamWeek = request($baseUrl . '/timesheet/team', [], $jar);
+    check('the team’s week answers, a row a person', $teamWeek['status'] === 200 && str_contains($teamWeek['body'], 'team-week__cell'));
+
     $calendarWeek = request($baseUrl . '/timesheet?view=calendar', [], $jar);
     check('the week can be shown as a calendar', $calendarWeek['status'] === 200 && str_contains($calendarWeek['body'], 'calendar__day'));
 

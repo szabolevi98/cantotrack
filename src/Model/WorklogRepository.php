@@ -79,13 +79,15 @@ class WorklogRepository
      *
      * @return array<int, array<string, int>> user id => day => minutes
      */
-    public function minutesByUserAndDay(string $from, string $to): array
+    public function minutesByUserAndDay(string $from, string $to, ?int $projectId = null): array
     {
+        // Only hours in projects the reader can see — and their own, always.
         $statement = $this->db->prepare(
-            'SELECT user_id, work_date, SUM(minutes) AS minutes
-             FROM worklogs
-             WHERE work_date BETWEEN :from AND :to
-             GROUP BY user_id, work_date'
+            'SELECT w.user_id, w.work_date, SUM(w.minutes) AS minutes
+             FROM worklogs w JOIN tickets t ON t.id = w.ticket_id
+             WHERE w.work_date BETWEEN :from AND :to' . Access::sql('t.project_id', 'w.user_id')
+            . ($projectId !== null ? ' AND t.project_id = ' . $projectId : '') . '
+             GROUP BY w.user_id, w.work_date'
         );
 
         $statement->execute(['from' => $from, 'to' => $to]);

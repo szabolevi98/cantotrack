@@ -4,6 +4,10 @@
 {% block heading %}{{ 'Weeks to approve'|t }}{% endblock %}
 {% block subheading %}<p class="content__sub">{{ 'Handed-in weeks keep their hours as they are until they are approved or sent back.'|t }}</p>{% endblock %}
 
+{% block actions %}
+    <a class="button" href="{{ url('/timesheet/team') }}">{{ 'The team’s week'|t }}</a>
+{% endblock %}
+
 {% block content %}
     <section class="card card--flush">
         {% if pending is empty %}

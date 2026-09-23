@@ -995,6 +995,72 @@ if ($email === null || $password === null) {
     request($baseUrl . '/profile/tokens/' . ($m[1] ?? 0) . '/delete', ['_token' => $token], $jar);
     check('and a revoked token is refused from then on', in_array(api($baseUrl . '/api/v1/me', $apiToken)['status'], [401, 429], true));
 
+    // ---------------------------------------------------------------------
+    // Webhooks and GitHub: an address inside the network is refused, and a
+    // signed push that names a ticket lands in its history.
+    // ---------------------------------------------------------------------
+    check('the webhooks page answers', request($baseUrl . '/settings/webhooks', [], $jar)['status'] === 200);
+
+    request($baseUrl . '/settings/webhooks', ['_token' => $token, 'name' => 'Inside', 'url' => 'http://169.254.169.254/latest/meta-data'], $jar);
+    check(
+        'a webhook into the private network is refused',
+        str_contains(request($baseUrl . '/settings/webhooks', [], $jar)['body'], 'private network')
+    );
+
+    $hooksPage = request($baseUrl . '/settings/webhooks', [], $jar)['body'];
+
+    // Only on an installation where nobody has set GitHub up: a real secret
+    // is not the smoke test's to replace.
+    if (str_contains($hooksPage, '/settings/github') && !str_contains($hooksPage, 'id="github_secret"')) {
+        request($baseUrl . '/settings/github', ['_token' => $token], $jar);
+        preg_match('/id="github_secret"[^>]*value="([0-9a-f]+)"/', request($baseUrl . '/settings/webhooks', [], $jar)['body'], $m);
+        $githubSecret = $m[1] ?? '';
+        check('GitHub can be set up, with a secret of its own', $githubSecret !== '');
+
+        $push = (string) json_encode([
+            'ref' => 'refs/heads/main',
+            'repository' => ['default_branch' => 'main'],
+            'commits' => [['id' => bin2hex(random_bytes(20)), 'message' => 'Fixes ' . $apiKey . ' from tests/smoke.php', 'author' => ['email' => $email]]],
+        ]);
+
+        // request() only sends a body for form fields, so the push goes by hand.
+        $send = static function (string $event, string $body, string $secret) use ($baseUrl): array {
+            $handle = curl_init($baseUrl . '/integrations/github');
+            curl_setopt_array($handle, [
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $body,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 15,
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/json',
+                    'X-GitHub-Event: ' . $event,
+                    'X-Hub-Signature-256: sha256=' . hash_hmac('sha256', $body, $secret),
+                ],
+            ]);
+            $text = (string) curl_exec($handle);
+            $status = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
+            curl_close($handle);
+
+            return ['status' => $status, 'json' => json_decode($text, true)];
+        };
+
+        check('a push with the wrong signature is refused', $send('push', $push, 'wrong')['status'] === 401);
+        check('GitHub\'s ping is answered', $send('ping', '{}', $githubSecret)['status'] === 200);
+
+        $pushed = $send('push', $push, $githubSecret);
+        check(
+            'a push that fixes a ticket closes it',
+            $pushed['status'] === 200 && in_array($apiKey, $pushed['json']['closed'] ?? [], true)
+        );
+        check(
+            'and the commit is in the ticket\'s history',
+            str_contains(request($baseUrl . '/tickets/' . (int) ($made['json']['data']['id'] ?? 0), [], $jar)['body'], 'mentioned it in a commit')
+        );
+
+        request($baseUrl . '/settings/github', ['_token' => $token, 'off' => '1'], $jar);
+        check('and GitHub can be turned off again', $send('ping', '{}', $githubSecret)['status'] === 404);
+    }
+
     // Tidy up after itself: the hours first, one by one — the slow way,
     // deliberately — and then the project takes the epic and the ticket.
     $page = request($baseUrl . '/tickets/' . $ticketId, [], $jar);

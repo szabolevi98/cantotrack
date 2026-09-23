@@ -1,0 +1,83 @@
+{% extends 'layout.twig' %}
+
+{% block title %}{{ hook.name }} — {{ 'Webhooks'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ hook.name }}{% endblock %}
+{% block subheading %}<p class="content__sub"><a href="{{ url('/settings/webhooks') }}">← {{ 'Webhooks'|t }}</a> · {{ hook.url }}</p>{% endblock %}
+
+{% block content %}
+    <div class="split">
+        <div class="split__main">
+            <section class="card card--flush">
+                <header class="card__head">
+                    <h2 class="card__title">{{ 'Messages'|t }}</h2>
+                    <form method="post" action="{{ url('/settings/webhooks/' ~ hook.id ~ '/ping') }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                        <button class="button button--small" type="submit">{{ 'Send a ping'|t }}</button>
+                    </form>
+                </header>
+                {% if deliveries is empty %}
+                    <p class="card__empty">{{ 'Nothing sent yet.'|t }}</p>
+                {% else %}
+                    <table class="table table--compact">
+                        <thead><tr><th>{{ 'Event'|t }}</th><th>{{ 'When'|t }}</th><th>{{ 'Answer'|t }}</th><th class="table__number">{{ 'Tries'|t }}</th><th></th></tr></thead>
+                        <tbody>
+                        {% for delivery in deliveries %}
+                            <tr>
+                                <td>
+                                    <details class="delivery">
+                                        <summary><code>{{ delivery.event }}</code></summary>
+                                        <pre class="code-sample"><code>{{ delivery.payload }}</code></pre>
+                                        {% if delivery.response_body %}<p class="muted">{{ 'What came back'|t }}:</p><pre class="code-sample"><code>{{ delivery.response_body }}</code></pre>{% endif %}
+                                    </details>
+                                </td>
+                                <td class="muted">{{ delivery.created_at|date('Y-m-d H:i') }}</td>
+                                <td>
+                                    {% if delivery.state == 'delivered' %}<span class="badge badge--green">{{ delivery.response_status }}</span>
+                                    {% elseif delivery.state == 'pending' %}<span class="badge badge--amber">{{ delivery.attempts ? (delivery.response_status ?: 'Error'|t) : 'Waiting'|t }}</span>
+                                    {% else %}<span class="badge badge--red">{{ delivery.response_status ?: 'Failed'|t }}</span>{% endif %}
+                                    {% if delivery.error %}<span class="muted">{{ delivery.error }}</span>{% endif %}
+                                    {% if delivery.duration_ms is not null %}<span class="muted">· {{ delivery.duration_ms }} ms</span>{% endif %}
+                                </td>
+                                <td class="table__number">{{ delivery.attempts }}</td>
+                                <td class="table__number">
+                                        <form method="post" action="{{ url('/settings/webhooks/' ~ hook.id ~ '/deliveries/' ~ delivery.id) }}">
+                                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                            <button class="link-button link-button--text" type="submit">{{ 'Send again'|t }}</button>
+                                        </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                {% endif %}
+            </section>
+
+            <section class="card">
+                <h2 class="card__title">{{ 'Settings'|t }}</h2>
+                {% include 'settings/_webhook_form.twig' %}
+            </section>
+        </div>
+
+        <aside class="split__side">
+            <section class="card">
+                <h2 class="card__title">{{ 'Secret'|t }}</h2>
+                <p class="card__body">{{ 'The receiver checks X-CantoTrack-Signature against the HMAC-SHA256 of the body with this.'|t }}</p>
+                <input class="field field--code" type="text" value="{{ hook.secret }}" readonly aria-label="{{ 'Secret'|t }}" data-select-on-focus>
+                <form class="form__actions" method="post" action="{{ url('/settings/webhooks/' ~ hook.id ~ '/secret') }}"
+                      data-confirm="{{ 'Make a new secret? The receiver has to be given it too.'|t }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                    <button class="button button--small" type="submit">{{ 'New secret'|t }}</button>
+                </form>
+            </section>
+
+            <section class="card">
+                <h2 class="card__title">{{ 'Delete'|t }}</h2>
+                <form method="post" action="{{ url('/settings/webhooks/' ~ hook.id ~ '/delete') }}"
+                      data-confirm="{{ 'Delete “{name}” and its log?'|t({name: hook.name}) }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                    <button class="button button--small button--danger" type="submit">{{ 'Delete the webhook'|t }}</button>
+                </form>
+            </section>
+        </aside>
+    </div>
+{% endblock %}

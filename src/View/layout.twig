@@ -79,8 +79,10 @@
                href="{{ url('/people') }}">{{ 'People'|t }}</a>
             <a class="sidebar__link{{ current_path starts with '/timesheet/approvals' ? ' is-active' : '' }}"
                href="{{ url('/timesheet/approvals') }}">{{ 'Approvals'|t }}{% set waiting = pending_weeks() %}{% if waiting > 0 %} <span class="sidebar__count">{{ waiting }}</span>{% endif %}</a>
-            <a class="sidebar__link{{ current_path starts with '/settings' ? ' is-active' : '' }}"
+            <a class="sidebar__link{{ current_path starts with '/settings' and not (current_path starts with '/settings/webhooks') ? ' is-active' : '' }}"
                href="{{ url('/settings') }}">{{ 'Calendar'|t }}</a>
+            <a class="sidebar__link{{ current_path starts with '/settings/webhooks' ? ' is-active' : '' }}"
+               href="{{ url('/settings/webhooks') }}">{{ 'Webhooks'|t }}</a>
         {% endif %}
     </nav>
 

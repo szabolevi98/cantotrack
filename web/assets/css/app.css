@@ -782,6 +782,43 @@ summary.link-button::-webkit-details-marker {
     border-color: var(--ct-primary-border);
 }
 
+/* The events a webhook is sent: a compact grid of ticks. */
+.event-list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+    gap: 4px 12px;
+    margin: 16px 0 8px;
+    padding: 0;
+    border: 0;
+}
+
+.event-list legend {
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.event-list .check {
+    margin: 0;
+}
+
+.delivery summary {
+    cursor: pointer;
+}
+
+.delivery .code-sample {
+    max-width: 36rem;
+    max-height: 18rem;
+    white-space: pre-wrap;
+    word-break: break-all;
+}
+
+.table__clip {
+    max-width: 18rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
 /*
  * The small coloured labels: a ticket's status, its priority, an archived
  * project. Dark text on a tint rather than white on a solid colour — at this

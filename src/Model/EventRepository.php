@@ -39,6 +39,17 @@ class EventRepository
         ]);
     }
 
+    /** Whether a commit is in a ticket's history already — pushed to a second branch, say. */
+    public function hasCommit(int $ticketId, string $sha): bool
+    {
+        $statement = $this->db->prepare(
+            'SELECT 1 FROM ticket_events WHERE ticket_id = :ticket AND kind = \'commit\' AND old_value = :sha LIMIT 1'
+        );
+        $statement->execute(['ticket' => $ticketId, 'sha' => $sha]);
+
+        return $statement->fetchColumn() !== false;
+    }
+
     public function forTicket(int $ticketId): array
     {
         $statement = $this->db->prepare(

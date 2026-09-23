@@ -52,6 +52,12 @@ from = "cantotrack@example.com"
 ; (upload_max_filesize, set in web/.htaccess) has to be at least this.
 max_mb = 10
 
+[webhooks]
+; Webhooks may only be sent to public addresses: an address typed into a
+; form is one the server visits from inside its own network. On a development
+; machine that sends to itself, allow the private ones.
+allow_private = false
+
 ; Behind a CDN or a reverse proxy, the address a visitor really comes from is
 ; in a header — believed only from the proxies listed here. For Cloudflare:
 ; its published ranges, and HTTP_CF_CONNECTING_IP. Used by the sign-in limit.

@@ -4,7 +4,6 @@ namespace CantoTrack\Controller;
 
 use CantoTrack\Core\Auth;
 use CantoTrack\Core\ClientIp;
-use CantoTrack\Core\Config;
 use CantoTrack\Core\Controller;
 use CantoTrack\Core\HttpError;
 use CantoTrack\Core\LoginThrottle;
@@ -16,6 +15,7 @@ use CantoTrack\Model\TicketRepository;
 use CantoTrack\Model\UserRepository;
 use CantoTrack\Model\WorklogRepository;
 use CantoTrack\Service\CommentService;
+use CantoTrack\Service\Presenter;
 use CantoTrack\Service\TicketService;
 use CantoTrack\Service\WorklogService;
 
@@ -44,12 +44,12 @@ class ApiController extends Controller
 
     public function me(): never
     {
-        $this->json(['data' => $this->personData((array) Auth::user(), true)]);
+        $this->json(['data' => Presenter::person((array) Auth::user(), true)]);
     }
 
     public function users(): never
     {
-        $this->json(['data' => array_map(fn(array $u): array => $this->personData($u), (new UserRepository())->active())]);
+        $this->json(['data' => array_map(fn(array $u): array => Presenter::person($u), (new UserRepository())->active())]);
     }
 
     public function projects(): never
@@ -114,14 +114,14 @@ class ApiController extends Controller
         $total = $tickets->count($filters);
 
         $this->json([
-            'data' => array_map(fn(array $t): array => $this->ticketData($t), $tickets->search($filters, $perPage, ($page - 1) * $perPage)),
+            'data' => array_map(fn(array $t): array => Presenter::ticket($t), $tickets->search($filters, $perPage, ($page - 1) * $perPage)),
             'meta' => ['page' => $page, 'per_page' => $perPage, 'total' => $total, 'pages' => (int) ceil($total / $perPage)],
         ]);
     }
 
     public function ticket(string $key): never
     {
-        $this->json(['data' => $this->ticketData($this->ticketOr404($key), true)]);
+        $this->json(['data' => Presenter::ticket($this->ticketOr404($key), true)]);
     }
 
     /**
@@ -138,8 +138,8 @@ class ApiController extends Controller
         $id = (new TicketService())->create($input, (int) Auth::id());
         $ticket = (array) (new TicketRepository())->find($id);
 
-        header('Location: ' . $this->url('/api/v1/tickets/' . $ticket['project_code'] . '-' . $ticket['number']));
-        $this->json(['data' => $this->ticketData($ticket, true)], 201);
+        header('Location: ' . Presenter::url('/api/v1/tickets/' . $ticket['project_code'] . '-' . $ticket['number']));
+        $this->json(['data' => Presenter::ticket($ticket, true)], 201);
     }
 
     /**
@@ -163,7 +163,7 @@ class ApiController extends Controller
             $service->changeStatus((int) $ticket['id'], (string) $status, (int) Auth::id());
         }
 
-        $this->json(['data' => $this->ticketData((array) (new TicketRepository())->find((int) $ticket['id']), true)]);
+        $this->json(['data' => Presenter::ticket((array) (new TicketRepository())->find((int) $ticket['id']), true)]);
     }
 
     // -----------------------------------------------------------------------
@@ -348,29 +348,9 @@ class ApiController extends Controller
         return $ticket;
     }
 
-    private function url(string $path): string
-    {
-        return rtrim((string) Config::get('app.base_url'), '/') . $path;
-    }
-
     // -----------------------------------------------------------------------
     // What goes out
     // -----------------------------------------------------------------------
-
-    private function personData(array $user, bool $self = false): array
-    {
-        $out = [
-            'id' => (int) $user['id'],
-            'name' => $user['name'],
-            'handle' => $user['handle'] ?? null,
-        ];
-
-        if ($self) {
-            $out += ['email' => $user['email'], 'role' => $user['role']];
-        }
-
-        return $out;
-    }
 
     private function projectData(array $project): array
     {
@@ -380,43 +360,8 @@ class ApiController extends Controller
             'description' => $project['description'] ?? null,
             'archived' => (int) $project['is_archived'] === 1,
             'tickets' => isset($project['ticket_count']) ? (int) $project['ticket_count'] : null,
-            'url' => $this->url('/projects/' . $project['id']),
+            'url' => Presenter::url('/projects/' . $project['id']),
         ];
-    }
-
-    private function ticketData(array $ticket, bool $full = false): array
-    {
-        $key = $ticket['project_code'] . '-' . $ticket['number'];
-
-        $out = [
-            'key' => $key,
-            'id' => (int) $ticket['id'],
-            'project' => $ticket['project_code'],
-            'type' => $ticket['type'],
-            'title' => $ticket['title'],
-            'status' => ['id' => (int) $ticket['status_id'], 'name' => $ticket['status_name'], 'category' => $ticket['status_category']],
-            'priority' => $ticket['priority'],
-            'assignee' => $ticket['assignee_id'] === null ? null : ['id' => (int) $ticket['assignee_id'], 'name' => $ticket['assignee_name']],
-            'labels' => $ticket['label_names'] === null ? [] : explode("\n", (string) $ticket['label_names']),
-            'sprint' => $ticket['sprint_name'],
-            'epic' => $ticket['epic_id'] === null ? null : ['id' => (int) $ticket['epic_id'], 'title' => $ticket['epic_title']],
-            'story_points' => $ticket['story_points'] === null ? null : (int) $ticket['story_points'],
-            'estimate_minutes' => $ticket['estimate_minutes'] === null ? null : (int) $ticket['estimate_minutes'],
-            'logged_minutes' => (int) $ticket['logged_minutes'],
-            'remaining_minutes' => TicketRepository::remaining($ticket),
-            'due_on' => $ticket['due_on'],
-            'version' => (int) $ticket['version'],
-            'created_at' => $ticket['created_at'],
-            'updated_at' => $ticket['updated_at'],
-            'url' => $this->url('/t/' . $key),
-        ];
-
-        if ($full) {
-            $out['description'] = (string) $ticket['description'];
-            $out['reporter'] = $ticket['reporter_id'] === null ? null : ['id' => (int) $ticket['reporter_id'], 'name' => $ticket['reporter_name']];
-        }
-
-        return $out;
     }
 
     private function commentData(array $comment): array

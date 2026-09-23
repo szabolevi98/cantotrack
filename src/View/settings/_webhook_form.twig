@@ -1,0 +1,43 @@
+{# The form for a new webhook and for changing one. #}
+<form method="post" action="{{ hook ? url('/settings/webhooks/' ~ hook.id) : url('/settings/webhooks') }}">
+    <input type="hidden" name="_token" value="{{ csrf_token }}">
+    <div class="form__row">
+        <div>
+            <label for="hook_name">{{ 'Name'|t }}</label>
+            <input id="hook_name" class="field" type="text" name="name" maxlength="80" required value="{{ hook.name|default('') }}" placeholder="{{ 'Chat notifications'|t }}">
+        </div>
+        <div>
+            <label for="hook_project">{{ 'Project'|t }}</label>
+            <select id="hook_project" class="field" name="project_id">
+                <option value="">{{ 'Every project'|t }}</option>
+                {% for project in projects %}
+                    <option value="{{ project.id }}"{{ hook and hook.project_id == project.id ? ' selected' : '' }}>{{ project.code }} — {{ project.name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <label for="hook_url">{{ 'Address'|t }}</label>
+    <input id="hook_url" class="field" type="url" name="url" maxlength="500" required value="{{ hook.url|default('') }}" placeholder="https://example.com/hooks/cantotrack">
+
+    <fieldset class="event-list">
+        <legend>{{ 'Events'|t }} <span class="muted">— {{ 'none ticked means all of them'|t }}</span></legend>
+        {% for event in events %}
+            <label class="check">
+                <input type="checkbox" name="events[]" value="{{ event }}"{{ event in chosen and '*' not in chosen ? ' checked' : '' }}>
+                <code>{{ event }}</code>
+            </label>
+        {% endfor %}
+    </fieldset>
+
+    {% if hook %}
+        <label class="check">
+            <input type="checkbox" name="is_active" value="1"{{ hook.is_active ? ' checked' : '' }}>
+            {{ 'Active — paused, it is sent nothing'|t }}
+        </label>
+    {% endif %}
+
+    <div class="form__actions">
+        <button class="button button--primary" type="submit">{{ hook ? 'Save'|t : 'Add the webhook'|t }}</button>
+    </div>
+</form>

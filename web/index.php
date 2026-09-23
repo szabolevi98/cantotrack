@@ -18,6 +18,7 @@ use CantoTrack\Core\Router;
 use CantoTrack\Core\Session;
 use CantoTrack\Core\ValidationError;
 use CantoTrack\Service\Notifier;
+use CantoTrack\Service\Webhooks;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
@@ -127,8 +128,9 @@ if (!$exempt) {
 }
 
 // Whoever has to hear about a change is told by the Notifier, which listens
-// to every change the services make.
+// to every change the services make; so are the webhooks.
 Notifier::register();
+Webhooks::register();
 
 /*
  * One CSRF gate for every post, rather than a check in each controller. A check

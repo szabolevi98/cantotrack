@@ -1,0 +1,76 @@
+{% extends 'layout.twig' %}
+
+{% block title %}{{ 'Webhooks'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Webhooks'|t }}{% endblock %}
+{% block subheading %}<p class="content__sub">{{ 'Other programs told about every change, and GitHub pushes read for ticket names.'|t }}</p>{% endblock %}
+
+{% block content %}
+    <div class="split">
+        <div class="split__main">
+            <section class="card card--flush">
+                <header class="card__head"><h2 class="card__title">{{ 'Where messages go'|t }}</h2></header>
+                {% if hooks is empty %}
+                    <p class="card__empty">{{ 'No webhooks yet.'|t }}</p>
+                {% else %}
+                    <table class="table">
+                        <thead><tr><th>{{ 'Name'|t }}</th><th>{{ 'Address'|t }}</th><th>{{ 'Events'|t }}</th><th>{{ 'Last message'|t }}</th></tr></thead>
+                        <tbody>
+                        {% for hook in hooks %}
+                            <tr>
+                                <td>
+                                    <a href="{{ url('/settings/webhooks/' ~ hook.id) }}">{{ hook.name }}</a>
+                                    {% if not hook.is_active %}<span class="badge badge--muted">{{ 'Paused'|t }}</span>{% endif %}
+                                    {% if hook.project_code %}<span class="badge badge--slate">{{ hook.project_code }}</span>{% endif %}
+                                </td>
+                                <td class="muted table__clip">{{ hook.url }}</td>
+                                <td class="muted">{{ hook.events == '*' ? 'All'|t : hook.events|split(',')|length }}</td>
+                                <td>
+                                    {% if hook.last_state == 'delivered' %}<span class="badge badge--green">{{ 'Delivered'|t }}</span>
+                                    {% elseif hook.last_state == 'pending' %}<span class="badge badge--amber">{{ 'Waiting'|t }}</span>
+                                    {% elseif hook.last_state == 'failed' %}<span class="badge badge--red">{{ 'Failed'|t }}</span>
+                                    {% else %}<span class="muted">—</span>{% endif %}
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                {% endif %}
+            </section>
+
+            <section class="card">
+                <h2 class="card__title">{{ 'Add a webhook'|t }}</h2>
+                {% include 'settings/_webhook_form.twig' with {hook: null, chosen: ['*']} %}
+            </section>
+        </div>
+
+        <aside class="split__side">
+            <section class="card">
+                <h2 class="card__title">GitHub</h2>
+                <p class="card__body">{{ 'A commit that names a ticket (CT-14) shows up in its history; “Fixes CT-14” on the default branch moves it to done.'|t }}</p>
+                {% if github_secret %}
+                    <label for="github_url">{{ 'Payload URL'|t }}</label>
+                    <input id="github_url" class="field field--code" type="text" value="{{ github_url }}" readonly data-select-on-focus>
+                    <label for="github_secret">{{ 'Secret'|t }}</label>
+                    <input id="github_secret" class="field field--code" type="text" value="{{ github_secret }}" readonly data-select-on-focus>
+                    <p class="hint">{{ 'In the repository: Settings → Webhooks → Add webhook, content type application/json, just the push event.'|t }}</p>
+                    <form class="form__actions" method="post" action="{{ url('/settings/github') }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                        <button class="button button--small" type="submit"
+                                data-confirm="{{ 'Make a new secret? GitHub’s webhook stops working until it has the new one.'|t }}">{{ 'New secret'|t }}</button>
+                        <button class="button button--small button--danger" type="submit" name="off" value="1">{{ 'Turn off'|t }}</button>
+                    </form>
+                {% else %}
+                    <form method="post" action="{{ url('/settings/github') }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                        <button class="button button--primary" type="submit">{{ 'Set it up'|t }}</button>
+                    </form>
+                {% endif %}
+            </section>
+
+            <section class="card">
+                <h2 class="card__title">{{ 'What is sent'|t }}</h2>
+                <p class="card__body">{{ 'A POST with a JSON body: the event, who did it, the ticket as it is now, and what changed. X-CantoTrack-Signature is sha256= and the HMAC-SHA256 of the body with the webhook’s secret. A receiver that does not answer 2xx is tried again after 1, 5, 30, 120 and 720 minutes.'|t }}</p>
+            </section>
+        </aside>
+    </div>
+{% endblock %}

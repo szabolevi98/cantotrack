@@ -16,6 +16,7 @@ use CantoTrack\Controller\AttachmentController;
 use CantoTrack\Controller\CommentController;
 use CantoTrack\Controller\DashboardController;
 use CantoTrack\Controller\EpicController;
+use CantoTrack\Controller\IntegrationController;
 use CantoTrack\Controller\LinkController;
 use CantoTrack\Controller\LoginController;
 use CantoTrack\Controller\NotificationController;
@@ -30,6 +31,7 @@ use CantoTrack\Controller\SprintController;
 use CantoTrack\Controller\TicketController;
 use CantoTrack\Controller\TimerController;
 use CantoTrack\Controller\TimesheetController;
+use CantoTrack\Controller\WebhookController;
 use CantoTrack\Controller\WorklogController;
 
 // ---------------------------------------------------------------------------
@@ -169,6 +171,16 @@ $router->post('/settings/holidays', static fn() => (new SettingsController())->a
 $router->post('/settings/holidays/national', static fn() => (new SettingsController())->addNational());
 $router->post('/settings/holidays/delete', static fn() => (new SettingsController())->removeHoliday());
 
+$router->get('/settings/webhooks', static fn() => (new WebhookController())->index());
+$router->post('/settings/webhooks', static fn() => (new WebhookController())->create());
+$router->post('/settings/github', static fn() => (new WebhookController())->githubSecret());
+$router->get('/settings/webhooks/{id}', static fn($id) => (new WebhookController())->show((int) $id));
+$router->post('/settings/webhooks/{id}', static fn($id) => (new WebhookController())->update((int) $id));
+$router->post('/settings/webhooks/{id}/delete', static fn($id) => (new WebhookController())->delete((int) $id));
+$router->post('/settings/webhooks/{id}/secret', static fn($id) => (new WebhookController())->newSecret((int) $id));
+$router->post('/settings/webhooks/{id}/ping', static fn($id) => (new WebhookController())->ping((int) $id));
+$router->post('/settings/webhooks/{id}/deliveries/{delivery}', static fn($id, $delivery) => (new WebhookController())->redeliver((int) $id, (int) $delivery));
+
 // ---------------------------------------------------------------------------
 // The API, version 1 — JSON, with a personal access token as a bearer token
 // ---------------------------------------------------------------------------
@@ -185,3 +197,8 @@ $router->post('/api/v1/tickets/{key}/comments', static fn($key) => (new ApiContr
 $router->post('/api/v1/tickets/{key}/worklogs', static fn($key) => (new ApiController())->logWork((string) $key));
 $router->get('/api/v1/worklogs', static fn() => (new ApiController())->worklogs());
 $router->delete('/api/v1/worklogs/{id}', static fn($id) => (new ApiController())->deleteWorklog((int) $id));
+
+// ---------------------------------------------------------------------------
+// News from other services, each signed with its own secret
+// ---------------------------------------------------------------------------
+$router->post('/integrations/github', static fn() => (new IntegrationController())->github());

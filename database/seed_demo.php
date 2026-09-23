@@ -397,6 +397,11 @@ $entries = [
 
 $logged = 0;
 
+// Each day's entries one after the other from nine, a quarter of an hour
+// apart and an hour off at noon — so the week reads as a calendar too. One
+// in five is written down without a start, the way plenty of hours are.
+$clock = [];
+
 foreach ($entries as [$userId, $ticket, $offset, $minutes, $note]) {
     $date = $day($offset);
 
@@ -407,7 +412,13 @@ foreach ($entries as [$userId, $ticket, $offset, $minutes, $note]) {
     }
 
     $row = $tickets->find($made[$ticket]);
-    $worklogs->create($made[$ticket], $userId, $date, $minutes, $note, (int) ($row['project_billable'] ?? 1) === 1);
+    $at = $clock[$userId . $date] ?? 9 * 60;
+    if ($at < 13 * 60 && $at + $minutes > 12 * 60 + 30) {
+        $at = max($at, 13 * 60);
+    }
+    $clock[$userId . $date] = $at + $minutes + 15;
+    $start = ($logged / 15) % 5 === 3 || $at + $minutes > 22 * 60 ? null : sprintf('%02d:%02d:00', intdiv($at, 60), $at % 60);
+    $worklogs->create($made[$ticket], $userId, $date, $minutes, $note, (int) ($row['project_billable'] ?? 1) === 1, $start);
     $logged += $minutes;
 }
 

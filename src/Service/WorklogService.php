@@ -52,7 +52,8 @@ class WorklogService
         string $date,
         ?string $note,
         string $remaining = '',
-        ?bool $billable = null
+        ?bool $billable = null,
+        string $start = ''
     ): array {
         $ticket = $this->tickets->find($ticketId);
 
@@ -68,7 +69,7 @@ class WorklogService
         // Unless the entry says, it is what its project's hours usually are.
         $billable ??= (int) ($ticket['project_billable'] ?? 1) === 1;
 
-        $id = $this->worklogs->create($ticketId, $userId, $day, $minutes, $this->note($note), $billable);
+        $id = $this->worklogs->create($ticketId, $userId, $day, $minutes, $this->note($note), $billable, $this->start($start, $minutes));
 
         if ($left !== false) {
             $this->tickets->setRemaining($ticketId, $left);
@@ -112,7 +113,7 @@ class WorklogService
      * @return array{minutes: int, rounded: bool}
      * @throws ValidationError
      */
-    public function change(array $worklog, string $time, string $date, ?string $note, ?bool $billable = null): array
+    public function change(array $worklog, string $time, string $date, ?string $note, ?bool $billable = null, ?string $start = null): array
     {
         [$minutes, $rounded] = $this->minutes($time);
         $day = $this->day($date);
@@ -123,11 +124,44 @@ class WorklogService
 
         $this->worklogs->update((int) $worklog['id'], $day, $minutes, $this->note($note));
 
+        // Null: the form said nothing about it (the grid, the API without
+        // it), and the start stays as it was.
+        if ($start !== null) {
+            $this->worklogs->setStart((int) $worklog['id'], $this->start($start, $minutes));
+        }
+
         if ($billable !== null) {
             $this->worklogs->setBillable((int) $worklog['id'], $billable);
         }
 
         return ['minutes' => $minutes, 'rounded' => $rounded];
+    }
+
+    /**
+     * When in the day an entry started, as HH:MM:00 — or null for none. It
+     * has to end on the same day: an entry is one day's work.
+     *
+     * @throws ValidationError
+     */
+    public function start(string $given, int $minutes): ?string
+    {
+        $given = trim($given);
+
+        if ($given === '') {
+            return null;
+        }
+
+        if (preg_match('/^([01]?\d|2[0-3])[:.]([0-5]\d)$/', $given, $m) !== 1) {
+            throw new ValidationError(__('A start is a time of day, like 9:30.'));
+        }
+
+        $from = (int) $m[1] * 60 + (int) $m[2];
+
+        if ($from + $minutes > self::MAX_MINUTES) {
+            throw new ValidationError(__('Started then, it would run past midnight. An entry is one day’s work.'));
+        }
+
+        return sprintf('%02d:%02d:00', intdiv($from, 60), $from % 60);
     }
 
     /** @throws ValidationError when its day is closed */

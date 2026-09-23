@@ -98,7 +98,12 @@ class TimerService
             return null;
         }
 
-        $logged = $this->worklogs->log((int) $timer['ticket_id'], $userId, $minutes . 'm', $started->format('Y-m-d'), $note);
+        // It started when the clock did — unless it ran past midnight, in
+        // which case the entry is the day's hours without a start.
+        $start = (int) $started->format('G') * 60 + (int) $started->format('i') + $minutes <= WorklogService::MAX_MINUTES
+            ? $started->format('H:i')
+            : '';
+        $logged = $this->worklogs->log((int) $timer['ticket_id'], $userId, $minutes . 'm', $started->format('Y-m-d'), $note, '', null, $start);
 
         return ['minutes' => $logged['minutes'], 'ticket_id' => (int) $timer['ticket_id']];
     }

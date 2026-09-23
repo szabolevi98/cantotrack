@@ -76,7 +76,7 @@ class TimesheetController extends Controller
 
         $expected = Config::int('work.hours_per_day', 8) * 60;
         $expectedWeek = array_sum(array_column($days, 'expected'));
-        $view = ($_GET['view'] ?? '') === 'grid' ? 'grid' : 'days';
+        $view = in_array($_GET['view'] ?? '', ['grid', 'calendar'], true) ? (string) $_GET['view'] : 'days';
         $mine = $userId === (int) Auth::id();
 
         $this->render('timesheet/index.twig', [
@@ -87,6 +87,7 @@ class TimesheetController extends Controller
             'absences' => $calendar->absences($userId, $from, $to),
             'can_submit' => $mine && $from <= date('Y-m-d'),
             'grid' => $view === 'grid' ? $this->grid($userId, $entries, array_keys($days)) : [],
+            'calendar' => $view === 'calendar' ? self::calendar($days) : null,
             'people' => array_values(array_filter((new UserRepository())->active(), static fn(array $u): bool => $u['role'] !== 'guest')),
             'person' => $person,
             'is_mine' => $userId === (int) Auth::id(),
@@ -163,6 +164,85 @@ class TimesheetController extends Controller
         }
 
         return array_values($rows);
+    }
+
+    /**
+     * The week as a calendar: each day's entries that have a start, placed on
+     * its hours, side by side where they overlap; the ones without a start
+     * listed above the hours.
+     *
+     * The hours drawn are eight to six, stretched to take in anything earlier
+     * or later — a day that started at six is not cut off.
+     *
+     * @param array<string, array> $days
+     * @return array{from: int, to: int, days: array<string, array{placed: list<array>, loose: list<array>}>}
+     */
+    public static function calendar(array $days): array
+    {
+        $from = 8 * 60;
+        $to = 18 * 60;
+        $out = [];
+
+        foreach ($days as $date => $day) {
+            $placed = [];
+            $loose = [];
+
+            foreach ($day['entries'] as $entry) {
+                if (empty($entry['started_at'])) {
+                    $loose[] = $entry;
+                    continue;
+                }
+
+                [$h, $m] = array_map('intval', explode(':', (string) $entry['started_at']));
+                $start = $h * 60 + $m;
+                $end = min(24 * 60, $start + max(15, (int) $entry['minutes']));
+                $placed[] = ['entry' => $entry, 'start' => $start, 'end' => $end];
+                $from = min($from, intdiv($start, 60) * 60);
+                $to = max($to, (int) ceil($end / 60) * 60);
+            }
+
+            usort($placed, static fn(array $a, array $b): int => [$a['start'], $a['end']] <=> [$b['start'], $b['end']]);
+
+            // Side by side: each entry takes the first lane free at its start,
+            // and every entry of a run of overlapping ones is as narrow as
+            // that run's widest moment.
+            $group = [];
+            $groupEnd = -1;
+            $lanesEnd = [];
+            $flush = static function (array &$group, array &$placed): void {
+                $lanes = 1 + max(array_map(static fn(int $i): int => $placed[$i]['lane'], $group ?: [0]));
+                foreach ($group as $i) {
+                    $placed[$i]['lanes'] = $lanes;
+                }
+                $group = [];
+            };
+
+            foreach ($placed as $i => $block) {
+                if ($block['start'] >= $groupEnd && $group !== []) {
+                    $flush($group, $placed);
+                    $lanesEnd = [];
+                }
+
+                $lane = 0;
+                while (isset($lanesEnd[$lane]) && $lanesEnd[$lane] > $block['start']) {
+                    $lane++;
+                }
+
+                $lanesEnd[$lane] = $block['end'];
+                $placed[$i]['lane'] = $lane;
+                $placed[$i]['lanes'] = 1;
+                $group[] = $i;
+                $groupEnd = max($groupEnd, $block['end']);
+            }
+
+            if ($group !== []) {
+                $flush($group, $placed);
+            }
+
+            $out[$date] = ['placed' => $placed, 'loose' => $loose];
+        }
+
+        return ['from' => $from, 'to' => $to, 'days' => $out];
     }
 
     /**

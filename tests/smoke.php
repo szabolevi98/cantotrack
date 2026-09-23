@@ -832,6 +832,9 @@ if ($email === null || $password === null) {
     @unlink($sheetFile);
     check('and as a spreadsheet', $xlsx['status'] === 200 && str_contains($sheet, $code . '-1'));
 
+    $calendarWeek = request($baseUrl . '/timesheet?view=calendar', [], $jar);
+    check('the week can be shown as a calendar', $calendarWeek['status'] === 200 && str_contains($calendarWeek['body'], 'calendar__day'));
+
     // "Log time" from anywhere: the ticket offered as it is typed, logged by
     // its name, and back to the page it was logged from.
     $offered = json_decode(request($baseUrl . '/log/suggest?q=' . urlencode($code . '-1'), [], $jar)['body'], true);

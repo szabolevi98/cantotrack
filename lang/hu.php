@@ -926,4 +926,9 @@ return [
     'Log time on any ticket' => 'Idő rögzítése bármelyik jegyre',
     'CT-14, or words from its title' => 'CT-14, vagy szavak a címéből',
     'As the project’s hours usually are' => 'Ahogy a projekt órái általában',
+    'Started at' => 'Kezdés',
+    'A start is a time of day, like 9:30.' => 'A kezdés egy időpont, például 9:30.',
+    'Started then, it would run past midnight. An entry is one day’s work.' => 'Így kezdve éjfél utánig tartana. Egy bejegyzés egy nap munkája.',
+    'No start' => 'Kezdés nélkül',
+    'Drag over a day’s hours to log that stretch; a click logs an hour from there. Entries get their place from their start, which the ticket’s form, “Log time” and the clock all fill in.' => 'Húzd végig egy nap óráin, és rögzítheted azt a szakaszt; egy kattintás onnantól egy órát jelent. A bejegyzések a kezdésük szerint kerülnek a helyükre — ezt a jegy űrlapja, az „Idő rögzítése” és a stopper is kitölti.',
 ];

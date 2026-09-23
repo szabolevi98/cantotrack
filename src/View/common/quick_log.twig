@@ -30,6 +30,10 @@
                 <label for="quick-date">{{ 'Which day'|t }}</label>
                 <input id="quick-date" class="field" type="date" name="work_date" value="{{ 'now'|date('Y-m-d') }}" max="{{ 'now'|date('Y-m-d') }}">
             </div>
+            <div>
+                <label for="quick-start">{{ 'Started at'|t }}</label>
+                <input id="quick-start" class="field" type="time" name="started_at" step="300">
+            </div>
         </div>
 
         <label for="quick-note">{{ 'What you did'|t }}</label>

@@ -13,6 +13,7 @@
     <nav class="segmented" aria-label="{{ 'Show the week as'|t }}">
         <a class="segmented__item{{ view == 'days' ? ' is-active' : '' }}" href="{{ url('/timesheet?' ~ week_query) }}">{{ 'Days'|t }}</a>
         <a class="segmented__item{{ view == 'grid' ? ' is-active' : '' }}" href="{{ url('/timesheet?view=grid&' ~ week_query) }}">{{ 'Grid'|t }}</a>
+        <a class="segmented__item{{ view == 'calendar' ? ' is-active' : '' }}" href="{{ url('/timesheet?view=calendar&' ~ week_query) }}">{{ 'Calendar'|t }}</a>
     </nav>
     <a class="button" href="{{ url('/timesheet?view=' ~ view ~ '&week=' ~ previous_week ~ '&user=' ~ person.id) }}">← {{ 'Previous'|t }}</a>
     <a class="button" href="{{ url('/timesheet?view=' ~ view ~ '&user=' ~ person.id) }}">{{ 'This week'|t }}</a>
@@ -149,6 +150,69 @@
                 <input id="add" class="field field--inline" type="text" name="add" placeholder="CT-14" required>
                 <button class="button" type="submit">{{ 'Add'|t }}</button>
             </form>
+        {% endif %}
+    {% elseif view == 'calendar' %}
+        {#
+            The week as a calendar: the hours down the side, a column a day,
+            each entry with a start drawn as a block on its hours. Entries
+            without a start are listed above the hours of their day.
+
+            On one's own week, dragging over a day's empty hours opens "Log
+            time" with that day, that start and that length filled in; a click
+            is an hour from where it was clicked.
+        #}
+        {% set from = calendar.from %}
+        {% set to = calendar.to %}
+        <section class="card card--flush">
+            <div class="calendar" style="--hours: {{ (to - from) / 60 }}"
+                 {% if is_mine and can_work %}data-calendar data-from="{{ from }}"{% endif %}>
+                <div class="calendar__corner"></div>
+                {% for date, day in days %}
+                    <div class="calendar__head{{ day.expected == 0 ? ' calendar__head--off' : '' }}{{ date == today ? ' calendar__head--today' : '' }}">
+                        <strong>{{ date|date('D')|t }}</strong> <span>{{ date|date('j') }}</span>
+                        <span class="calendar__total">{{ day.minutes > 0 ? day.minutes|duration : '' }}</span>
+                        {% if day.holiday %}<span class="calendar__why">{{ day.holiday }}</span>{% endif %}
+                        {% if day.absence %}<span class="calendar__why">{{ {vacation: 'Day off', sick: 'Ill', other: 'Away'}[day.absence]|t }}</span>{% endif %}
+                    </div>
+                {% endfor %}
+
+                <div class="calendar__corner calendar__corner--loose"><span>{{ 'No start'|t }}</span></div>
+                {% for date, day in calendar.days %}
+                    <div class="calendar__loose">
+                        {% for entry in day.loose %}
+                            <a class="calendar__chip" href="{{ url('/tickets/' ~ entry.ticket_id) }}" title="{{ entry.ticket_title }}{{ entry.note ? ' — ' ~ entry.note : '' }}">
+                                <strong>{{ entry.project_code }}-{{ entry.ticket_number }}</strong> {{ entry.minutes|duration }}
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+
+                <div class="calendar__hours" aria-hidden="true">
+                    {% for minute in range(from, to - 60, 60) %}
+                        <span>{{ '%02d:00'|format(minute // 60) }}</span>
+                    {% endfor %}
+                </div>
+                {% for date, day in calendar.days %}
+                    {% set info = days[date] %}
+                    <div class="calendar__day{{ info.expected == 0 ? ' calendar__day--off' : '' }}{{ date > today ? ' calendar__day--future' : '' }}"
+                         data-date="{{ date }}"{{ date > today ? ' data-future' : '' }}>
+                        {% for block in day.placed %}
+                            {% set entry = block.entry %}
+                            <a class="calendar__block{{ entry.billable is defined and not entry.billable and entry.project_billable|default(1) ? ' calendar__block--unbilled' : '' }}"
+                               href="{{ url('/tickets/' ~ entry.ticket_id) }}"
+                               style="top: calc({{ block.start - from }} * var(--ppm)); height: calc({{ block.end - block.start }} * var(--ppm)); left: calc({{ block.lane }} * 100% / {{ block.lanes }}); width: calc(100% / {{ block.lanes }} - 4px);"
+                               title="{{ entry.project_code }}-{{ entry.ticket_number }} {{ entry.ticket_title }}{{ entry.note ? ' — ' ~ entry.note : '' }}">
+                                <span class="calendar__when">{{ '%02d:%02d'|format(block.start // 60, block.start % 60) }}–{{ '%02d:%02d'|format(block.end // 60, block.end % 60) }} · {{ entry.minutes|duration }}</span>
+                                <strong>{{ entry.project_code }}-{{ entry.ticket_number }}</strong>
+                                <span class="calendar__title">{{ entry.ticket_title }}</span>
+                            </a>
+                        {% endfor %}
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% if is_mine and can_work %}
+            <p class="hint">{{ 'Drag over a day’s hours to log that stretch; a click logs an hour from there. Entries get their place from their start, which the ticket’s form, “Log time” and the clock all fill in.'|t }}</p>
         {% endif %}
     {% else %}
         <div class="split">

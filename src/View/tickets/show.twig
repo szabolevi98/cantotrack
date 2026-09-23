@@ -254,6 +254,11 @@
                                value="{{ today }}" max="{{ today }}">
                     </div>
 
+                    <div>
+                        <label for="started_at">{{ 'Started at'|t }}</label>
+                        <input id="started_at" class="field" type="time" name="started_at" step="300">
+                    </div>
+
                     <div class="log-form__note">
                         <label for="note">{{ 'What you did'|t }}</label>
                         <input id="note" class="field" type="text" name="note" maxlength="500"

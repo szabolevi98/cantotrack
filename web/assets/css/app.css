@@ -3436,6 +3436,197 @@ kbd {
 }
 
 /*
+ * The week as a calendar: a gutter of hours and seven day columns, the
+ * entries with a start drawn as blocks on their hours.
+ *
+ * Minutes are turned into height with one number, --ppm (pixels per
+ * minute): an hour is 48px, and a quarter of an hour is still tall enough to
+ * click.
+ */
+.calendar {
+    --ppm: 0.8px;
+    display: grid;
+    grid-template-columns: 56px repeat(7, minmax(0, 1fr));
+}
+
+.calendar__corner,
+.calendar__head {
+    padding: 10px 8px;
+    border-bottom: 1px solid var(--ct-border);
+    background: var(--ct-surface);
+}
+
+.calendar__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 4px 6px;
+    border-left: 1px solid var(--ct-border);
+    font-size: 0.88rem;
+}
+
+.calendar__head--off {
+    color: var(--ct-muted);
+}
+
+.calendar__head--today strong {
+    color: var(--ct-primary);
+}
+
+.calendar__total {
+    margin-left: auto;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.calendar__why {
+    flex-basis: 100%;
+    overflow: hidden;
+    color: var(--ct-muted);
+    font-size: 0.75rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.calendar__corner--loose {
+    display: flex;
+    align-items: center;
+    padding: 6px 4px;
+    color: var(--ct-muted);
+    font-size: 0.68rem;
+    line-height: 1.2;
+    text-align: right;
+}
+
+.calendar__loose {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-height: 34px;
+    padding: 5px;
+    border-bottom: 1px solid var(--ct-border);
+    border-left: 1px solid var(--ct-border);
+    background: var(--ct-bg);
+}
+
+.calendar__chip {
+    overflow: hidden;
+    padding: 3px 6px;
+    border-radius: 6px;
+    background: var(--ct-badge-slate-bg);
+    color: var(--ct-badge-slate-text);
+    font-size: 0.75rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.calendar__chip:hover {
+    text-decoration: none;
+    filter: brightness(0.97);
+}
+
+.calendar__hours {
+    display: grid;
+    grid-auto-rows: calc(60 * var(--ppm));
+    color: var(--ct-muted);
+    font-size: 0.72rem;
+    font-variant-numeric: tabular-nums;
+    text-align: right;
+}
+
+.calendar__hours span {
+    padding: 2px 8px 0 0;
+    transform: translateY(-8px);
+}
+
+.calendar__hours span:first-child {
+    transform: none;
+}
+
+.calendar__day {
+    position: relative;
+    height: calc(var(--hours) * 60 * var(--ppm));
+    border-left: 1px solid var(--ct-border);
+    /* A line on every hour, a fainter one on the half. */
+    background-image:
+        linear-gradient(to bottom, var(--ct-border) 1px, transparent 1px),
+        linear-gradient(to bottom, color-mix(in srgb, var(--ct-border) 50%, transparent) 1px, transparent 1px);
+    background-position: 0 0, 0 calc(30 * var(--ppm));
+    background-size: 100% calc(60 * var(--ppm));
+}
+
+.calendar__day--off {
+    background-color: var(--ct-bg);
+}
+
+.calendar__day--future {
+    background-color: color-mix(in srgb, var(--ct-bg) 60%, transparent);
+}
+
+[data-calendar] .calendar__day:not(.calendar__day--future) {
+    cursor: crosshair;
+}
+
+.calendar__block,
+.calendar__ghost {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    margin-left: 2px;
+    padding: 3px 6px;
+    border-left: 3px solid var(--ct-primary);
+    border-radius: 6px;
+    background: var(--ct-primary-soft);
+    color: var(--ct-text);
+    font-size: 0.75rem;
+    line-height: 1.25;
+}
+
+.calendar__block:hover {
+    z-index: 1;
+    box-shadow: var(--ct-shadow);
+    text-decoration: none;
+}
+
+.calendar__block strong {
+    color: var(--ct-primary);
+}
+
+.calendar__block--unbilled {
+    border-left-color: var(--ct-muted);
+    background: var(--ct-badge-slate-bg);
+}
+
+.calendar__block--unbilled strong {
+    color: var(--ct-badge-slate-text);
+}
+
+.calendar__when {
+    color: var(--ct-muted);
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.calendar__title {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* The stretch being dragged out. */
+.calendar__ghost {
+    right: 4px;
+    left: 0;
+    z-index: 3;
+    border-left-color: var(--ct-primary);
+    background: color-mix(in srgb, var(--ct-primary) 22%, transparent);
+    color: var(--ct-primary);
+    font-weight: 600;
+    pointer-events: none;
+}
+
+/*
  * The sign-in page: one card in the middle of a coloured field.
  *
  * The background carries the brand gradient rather than the page grey, because

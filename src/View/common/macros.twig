@@ -132,7 +132,7 @@
             {% if entry.billable is defined and not entry.billable and entry.project_billable|default(1) %}<span class="tag" title="{{ 'Not billed'|t }}">{{ 'not billed'|t }}</span>{% endif %}
         </div>
 
-        <span class="log__time">{{ entry.minutes|duration }}</span>
+        <span class="log__time">{% if entry.started_at|default(null) %}<span class="log__start">{{ entry.started_at|slice(0, 5) }}</span> {% endif %}{{ entry.minutes|duration }}</span>
 
         {% if entry.user_id == current_user.id or is_admin %}
             <form class="log__delete" method="post" action="{{ url('/worklogs/' ~ entry.id ~ '/delete') }}"
@@ -159,6 +159,12 @@
                         <label for="day-{{ entry.id }}">{{ 'Which day'|t }}</label>
                         <input id="day-{{ entry.id }}" class="field" type="date" name="work_date"
                                value="{{ entry.work_date }}" max="{{ 'now'|date('Y-m-d') }}">
+                    </div>
+
+                    <div>
+                        <label for="start-{{ entry.id }}">{{ 'Started at'|t }}</label>
+                        <input id="start-{{ entry.id }}" class="field" type="time" name="started_at" step="300"
+                               value="{{ entry.started_at ? entry.started_at|slice(0, 5) : '' }}">
                     </div>
 
                     <div class="log-form__note">

@@ -1,0 +1,76 @@
+{% extends 'layout.twig' %}
+
+{% block title %}{{ 'Calendar'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Calendar'|t }}{% endblock %}
+{% block subheading %}<p class="content__sub">{{ 'The days nobody is expected to work, and the day up to which hours are closed.'|t }}</p>{% endblock %}
+
+{% block content %}
+    <div class="split">
+        <div class="split__main">
+            <section class="card card--flush">
+                <header class="card__head">
+                    <h2 class="card__title">{{ 'Holidays in {year}'|t({year: year}) }}</h2>
+                    <nav class="pager">
+                        <a class="button button--small" href="{{ url('/settings?year=' ~ (year - 1)) }}">← {{ year - 1 }}</a>
+                        <a class="button button--small" href="{{ url('/settings?year=' ~ (year + 1)) }}">{{ year + 1 }} →</a>
+                    </nav>
+                </header>
+                {% if holidays is empty %}
+                    <p class="card__empty">{{ 'No holidays in {year} yet.'|t({year: year}) }}</p>
+                {% else %}
+                    <table class="table table--compact">
+                        <tbody>
+                        {% for holiday in holidays %}
+                            <tr>
+                                <td>{{ holiday.day|day }}</td>
+                                <td class="muted">{{ holiday.day|date('l')|t }}</td>
+                                <td>{{ holiday.name }}</td>
+                                <td class="table__number">
+                                    <form method="post" action="{{ url('/settings/holidays/delete') }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                        <input type="hidden" name="day" value="{{ holiday.day }}">
+                                        <button class="link-button" type="submit" aria-label="{{ 'Remove'|t }}">×</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                {% endif %}
+            </section>
+
+            <section class="card">
+                <h2 class="card__title">{{ 'Add a holiday'|t }}</h2>
+                <form class="form__row" method="post" action="{{ url('/settings/holidays') }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                    <input class="field" type="date" name="day" required aria-label="{{ 'Day'|t }}">
+                    <input class="field" type="text" name="name" maxlength="120" required placeholder="{{ 'Name'|t }}" aria-label="{{ 'Name'|t }}">
+                    <button class="button" type="submit">{{ 'Add'|t }}</button>
+                </form>
+            </section>
+        </div>
+
+        <aside class="split__side">
+            <section class="card">
+                <h2 class="card__title">{{ 'National holidays'|t }}</h2>
+                <p class="card__body">{{ 'The {count} Hungarian public holidays of {year}, Easter and Whitsun included. Ones already on the calendar stay as they are.'|t({count: suggested|length, year: year}) }}</p>
+                <form method="post" action="{{ url('/settings/holidays/national') }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="year" value="{{ year }}">
+                    <button class="button button--primary" type="submit">{{ 'Add the holidays of {year}'|t({year: year}) }}</button>
+                </form>
+            </section>
+
+            <section class="card">
+                <h2 class="card__title">{{ 'Closed hours'|t }}</h2>
+                <p class="card__body">{{ 'Hours on and before this day no longer change — for when a month has been invoiced or paid out.'|t }}</p>
+                <form method="post" action="{{ url('/settings/lock') }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                    <input class="field" type="date" name="locked_until" value="{{ locked_until }}" aria-label="{{ 'Closed up to'|t }}">
+                    <button class="button" type="submit">{{ 'Save'|t }}</button>
+                </form>
+                {% if locked_until %}<p class="muted">{{ 'Clear the date to open them again.'|t }}</p>{% endif %}
+            </section>
+        </aside>
+    </div>
+{% endblock %}

@@ -23,6 +23,7 @@ use CantoTrack\Controller\ProfileController;
 use CantoTrack\Controller\ProjectController;
 use CantoTrack\Controller\ReportController;
 use CantoTrack\Controller\SearchController;
+use CantoTrack\Controller\SettingsController;
 use CantoTrack\Controller\SprintController;
 use CantoTrack\Controller\TicketController;
 use CantoTrack\Controller\TimerController;
@@ -134,6 +135,11 @@ $router->post('/worklogs/{id}/delete', static fn($id) => (new WorklogController(
 
 $router->get('/timesheet', static fn() => (new TimesheetController())->index());
 $router->post('/timesheet/grid', static fn() => (new TimesheetController())->saveGrid());
+$router->post('/timesheet/submit', static fn() => (new TimesheetController())->submit());
+$router->get('/timesheet/approvals', static fn() => (new TimesheetController())->approvals());
+$router->post('/timesheet/review', static fn() => (new TimesheetController())->review());
+$router->post('/absences', static fn() => (new TimesheetController())->addAbsence());
+$router->post('/absences/{id}/delete', static fn($id) => (new TimesheetController())->removeAbsence((int) $id));
 
 $router->get('/reports', static fn() => (new ReportController())->index());
 $router->get('/reports/export', static fn() => (new ReportController())->export());
@@ -151,3 +157,9 @@ $router->post('/people/create', static fn() => (new PeopleController())->create(
 $router->get('/people/{id}/edit', static fn($id) => (new PeopleController())->editForm((int) $id));
 $router->post('/people/{id}', static fn($id) => (new PeopleController())->update((int) $id));
 $router->post('/people/{id}/password', static fn($id) => (new PeopleController())->resetPassword((int) $id));
+
+$router->get('/settings', static fn() => (new SettingsController())->index());
+$router->post('/settings/lock', static fn() => (new SettingsController())->lock());
+$router->post('/settings/holidays', static fn() => (new SettingsController())->addHoliday());
+$router->post('/settings/holidays/national', static fn() => (new SettingsController())->addNational());
+$router->post('/settings/holidays/delete', static fn() => (new SettingsController())->removeHoliday());

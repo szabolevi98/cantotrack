@@ -49,7 +49,7 @@
             {# The dashboard is the only path that has to match exactly: every
                other path starts with a slash and a word, so "starts with" would
                make "/" current on every page. #}
-            {% set active = item.path == '/' ? current_path == '/' : current_path starts with item.path %}
+            {% set active = item.path == '/' ? current_path == '/' : (current_path starts with item.path and not (current_path starts with '/timesheet/approvals')) %}
             <a class="sidebar__link{{ active ? ' is-active' : '' }}" href="{{ url(item.path) }}"
                {{ active ? 'aria-current="page"' : '' }}>{{ item.label|t }}</a>
         {% endfor %}
@@ -77,6 +77,10 @@
             <span class="sidebar__section">{{ 'Administration'|t }}</span>
             <a class="sidebar__link{{ current_path starts with '/people' ? ' is-active' : '' }}"
                href="{{ url('/people') }}">{{ 'People'|t }}</a>
+            <a class="sidebar__link{{ current_path starts with '/timesheet/approvals' ? ' is-active' : '' }}"
+               href="{{ url('/timesheet/approvals') }}">{{ 'Approvals'|t }}{% set waiting = pending_weeks() %}{% if waiting > 0 %} <span class="sidebar__count">{{ waiting }}</span>{% endif %}</a>
+            <a class="sidebar__link{{ current_path starts with '/settings' ? ' is-active' : '' }}"
+               href="{{ url('/settings') }}">{{ 'Calendar'|t }}</a>
         {% endif %}
     </nav>
 

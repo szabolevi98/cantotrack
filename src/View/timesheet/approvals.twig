@@ -1,0 +1,58 @@
+{% extends 'layout.twig' %}
+
+{% block title %}{{ 'Weeks to approve'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Weeks to approve'|t }}{% endblock %}
+{% block subheading %}<p class="content__sub">{{ 'Handed-in weeks keep their hours as they are until they are approved or sent back.'|t }}</p>{% endblock %}
+
+{% block content %}
+    <section class="card card--flush">
+        {% if pending is empty %}
+            <p class="card__empty">{{ 'Nothing is waiting.'|t }}</p>
+        {% else %}
+            <table class="table">
+                <thead><tr>
+                    <th>{{ 'Person'|t }}</th><th>{{ 'Week'|t }}</th><th class="table__number">{{ 'Logged'|t }}</th>
+                    <th>{{ 'Handed in'|t }}</th><th>{{ 'Decision'|t }}</th>
+                </tr></thead>
+                <tbody>
+                {% for week in pending %}
+                    <tr>
+                        <td><a href="{{ url('/timesheet?week=' ~ week.week_start ~ '&user=' ~ week.user_id) }}">{{ week.user_name }}</a></td>
+                        <td>{{ week.week_start|day }}</td>
+                        <td class="table__number">{{ week.minutes|duration }}</td>
+                        <td>{{ week.submitted_at|day }}</td>
+                        <td>
+                            <form class="review-form" method="post" action="{{ url('/timesheet/review') }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                <input type="hidden" name="user" value="{{ week.user_id }}">
+                                <input type="hidden" name="week" value="{{ week.week_start }}">
+                                <button class="button button--small button--primary" type="submit" name="decision" value="approve">{{ 'Approve'|t }}</button>
+                                <input class="field field--inline" type="text" name="comment" maxlength="500" placeholder="{{ 'Why it goes back'|t }}" aria-label="{{ 'Why it goes back'|t }}">
+                                <button class="button button--small" type="submit" name="decision" value="reject">{{ 'Send back'|t }}</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </section>
+
+    {% if recent is not empty %}
+        <section class="card card--flush">
+            <header class="card__head"><h2 class="card__title">{{ 'Lately decided'|t }}</h2></header>
+            <table class="table table--compact">
+                <tbody>
+                {% for week in recent %}
+                    <tr>
+                        <td>{{ week.user_name }}</td>
+                        <td>{{ week.week_start|day }}</td>
+                        <td>{% if week.state == 'approved' %}<span class="badge badge--green">{{ 'Approved'|t }}</span>{% else %}<span class="badge badge--amber">{{ 'Sent back'|t }}</span>{% endif %}</td>
+                        <td class="muted">{{ week.reviewer_name }} · {{ week.reviewed_at|day }}{% if week.comment %} · {{ week.comment }}{% endif %}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    {% endif %}
+{% endblock %}

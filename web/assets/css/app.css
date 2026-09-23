@@ -2739,6 +2739,56 @@ kbd {
     margin: 0;
 }
 
+/* Days away, and handing a week in */
+
+.absence-form form {
+    display: grid;
+    gap: 8px;
+    margin-top: 10px;
+}
+
+.review-form {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    align-items: center;
+}
+
+.review-form .field--inline {
+    width: 14rem;
+    min-width: 0;
+}
+
+/* A person's working week: seven narrow fields in a row */
+
+.week-hours {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 6px;
+    margin: 16px 0 4px;
+    padding: 0;
+    border: 0;
+}
+
+.week-hours legend {
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.week-hours label {
+    display: grid;
+    gap: 4px;
+    margin: 0;
+    font-size: 0.8125rem;
+    color: var(--ct-muted);
+    text-align: center;
+}
+
+.week-hours .field {
+    padding-inline: 4px;
+    text-align: center;
+}
+
 /* The reports page: quick links to the last months, and each row's share. */
 .report-months {
     display: flex;

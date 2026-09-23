@@ -135,6 +135,20 @@ class UserRepository
         ]);
     }
 
+    /**
+     * A person's working week, as minutes per weekday from Monday; null goes
+     * back to the workspace's usual five days.
+     *
+     * @param list<int>|null $minutes
+     */
+    public function setWorkingWeek(int $id, ?array $minutes): void
+    {
+        $this->db->prepare('UPDATE users SET working_week = :week WHERE id = :id')->execute([
+            'week' => $minutes === null ? null : implode(',', $minutes),
+            'id' => $id,
+        ]);
+    }
+
     /** What a person may change about themselves on their profile. */
     public function updateProfile(int $id, string $name, ?string $shortName, ?string $locale, string $theme, bool $notifyEmail = true): void
     {

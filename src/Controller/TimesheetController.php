@@ -10,6 +10,8 @@ use CantoTrack\Core\ValidationError;
 use CantoTrack\Model\TicketRepository;
 use CantoTrack\Model\UserRepository;
 use CantoTrack\Model\WorklogRepository;
+use CantoTrack\Service\Calendar;
+use CantoTrack\Service\WeekReview;
 use CantoTrack\Service\WorklogService;
 use DateTimeImmutable;
 
@@ -65,12 +67,25 @@ class TimesheetController extends Controller
             $days[$day]['minutes'] += (int) $entry['minutes'];
         }
 
+        // What each day asks for: the person's own week, less holidays and
+        // days away — so a public holiday is not a short day.
+        $calendar = new Calendar();
+        foreach ($calendar->days($person, $from, $to) as $date => $info) {
+            $days[$date] += $info;
+        }
+
         $expected = Config::int('work.hours_per_day', 8) * 60;
+        $expectedWeek = array_sum(array_column($days, 'expected'));
         $view = ($_GET['view'] ?? '') === 'grid' ? 'grid' : 'days';
+        $mine = $userId === (int) Auth::id();
 
         $this->render('timesheet/index.twig', [
             'view' => $view,
             'days' => $days,
+            'week_state' => $calendar->weekState($userId, $from),
+            'locked_until' => $calendar->lockedUntil(),
+            'absences' => $calendar->absences($userId, $from, $to),
+            'can_submit' => $mine && $from <= date('Y-m-d'),
             'grid' => $view === 'grid' ? $this->grid($userId, $entries, array_keys($days)) : [],
             'people' => (new UserRepository())->active(),
             'person' => $person,
@@ -86,9 +101,9 @@ class TimesheetController extends Controller
             'total' => $worklogs->totalMinutes($userId, $from, $to),
             'by_project' => $worklogs->minutesByProject($userId, $from, $to),
             'expected_per_day' => $expected,
-            // Only the working days are expected to be full, which is what the
-            // week's target is measured against.
-            'expected_week' => $expected * 5,
+            // The week's target is the sum of its days' — five full days for
+            // most people, fewer in a week with a holiday or a day off.
+            'expected_week' => $expectedWeek,
             'team' => Auth::isAdmin() ? $worklogs->minutesByUserAndDay($from, $to) : [],
         ]);
     }
@@ -236,6 +251,94 @@ class TimesheetController extends Controller
         }
 
         $this->redirect('/timesheet?view=grid&week=' . $from . '&user=' . $userId);
+    }
+
+    /** Handing one's own week in. */
+    public function submit(): void
+    {
+        Auth::require();
+
+        $monday = $this->mondayOf($this->input('week'))->format('Y-m-d');
+
+        try {
+            (new WeekReview())->submit((int) Auth::id(), $monday);
+            $this->flash(__('The week is handed in. Its hours stay as they are until it is approved or sent back.'));
+        } catch (ValidationError $e) {
+            $this->flash($e->getMessage(), 'danger');
+        }
+
+        $this->redirect('/timesheet?week=' . $monday);
+    }
+
+    /** The weeks waiting for an administrator, and the latest decisions. */
+    public function approvals(): void
+    {
+        Auth::requireAdmin();
+
+        $review = new WeekReview();
+
+        $this->render('timesheet/approvals.twig', [
+            'pending' => $review->pending(),
+            'recent' => $review->recent(),
+        ]);
+    }
+
+    public function review(): void
+    {
+        Auth::requireAdmin();
+
+        $userId = (int) $this->idInput('user');
+        $monday = $this->mondayOf($this->input('week'))->format('Y-m-d');
+
+        try {
+            (new WeekReview())->review($userId, $monday, (int) Auth::id(), $this->input('decision') === 'approve', $this->input('comment'));
+            $this->flash($this->input('decision') === 'approve' ? __('Approved.') : __('Sent back, with the reason.'));
+        } catch (ValidationError $e) {
+            $this->flash($e->getMessage(), 'danger');
+        }
+
+        $this->back('/timesheet/approvals');
+    }
+
+    public function addAbsence(): void
+    {
+        Auth::require();
+
+        $userId = (int) ($this->idInput('user') ?? Auth::id());
+
+        if ($userId !== (int) Auth::id() && !Auth::isAdmin()) {
+            $this->forbidden(__('Only your own days away, or anybody’s as an administrator.'));
+        }
+
+        try {
+            (new Calendar())->addAbsence($userId, $this->input('starts_on'), $this->input('ends_on'), $this->input('kind'), $this->input('note'));
+            $this->flash(__('Noted: those days are not expected to be full.'));
+        } catch (ValidationError $e) {
+            $this->flash($e->getMessage(), 'danger');
+        }
+
+        $this->back('/timesheet?user=' . $userId);
+    }
+
+    public function removeAbsence(int $id): void
+    {
+        Auth::require();
+
+        $calendar = new Calendar();
+        $absence = $calendar->findAbsence($id);
+
+        if ($absence === null) {
+            $this->notFound(__('There is no such absence.'));
+        }
+
+        if ((int) $absence['user_id'] !== (int) Auth::id() && !Auth::isAdmin()) {
+            $this->forbidden(__('Only your own days away, or anybody’s as an administrator.'));
+        }
+
+        $calendar->removeAbsence($id);
+
+        $this->flash(__('Taken off the calendar.'), 'warning');
+        $this->back('/timesheet?user=' . $absence['user_id']);
     }
 
     /**

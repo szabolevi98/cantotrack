@@ -32,6 +32,18 @@
             </select>
 
             {% if editing %}
+                <fieldset class="week-hours">
+                    <legend>{{ 'Working week, in hours'|t }}</legend>
+                    {% for name in ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'] %}
+                        <label>
+                            <span>{{ name|t }}</span>
+                            <input class="field" type="text" inputmode="decimal" name="week[{{ loop.index0 }}]"
+                                   value="{{ (week[loop.index0] / 60)|round(2) }}" maxlength="5">
+                        </label>
+                    {% endfor %}
+                </fieldset>
+                <p class="hint">{{ 'What the timesheet expects of each day. Part-timers get their own; holidays and days away count as nothing expected.'|t }}</p>
+
                 <label class="check">
                     <input type="checkbox" name="is_active" value="1"{{ person.is_active ? ' checked' : '' }}>
                     Active — can sign in

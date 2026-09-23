@@ -26,6 +26,7 @@ class WorklogService
     private WorklogRepository $worklogs;
     private TicketRepository $tickets;
     private Activity $activity;
+    private Calendar $calendar;
 
     public function __construct(?PDO $db = null)
     {
@@ -34,6 +35,7 @@ class WorklogService
         $this->worklogs = new WorklogRepository($db);
         $this->tickets = new TicketRepository($db);
         $this->activity = new Activity($db);
+        $this->calendar = new Calendar($db);
     }
 
     /**
@@ -60,6 +62,7 @@ class WorklogService
 
         [$minutes, $rounded] = $this->minutes($time);
         $day = $this->day($date);
+        $this->calendar->ensureOpen($userId, $day);
         $left = $this->remainingAfter($ticket, $minutes, $remaining);
 
         // Unless the entry says, it is what its project's hours usually are.
@@ -114,6 +117,10 @@ class WorklogService
         [$minutes, $rounded] = $this->minutes($time);
         $day = $this->day($date);
 
+        // Both ends of a move: out of a closed day, and into one.
+        $this->calendar->ensureOpen((int) $worklog['user_id'], (string) $worklog['work_date']);
+        $this->calendar->ensureOpen((int) $worklog['user_id'], $day);
+
         $this->worklogs->update((int) $worklog['id'], $day, $minutes, $this->note($note));
 
         if ($billable !== null) {
@@ -123,8 +130,11 @@ class WorklogService
         return ['minutes' => $minutes, 'rounded' => $rounded];
     }
 
+    /** @throws ValidationError when its day is closed */
     public function remove(array $worklog): void
     {
+        $this->calendar->ensureOpen((int) $worklog['user_id'], (string) $worklog['work_date']);
+
         $this->worklogs->delete((int) $worklog['id']);
     }
 

@@ -7,6 +7,7 @@ use CantoTrack\Core\Controller;
 use CantoTrack\Core\Session;
 use CantoTrack\Core\View;
 use CantoTrack\Model\UserRepository;
+use CantoTrack\Service\Calendar;
 
 /**
  * The people: who can sign in, what they may do, and who is still with us.
@@ -85,10 +86,13 @@ class PeopleController extends Controller
     {
         Auth::requireAdmin();
 
+        $person = $this->personOr404($id);
+
         View::render('people/form.twig', [
-            'person' => $this->personOr404($id),
+            'person' => $person,
             'error' => null,
             'password' => null,
+            'week' => Calendar::week($person),
         ]);
     }
 
@@ -121,12 +125,14 @@ class PeopleController extends Controller
                 'person' => ['id' => $id, 'name' => $name, 'email' => $email, 'role' => $role, 'is_active' => $isActive],
                 'error' => $error,
                 'password' => null,
+                'week' => $this->workingWeek() ?? Calendar::week($person),
             ]);
 
             return;
         }
 
         $users->update($id, $name, $email, $role, $isActive);
+        $users->setWorkingWeek($id, $this->workingWeek());
 
         Session::flash('Saved.');
         $this->redirect('/people');
@@ -146,6 +152,26 @@ class PeopleController extends Controller
         Session::flash('A new password for ' . $person['name'] . ' is below.');
 
         $this->redirect('/people');
+    }
+
+    /**
+     * The seven hour fields of the form, as minutes a day — or null when they
+     * are the usual week, so a change to the workspace's hours reaches
+     * everybody who never had a week of their own.
+     *
+     * @return list<int>|null
+     */
+    private function workingWeek(): ?array
+    {
+        $given = is_array($_POST['week'] ?? null) ? $_POST['week'] : [];
+        $minutes = [];
+
+        for ($day = 0; $day < 7; $day++) {
+            $hours = str_replace(',', '.', trim((string) ($given[$day] ?? '')));
+            $minutes[] = is_numeric($hours) ? max(0, min(1440, (int) round((float) $hours * 60))) : 0;
+        }
+
+        return $minutes === Calendar::week([]) ? null : $minutes;
     }
 
     private function personOr404(int $id): array

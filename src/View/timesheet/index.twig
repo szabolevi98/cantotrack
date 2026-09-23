@@ -36,6 +36,21 @@
         <button class="button autosubmit__button" type="submit">{{ 'Show'|t }}</button>
     </form>
 
+    {# Where the week stands: open, handed in, approved, or sent back — and
+       whether its days are closed by the lock date. #}
+    {% if week_state %}
+        {% if week_state.state == 'approved' %}
+            <p class="flash flash--success">{{ 'This week is approved; its hours no longer change.'|t }}</p>
+        {% elseif week_state.state == 'submitted' %}
+            <p class="flash">{{ 'This week was handed in on {day}, and waits for approval. Its hours stay as they are until then.'|t({day: week_state.submitted_at|day}) }}</p>
+        {% else %}
+            <p class="flash flash--warning">{{ 'This week was sent back: {reason}'|t({reason: week_state.comment}) }}</p>
+        {% endif %}
+    {% endif %}
+    {% if locked_until and monday <= locked_until %}
+        <p class="flash flash--warning">{{ 'Hours up to {day} are closed.'|t({day: locked_until|day}) }}</p>
+    {% endif %}
+
     <div class="stats">
         <div class="stat">
             <div class="stat__label">{{ 'Logged this week'|t }}</div>
@@ -107,7 +122,7 @@
                     <tr>
                         <th>{{ 'Day'|t }}</th>
                         {% for date, day in days %}
-                            <th class="grid-sheet__day{{ day.minutes >= expected_per_day and date|date('N') <= 5 ? ' grid-sheet__day--full' : '' }}">
+                            <th class="grid-sheet__day{{ day.expected > 0 and day.minutes >= day.expected ? ' grid-sheet__day--full' : '' }}">
                                 {{ day.minutes > 0 ? day.minutes|duration : '—' }}
                             </th>
                         {% endfor %}
@@ -139,12 +154,14 @@
         <div class="split">
             <div class="split__main">
                 {% for date, day in days %}
-                    {% set weekend = date|date('N') > 5 %}
+                    {% set weekend = day.expected == 0 %}
                     <section class="day{{ weekend ? ' day--weekend' : '' }}{{ day.minutes == 0 ? ' day--empty' : '' }}">
                         <header class="day__head">
                             <div>
                                 <strong>{{ date|date('l')|t }}</strong>
                                 <span class="muted">{{ date|day }}</span>
+                                {% if day.holiday %}<span class="badge badge--violet">{{ day.holiday }}</span>{% endif %}
+                                {% if day.absence %}<span class="badge badge--amber">{{ {vacation: 'Day off', sick: 'Ill', other: 'Away'}[day.absence]|t }}</span>{% endif %}
                             </div>
                             <div class="day__total">
                                 {{ day.minutes > 0 ? day.minutes|duration : '—' }}
@@ -155,15 +172,15 @@
                                 #}
                                 {% if day.minutes > 0 and not weekend %}
                                     <span class="bar bar--day">
-                                        <span class="bar__fill{{ day.minutes >= expected_per_day ? ' bar__fill--full' : '' }}"
-                                              style="width: {{ min(100, (day.minutes / expected_per_day * 100)|round) }}%"></span>
+                                        <span class="bar__fill{{ day.minutes >= day.expected ? ' bar__fill--full' : '' }}"
+                                              style="width: {{ min(100, (day.minutes / day.expected * 100)|round) }}%"></span>
                                     </span>
                                 {% endif %}
                             </div>
                         </header>
 
                         {% if day.entries is empty %}
-                            <p class="day__empty">{{ weekend ? 'Weekend'|t : 'Nothing logged'|t }}</p>
+                            <p class="day__empty">{{ day.holiday or day.absence ? 'Nothing expected'|t : (weekend ? 'Weekend'|t : 'Nothing logged'|t) }}</p>
                         {% else %}
                             <ul class="logs">
                                 {% for entry in day.entries %}
@@ -176,6 +193,67 @@
             </div>
 
             <aside class="split__side">
+                {% if can_submit and (not week_state or week_state.state == 'rejected') %}
+                    <section class="card">
+                        <h2 class="card__title">{{ 'Hand the week in'|t }}</h2>
+                        <p class="card__body">{{ 'When the week is complete. Its hours then stay as they are until an administrator approves it or sends it back.'|t }}</p>
+                        <form method="post" action="{{ url('/timesheet/submit') }}"
+                              data-confirm="{{ 'Hand in the week of {day}?'|t({day: monday|day}) }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="week" value="{{ monday }}">
+                            <button class="button button--primary" type="submit">{{ 'Hand it in'|t }}</button>
+                        </form>
+                    </section>
+                {% endif %}
+
+                <section class="card">
+                    <h2 class="card__title">{{ 'Days away'|t }}</h2>
+                    {% if absences is not empty %}
+                        <ul class="split-list">
+                            {% for away in absences %}
+                                <li>
+                                    <span>{{ {vacation: 'Day off', sick: 'Ill', other: 'Away'}[away.kind]|t }}</span>
+                                    <span class="muted">{{ away.starts_on|day }}{% if away.ends_on != away.starts_on %} — {{ away.ends_on|day }}{% endif %}{% if away.note %} · {{ away.note }}{% endif %}</span>
+                                    {% if can_change %}
+                                        <form method="post" action="{{ url('/absences/' ~ away.id ~ '/delete') }}">
+                                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                            <input type="hidden" name="back" value="/timesheet?{{ week_query }}">
+                                            <button class="link-button" type="submit" aria-label="{{ 'Remove'|t }}">×</button>
+                                        </form>
+                                    {% endif %}
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                    {% if can_change %}
+                        <details class="absence-form">
+                            <summary class="link-button link-button--text">{{ 'Add days away'|t }}</summary>
+                            <form method="post" action="{{ url('/absences') }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                <input type="hidden" name="user" value="{{ person.id }}">
+                                <input type="hidden" name="back" value="/timesheet?{{ week_query }}">
+                                <div class="form__row">
+                                    <div>
+                                        <label for="starts_on">{{ 'From'|t }}</label>
+                                        <input id="starts_on" class="field" type="date" name="starts_on" value="{{ today }}" required>
+                                    </div>
+                                    <div>
+                                        <label for="ends_on">{{ 'Until'|t }}</label>
+                                        <input id="ends_on" class="field" type="date" name="ends_on" value="{{ today }}">
+                                    </div>
+                                </div>
+                                <select class="field" name="kind" aria-label="{{ 'Why'|t }}">
+                                    <option value="vacation">{{ 'Day off'|t }}</option>
+                                    <option value="sick">{{ 'Ill'|t }}</option>
+                                    <option value="other">{{ 'Away'|t }}</option>
+                                </select>
+                                <input class="field" type="text" name="note" maxlength="200" placeholder="{{ 'Optional'|t }}" aria-label="{{ 'Note'|t }}">
+                                <button class="button button--small" type="submit">{{ 'Add'|t }}</button>
+                            </form>
+                        </details>
+                    {% endif %}
+                </section>
+
                 <section class="card">
                     <h2 class="card__title">{{ 'Where it went'|t }}</h2>
                     {% if by_project is empty %}

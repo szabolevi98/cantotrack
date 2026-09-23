@@ -796,6 +796,22 @@ if ($email === null || $password === null) {
     @unlink($sheetFile);
     check('and as a spreadsheet', $xlsx['status'] === 200 && str_contains($sheet, $code . '-1'));
 
+    // The calendar: a holiday far enough ahead that it cannot touch anybody's
+    // real week, added and taken off again. Handing a week in is left to the
+    // integration tests — it would close this account's hours for the rest
+    // of the run.
+    check('the weeks to approve answer', request($baseUrl . '/timesheet/approvals', [], $jar)['status'] === 200);
+    check('the calendar answers', str_contains(request($baseUrl . '/settings', [], $jar)['body'], 'Closed hours'));
+
+    request($baseUrl . '/settings/holidays', ['_token' => $token, 'day' => '2099-06-15', 'name' => 'Smoke test holiday'], $jar);
+    check('a holiday can be added', str_contains(request($baseUrl . '/settings?year=2099', [], $jar)['body'], 'Smoke test holiday'));
+    request($baseUrl . '/settings/holidays/delete', ['_token' => $token, 'day' => '2099-06-15'], $jar);
+    check('and taken off again', !str_contains(request($baseUrl . '/settings?year=2099', [], $jar)['body'], 'Smoke test holiday'));
+    check(
+        'and a week that holds one says so',
+        str_contains(request($baseUrl . '/timesheet', [], $jar)['body'], 'Days away')
+    );
+
     // Again, now that the pages above have shown and used up its message.
     request($baseUrl . '/timesheet/grid', ['_token' => $token, 'week' => date('Y-m-d', strtotime('monday this week')), 'cells' => [$ticketId => [date('Y-m-d') => '9h']]], $jar);
 

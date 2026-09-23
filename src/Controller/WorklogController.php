@@ -78,7 +78,13 @@ class WorklogController extends Controller
         Auth::require();
 
         $worklog = $this->mineOr403($id);
-        (new WorklogService())->remove($worklog);
+
+        try {
+            (new WorklogService())->remove($worklog);
+        } catch (ValidationError $e) {
+            $this->flash($e->getMessage(), 'danger');
+            $this->back('/tickets/' . $worklog['ticket_id']);
+        }
 
         $this->flash(__('Worklog deleted.'), 'warning');
         $this->back('/tickets/' . $worklog['ticket_id']);

@@ -43,6 +43,12 @@ class View
             // markup after an edit; on a live server it is the difference
             // between compiling every page and none.
             'cache' => $debug ? false : $root . '/var/cache/twig',
+            // A compiled template is checked against its source on every
+            // use. Twig only does that by default in debug mode, and without
+            // it a `git pull` of new templates went on serving the old ones —
+            // a macro that did not exist yet, from a file compiled a release ago.
+            // One stat per template is the whole cost.
+            'auto_reload' => true,
             'strict_variables' => $debug,
             'autoescape' => 'html',
         ]);

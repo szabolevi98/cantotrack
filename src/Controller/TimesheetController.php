@@ -87,7 +87,7 @@ class TimesheetController extends Controller
             'absences' => $calendar->absences($userId, $from, $to),
             'can_submit' => $mine && $from <= date('Y-m-d'),
             'grid' => $view === 'grid' ? $this->grid($userId, $entries, array_keys($days)) : [],
-            'people' => (new UserRepository())->active(),
+            'people' => array_values(array_filter((new UserRepository())->active(), static fn(array $u): bool => $u['role'] !== 'guest')),
             'person' => $person,
             'is_mine' => $userId === (int) Auth::id(),
             'can_change' => $userId === (int) Auth::id() || Auth::isAdmin(),

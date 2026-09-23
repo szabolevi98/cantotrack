@@ -57,14 +57,20 @@ class Webhooks
         });
 
         register_shutdown_function(static function (): void {
-            // The page is answered first; the messages go out after.
-            if (function_exists('fastcgi_finish_request')) {
-                fastcgi_finish_request();
-            }
+            // The page is answered first and the messages go out after —
+            // where the server can do that. Under mod_php it cannot: the
+            // browser would wait for a slow receiver, so the messages are
+            // only written down, and bin/webhooks.php sends them within the
+            // minute.
+            $answered = function_exists('fastcgi_finish_request') && fastcgi_finish_request();
 
             try {
                 $webhooks = new self();
-                $webhooks->send($webhooks->flush(), self::SEND_INLINE);
+                $queued = $webhooks->flush();
+
+                if ($answered) {
+                    $webhooks->send($queued, self::SEND_INLINE);
+                }
             } catch (\Throwable $e) {
                 // A message that cannot be written or sent must never undo
                 // the change it was about, nor turn the answer into an error.

@@ -1,30 +1,47 @@
 <?php
 
 /**
- * Fills an installation with something to look at: two projects, their epics
- * and tickets, a few colleagues, and a week of hours behind them.
+ * Fills an installation with something to look at: two projects — the
+ * tracker itself, and a client's website — with their epics, tickets,
+ * sprints, comments and links, a few colleagues and a client's guest, two
+ * weeks of hours, a handed-in week waiting for approval, and the year's
+ * public holidays.
  *
- * For a development machine and for the pictures in the README — not for
- * anything anyone works in. It refuses to run unless `app.env` is `dev`,
- * because it creates accounts that can sign in, and an account nobody meant to
- * create is the kind of thing that survives to a live server.
+ * For a development machine, the pictures in the README, and a public demo
+ * — not for anything anyone works in. It refuses to run unless `app.env` is
+ * `dev`, because it creates accounts that can sign in, and an account nobody
+ * meant to create is the kind of thing that survives to a live server.
  *
  *   php database/seed_demo.php
  *   php database/seed_demo.php --reset    (removes what it made last time first)
  *
- * The passwords are printed, because a demo account nobody can sign in to is
- * not much of a demo.
+ * Everything goes through the same services the forms use, so the tickets
+ * have a history, the sprints their numbers and the comments their mentions.
+ * Then the dates are moved back to when the work would have happened: a demo
+ * where every ticket was created a second ago has a burndown that says so.
+ *
+ * The passwords of the accounts it makes are printed, because a demo account
+ * nobody can sign in to is not much of a demo.
  */
 
 require dirname(__DIR__) . '/vendor/autoload.php';
 
 use CantoTrack\Core\Config;
 use CantoTrack\Core\DatabaseConnection;
+use CantoTrack\Model\ClientRepository;
 use CantoTrack\Model\EpicRepository;
 use CantoTrack\Model\ProjectRepository;
+use CantoTrack\Model\SavedFilterRepository;
+use CantoTrack\Model\SprintRepository;
 use CantoTrack\Model\TicketRepository;
 use CantoTrack\Model\UserRepository;
 use CantoTrack\Model\WorklogRepository;
+use CantoTrack\Service\Calendar;
+use CantoTrack\Service\CommentService;
+use CantoTrack\Service\LinkService;
+use CantoTrack\Service\SprintService;
+use CantoTrack\Service\TicketService;
+use CantoTrack\Service\WeekReview;
 
 $root = dirname(__DIR__);
 $configPath = $root . '/config/config.ini';
@@ -40,6 +57,7 @@ foreach ($argv ?? [] as $argument) {
 }
 
 Config::load($configPath);
+date_default_timezone_set((string) Config::get('app.timezone', 'Europe/Budapest'));
 
 if (Config::get('app.env') !== 'dev') {
     fwrite(STDERR, "This only runs where app.env is dev. It makes accounts that can sign in.\n");
@@ -48,30 +66,44 @@ if (Config::get('app.env') !== 'dev') {
 
 $database = DatabaseConnection::get();
 $projects = new ProjectRepository();
-$epics = new EpicRepository();
 $tickets = new TicketRepository();
 $users = new UserRepository();
 $worklogs = new WorklogRepository();
+$epics = new EpicRepository();
+$sprints = new SprintRepository();
+$ticketService = new TicketService();
+$comments = new CommentService();
+$links = new LinkService();
+$sprintService = new SprintService();
+$calendar = new Calendar();
 
 $codes = ['CT', 'WEB'];
+$demoEmails = ['anna@cantotrack.demo', 'mark@cantotrack.demo', 'julia@cantotrack.demo', 'eszter@nordic.demo'];
 
 if ($reset) {
     foreach ($codes as $code) {
         $existing = $projects->findByCode($code);
 
         if ($existing !== null) {
-            // The hours first, and deliberately: the database no longer lets a
+            // The hours first, and deliberately: the database does not let a
             // ticket go while hours point at it, because hours are what gets
             // invoiced. Here they are demo hours, and going is the point.
             $database->prepare(
                 'DELETE w FROM worklogs w JOIN tickets t ON t.id = w.ticket_id WHERE t.project_id = :project'
             )->execute(['project' => (int) $existing['id']]);
 
-            // The project then takes its epics and tickets with it.
+            // The project then takes its epics, sprints and tickets with it.
             $projects->delete((int) $existing['id']);
             printf('  removed %s and everything in it%s', $code, PHP_EOL);
         }
     }
+
+    // The demo people's handed-in weeks and days away go too; their accounts
+    // stay, with the passwords they were given the first time.
+    $in = implode(',', array_fill(0, count($demoEmails), '?'));
+    $database->prepare("DELETE tw FROM timesheet_weeks tw JOIN users u ON u.id = tw.user_id WHERE u.email IN ($in)")->execute($demoEmails);
+    $database->prepare("DELETE a FROM absences a JOIN users u ON u.id = a.user_id WHERE u.email IN ($in)")->execute($demoEmails);
+    $database->prepare("DELETE f FROM saved_filters f JOIN users u ON u.id = f.user_id WHERE u.email IN ($in)")->execute($demoEmails);
 }
 
 foreach ($codes as $code) {
@@ -88,6 +120,8 @@ $team = [
     ['name' => 'Anna Kovács', 'email' => 'anna@cantotrack.demo', 'role' => 'member'],
     ['name' => 'Márk Tóth', 'email' => 'mark@cantotrack.demo', 'role' => 'member'],
     ['name' => 'Júlia Nagy', 'email' => 'julia@cantotrack.demo', 'role' => 'admin'],
+    // Somebody from the client, who reads and comments on their own project.
+    ['name' => 'Eszter Varga', 'email' => 'eszter@nordic.demo', 'role' => 'guest'],
 ];
 
 $people = [];
@@ -106,197 +140,259 @@ foreach ($team as $member) {
     $madePasswords[$member['email']] = $password;
 }
 
-// Whoever set the installation up gets the work assigned to them as well, so
-// the dashboard and the timesheet have something on them for the person who
-// is most likely to be looking.
-$firstAdminQuery = $database->prepare("SELECT id FROM users WHERE role = 'admin' ORDER BY id LIMIT 1");
-$firstAdminQuery->execute();
-$firstAdmin = $firstAdminQuery->fetchColumn();
-$me = (int) $firstAdmin;
+// Whoever set the installation up gets work of their own as well, so the
+// dashboard and the timesheet have something on them for the person most
+// likely to be looking.
+$firstAdmin = $database->query("SELECT id FROM users WHERE role = 'admin' AND email NOT LIKE '%.demo' ORDER BY id LIMIT 1");
+$me = (int) ($firstAdmin === false ? 0 : $firstAdmin->fetchColumn());
 $anna = $people['anna@cantotrack.demo'];
 $mark = $people['mark@cantotrack.demo'];
 $julia = $people['julia@cantotrack.demo'];
+$eszter = $people['eszter@nordic.demo'];
+$me = $me ?: $julia;
+
+// Anna works four days a week: her Fridays are not expected to be full.
+$users->setWorkingWeek($anna, [480, 480, 480, 480, 0, 0, 0]);
+
+// ---------------------------------------------------------------------------
+// The calendar: this year's and next year's public holidays
+// ---------------------------------------------------------------------------
+foreach ([(int) date('Y'), (int) date('Y') + 1] as $year) {
+    $have = array_column($calendar->holidays($year), 'day');
+
+    foreach (Calendar::hungarianHolidays($year) as $date => $name) {
+        if (!in_array($date, $have, true)) {
+            $calendar->addHoliday($date, $name);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// The weeks everything happens in
+// ---------------------------------------------------------------------------
+$thisMonday = new DateTimeImmutable('monday this week');
+$lastMonday = $thisMonday->modify('-7 days');
+$sprintOneStart = $thisMonday->modify('-14 days');
+$today = new DateTimeImmutable('today');
+
+/** A day relative to this Monday, as Y-m-d. */
+$day = static fn(int $offset): string => $thisMonday->modify(($offset >= 0 ? '+' : '') . $offset . ' days')->format('Y-m-d');
 
 // ---------------------------------------------------------------------------
 // The projects
 // ---------------------------------------------------------------------------
 $ctId = $projects->create('CT', 'CantoTrack', 'The tracker itself, tracked in itself.');
-$webId = $projects->create('WEB', 'Website relaunch', 'New site, new copy, and a move off the old host.');
+$webId = $projects->create('WEB', 'Nordic Coffee website', 'A new site for a coffee roaster: new copy, a shop, and a move off the old host.');
+
+// The tracker is internal work; the website is billed to the client, and
+// only the people on it see it.
+$projects->setBilling($ctId, null, false);
+$projects->setBilling($webId, (new ClientRepository())->findOrCreate('Nordic Coffee Roasters'), true);
+$projects->setVisibility($webId, 'private');
+
+foreach ([$me, $anna, $mark, $julia, $eszter] as $member) {
+    $projects->addMember($webId, $member);
+}
 
 $boardEpic = $epics->create($ctId, 'Board and tickets', 'Projects, epics, tickets, and the board they sit on.');
 $timeEpic = $epics->create($ctId, 'Time logging', 'Worklogs, the timesheet, and what a week adds up to.');
 $designEpic = $epics->create($ctId, 'Design and accessibility', 'The palette, the contrast figures, and the keyboard.');
 $contentEpic = $epics->create($webId, 'Content', 'Everything that has to be written before anything can be built.');
-$buildEpic = $epics->create($webId, 'Build', 'Templates, the CMS and the move.');
+$buildEpic = $epics->create($webId, 'Build', 'Templates, the shop and the move.');
 
-$statuses = new CantoTrack\Model\StatusRepository();
-
-/** Makes a ticket and hands back its id. The status is named, as a person would. */
-$make = static function (array $ticket) use ($tickets, $statuses): int {
-    $status = $statuses->resolve((int) $ticket['project_id'], $ticket['status'] ?? 'backlog');
-
-    if ($status === null) {
-        throw new RuntimeException('No column called ' . ($ticket['status'] ?? 'backlog'));
-    }
-
-    return $tickets->create([
-        'status_id' => (int) $status['id'],
-        'status_category' => $status['category'],
-    ] + $ticket + [
-        'epic_id' => null,
-        'description' => null,
-        'priority' => 'normal',
-        'assignee_id' => null,
-        'reporter_id' => null,
-        'estimate_minutes' => null,
-    ]);
-};
-
+// ---------------------------------------------------------------------------
+// The tickets
+// ---------------------------------------------------------------------------
 $made = [];
 
-$made['board'] = $make([
-    'project_id' => $ctId, 'epic_id' => $boardEpic, 'title' => 'Board with a column per status',
-    'description' => "Five columns, and a ticket moved along with one control.\n\nIt has to work with a keyboard and on a phone, which rules out dragging as the only way.",
-    'status' => 'done', 'priority' => 'high', 'assignee_id' => $me, 'reporter_id' => $me,
-    'estimate_minutes' => 8 * 60,
-]);
-
-$made['numbering'] = $make([
-    'project_id' => $ctId, 'epic_id' => $boardEpic, 'title' => 'Ticket numbers that survive two people at once',
-    'description' => 'The counter lives on the project and is raised in the same transaction as the insert.',
-    'status' => 'done', 'priority' => 'urgent', 'assignee_id' => $me, 'reporter_id' => $julia,
-    'estimate_minutes' => 3 * 60,
-]);
-
-$made['filters'] = $make([
-    'project_id' => $ctId, 'epic_id' => $boardEpic, 'title' => 'Filters that live in the URL',
-    'description' => 'So a filtered list can be bookmarked and sent to somebody.',
-    'status' => 'done', 'priority' => 'normal', 'assignee_id' => $anna, 'reporter_id' => $me,
-    'estimate_minutes' => 2 * 60,
-]);
-
-$made['worklog'] = $make([
-    'project_id' => $ctId, 'epic_id' => $timeEpic, 'title' => 'Log time from the ticket page',
-    'description' => "The day the work happened, not the day it was typed.\n\nFriday afternoon is regularly written down on Monday.",
-    'status' => 'done', 'priority' => 'high', 'assignee_id' => $me, 'reporter_id' => $me,
-    'estimate_minutes' => 5 * 60,
-]);
-
-$made['timesheet'] = $make([
-    'project_id' => $ctId, 'epic_id' => $timeEpic, 'title' => 'The week, day by day, with what it went on',
-    'description' => "One row per day, the entries under it, and the day's total beside it.
-
-"
-        . 'Beside the week: where the hours went by project, and what everybody else logged.',
-    'status' => 'in_progress', 'priority' => 'high', 'assignee_id' => $me, 'reporter_id' => $julia,
-    'estimate_minutes' => 6 * 60,
-]);
-
-$made['export'] = $make([
-    'project_id' => $ctId, 'epic_id' => $timeEpic, 'title' => 'Export a month as CSV',
-    'description' => 'For whoever does the invoicing. Minutes as a decimal, one row per worklog.',
-    'status' => 'todo', 'priority' => 'normal', 'assignee_id' => $mark, 'reporter_id' => $julia,
-    'estimate_minutes' => 3 * 60,
-]);
-
-$made['contrast'] = $make([
-    'project_id' => $ctId, 'epic_id' => $designEpic, 'title' => 'Measure the contrast rather than claim it',
-    'description' => 'Every figure in the stylesheet comes from a calculation, and the comments say which.',
-    'status' => 'done', 'priority' => 'normal', 'assignee_id' => $anna, 'reporter_id' => $anna,
-    'estimate_minutes' => 90,
-]);
-
-$made['keyboard'] = $make([
-    'project_id' => $ctId, 'epic_id' => $designEpic, 'title' => 'Walk the whole application on a keyboard',
-    'description' => 'Every control reachable by Tab, in an order that matches the page.',
-    'status' => 'review', 'priority' => 'normal', 'assignee_id' => $anna, 'reporter_id' => $me,
-    'estimate_minutes' => 2 * 60,
-]);
-
-$made['mobile'] = $make([
-    'project_id' => $ctId, 'epic_id' => $designEpic, 'title' => 'The board on a phone',
-    'description' => 'The columns scroll sideways; the cards must stay readable.',
-    'status' => 'in_progress', 'priority' => 'normal', 'assignee_id' => $mark, 'reporter_id' => $anna,
-    'estimate_minutes' => 4 * 60,
-]);
-
-$made['notifications'] = $make([
-    'project_id' => $ctId, 'title' => 'Say something when a ticket is assigned to you',
-    'description' => 'Email, or a list on the dashboard. Probably the list first.',
-    'status' => 'backlog', 'priority' => 'low', 'reporter_id' => $julia,
-]);
-
-$made['attachments'] = $make([
-    'project_id' => $ctId, 'title' => 'Attachments on a ticket',
-    'description' => 'Screenshots, mostly. Wherever they are put, they have to be backed up with the database.',
-    'status' => 'backlog', 'priority' => 'low', 'reporter_id' => $mark,
-]);
-
-$made['copy'] = $make([
-    'project_id' => $webId, 'epic_id' => $contentEpic, 'title' => 'Rewrite the services pages',
-    'description' => 'Six pages, one voice. The old ones were written by four people over three years.',
-    'status' => 'in_progress', 'priority' => 'high', 'assignee_id' => $julia, 'reporter_id' => $julia,
-    'estimate_minutes' => 10 * 60,
-]);
-
-$made['photos'] = $make([
-    'project_id' => $webId, 'epic_id' => $contentEpic, 'title' => 'Photograph the team',
-    'description' => 'One morning, one studio, everybody in the same light.',
-    'status' => 'todo', 'priority' => 'normal', 'assignee_id' => $anna, 'reporter_id' => $julia,
-    'estimate_minutes' => 4 * 60,
-]);
-
-$made['templates'] = $make([
-    'project_id' => $webId, 'epic_id' => $buildEpic, 'title' => 'Templates for the three page kinds',
-    'description' => 'Landing, service, article. Everything else is one of those three with different copy.',
-    'status' => 'todo', 'priority' => 'high', 'assignee_id' => $mark, 'reporter_id' => $me,
-    'estimate_minutes' => 12 * 60,
-]);
-
-$made['redirects'] = $make([
-    'project_id' => $webId, 'epic_id' => $buildEpic, 'title' => 'Redirects from every old address',
-    'description' => 'A relaunch that loses its addresses loses its search results with them.',
-    'status' => 'backlog', 'priority' => 'urgent', 'reporter_id' => $me,
-    'estimate_minutes' => 3 * 60,
-]);
-
-// ---------------------------------------------------------------------------
-// The hours, across this week
-// ---------------------------------------------------------------------------
-$monday = new DateTimeImmutable('monday this week');
-$today = new DateTimeImmutable('today');
-
-/** The date of a weekday of this week, never later than today. */
-$day = static function (int $offset) use ($monday, $today): ?string {
-    $date = $monday->modify('+' . $offset . ' days');
-
-    return $date > $today ? null : $date->format('Y-m-d');
+/** Makes a ticket through the service, as its reporter would. */
+$make = static function (string $name, int $reporter, array $input) use (&$made, $ticketService): int {
+    return $made[$name] = $ticketService->create($input, $reporter);
 };
 
+$make('board', $me, [
+    'project_id' => $ctId, 'epic_id' => $boardEpic, 'type' => 'story', 'title' => 'Board with a column per status',
+    'description' => "Five columns, and a ticket moved along with one control.\n\nIt has to work with a keyboard and on a phone, which rules out dragging as the only way.\n\n- [x] columns from the project's settings\n- [x] drag and drop between them\n- [x] a select on every card for the keyboard",
+    'status' => 'done', 'priority' => 'high', 'assignee_id' => $me, 'estimate' => '1d', 'story_points' => 5, 'labels' => 'board, ui',
+]);
+$make('numbering', $julia, [
+    'project_id' => $ctId, 'epic_id' => $boardEpic, 'type' => 'bug', 'title' => 'Two tickets got the same number under load',
+    'description' => "Created at the same moment from two browsers, both came out as CT-7.\n\nThe counter now lives on the project and is raised in the same transaction as the insert.",
+    'status' => 'done', 'priority' => 'urgent', 'assignee_id' => $me, 'estimate' => '3h', 'story_points' => 3, 'labels' => 'database',
+]);
+$make('filters', $me, [
+    'project_id' => $ctId, 'epic_id' => $boardEpic, 'type' => 'story', 'title' => 'Filters that live in the URL',
+    'description' => 'So a filtered list can be bookmarked, saved for the team, and sent to somebody.',
+    'status' => 'done', 'assignee_id' => $anna, 'estimate' => '2h', 'story_points' => 2, 'labels' => 'ui',
+]);
+$make('worklog', $me, [
+    'project_id' => $ctId, 'epic_id' => $timeEpic, 'type' => 'story', 'title' => 'Log time from the ticket page',
+    'description' => "The day the work happened, not the day it was typed.\n\nFriday afternoon is regularly written down on Monday.",
+    'status' => 'done', 'priority' => 'high', 'assignee_id' => $me, 'estimate' => '5h', 'story_points' => 3, 'labels' => 'time',
+]);
+$make('timesheet', $julia, [
+    'project_id' => $ctId, 'epic_id' => $timeEpic, 'type' => 'story', 'title' => 'The week, day by day, with what it went on',
+    'description' => "One row per day, the entries under it, and the day's total beside it.\n\nBeside the week: where the hours went by project, and what everybody else logged.",
+    'status' => 'review', 'priority' => 'high', 'assignee_id' => $me, 'estimate' => '6h', 'story_points' => 5, 'labels' => 'time, ui',
+]);
+$make('approval', $julia, [
+    'project_id' => $ctId, 'epic_id' => $timeEpic, 'type' => 'story', 'title' => 'Hand a week in, and have it approved',
+    'description' => "Once handed in, a week's hours stay as they are until an administrator approves it or sends it back with a reason.",
+    'status' => 'in_progress', 'priority' => 'high', 'assignee_id' => $me, 'estimate' => '1d', 'story_points' => 5, 'labels' => 'time',
+    'due_on' => $day(4),
+]);
+$make('export', $julia, [
+    'project_id' => $ctId, 'epic_id' => $timeEpic, 'type' => 'task', 'title' => 'Export a month as CSV and Excel',
+    'description' => 'For whoever does the invoicing. Hours as a decimal, one row per worklog, and the billable ones marked.',
+    'status' => 'todo', 'assignee_id' => $mark, 'estimate' => '3h', 'story_points' => 3, 'labels' => 'time, reports',
+]);
+$make('rounding', $mark, [
+    'project_id' => $ctId, 'epic_id' => $timeEpic, 'type' => 'bug', 'title' => '5 minutes logged shows as 0.1h in the report',
+    'description' => "The report rounds to one decimal, so a five-minute entry reads as `0.1` and a column of them does not add up to its total.\n\nSteps: log 5m three times on CT-6, open Reports for the week.",
+    'status' => 'todo', 'priority' => 'high', 'assignee_id' => $mark, 'estimate' => '2h', 'story_points' => 2, 'labels' => 'reports',
+]);
+$make('contrast', $anna, [
+    'project_id' => $ctId, 'epic_id' => $designEpic, 'type' => 'task', 'title' => 'Measure the contrast rather than claim it',
+    'description' => 'Every figure in the stylesheet comes from a calculation, and the comments say which.',
+    'status' => 'done', 'assignee_id' => $anna, 'estimate' => '90m', 'story_points' => 1, 'labels' => 'accessibility',
+]);
+$make('keyboard', $me, [
+    'project_id' => $ctId, 'epic_id' => $designEpic, 'type' => 'story', 'title' => 'Walk the whole application on a keyboard',
+    'description' => 'Every control reachable by Tab, in an order that matches the page — and the shortcuts: `c` for a new ticket, `/` to search, `g` then `b` for the board.',
+    'status' => 'in_progress', 'assignee_id' => $anna, 'estimate' => '4h', 'story_points' => 3, 'labels' => 'accessibility',
+]);
+$make('dark', $anna, [
+    'project_id' => $ctId, 'epic_id' => $designEpic, 'type' => 'story', 'title' => 'A dark theme that keeps the contrast',
+    'description' => 'The same variables, darker — and the same 4.5:1 for every piece of text.',
+    'status' => 'done', 'assignee_id' => $anna, 'estimate' => '3h', 'story_points' => 2, 'labels' => 'ui, accessibility',
+]);
+$make('mobile', $anna, [
+    'project_id' => $ctId, 'epic_id' => $designEpic, 'type' => 'bug', 'title' => 'Board cards overflow on a 375px screen',
+    'description' => 'The columns scroll sideways, but a long title pushes the card wider than its column.',
+    'status' => 'in_progress', 'assignee_id' => $mark, 'estimate' => '2h', 'story_points' => 1, 'labels' => 'board, mobile',
+]);
+$make('api', $me, [
+    'project_id' => $ctId, 'type' => 'story', 'title' => 'A JSON API with personal access tokens',
+    'description' => 'Tickets, comments and hours for scripts — with the same rules the forms have.',
+    'status' => 'todo', 'assignee_id' => $me, 'estimate' => '1d 4h', 'story_points' => 8, 'labels' => 'api',
+]);
+$make('webhooks', $julia, [
+    'project_id' => $ctId, 'type' => 'story', 'title' => 'Tell the team chat when a ticket moves',
+    'description' => 'Signed webhooks, retried when the other end is down.',
+    'status' => 'backlog', 'priority' => 'low', 'estimate' => '5h', 'story_points' => 5, 'labels' => 'api',
+]);
+$make('import', $mark, [
+    'project_id' => $ctId, 'type' => 'task', 'title' => 'Import tickets from a spreadsheet',
+    'status' => 'backlog', 'priority' => 'low', 'story_points' => 3,
+]);
+
+$make('copy', $julia, [
+    'project_id' => $webId, 'epic_id' => $contentEpic, 'type' => 'task', 'title' => 'Rewrite the product pages',
+    'description' => 'Twelve coffees, one voice. The old pages were written by four people over three years.',
+    'status' => 'in_progress', 'priority' => 'high', 'assignee_id' => $julia, 'estimate' => '2d', 'labels' => 'copy', 'due_on' => $day(9),
+]);
+$make('photos', $eszter, [
+    'project_id' => $webId, 'epic_id' => $contentEpic, 'type' => 'task', 'title' => 'Photograph the roastery',
+    'description' => 'One morning, the roaster running, everybody in the same light.',
+    'status' => 'todo', 'assignee_id' => $anna, 'estimate' => '4h', 'labels' => 'photos',
+]);
+$make('templates', $me, [
+    'project_id' => $webId, 'epic_id' => $buildEpic, 'type' => 'story', 'title' => 'Templates for the three page kinds',
+    'description' => 'Landing, product, article. Everything else is one of those three with different copy.',
+    'status' => 'in_progress', 'priority' => 'high', 'assignee_id' => $mark, 'estimate' => '1d 4h', 'labels' => 'frontend',
+]);
+$make('shop', $eszter, [
+    'project_id' => $webId, 'epic_id' => $buildEpic, 'type' => 'story', 'title' => 'Subscriptions in the shop',
+    'description' => 'A bag every two or four weeks, paused or cancelled by the customer without writing to us.',
+    'status' => 'todo', 'priority' => 'normal', 'assignee_id' => $mark, 'estimate' => '3d', 'labels' => 'shop',
+]);
+$make('redirects', $me, [
+    'project_id' => $webId, 'epic_id' => $buildEpic, 'type' => 'task', 'title' => 'Redirects from every old address',
+    'description' => 'A relaunch that loses its addresses loses its search results with them.',
+    'status' => 'backlog', 'priority' => 'urgent', 'estimate' => '3h', 'labels' => 'seo', 'due_on' => $day(16),
+]);
+$make('checkout', $eszter, [
+    'project_id' => $webId, 'epic_id' => $buildEpic, 'type' => 'bug', 'title' => 'The old checkout adds shipping twice',
+    'description' => 'Seen on two orders last week. Worth knowing before the new shop copies the rule.',
+    'status' => 'done', 'priority' => 'high', 'assignee_id' => $mark, 'estimate' => '2h', 'labels' => 'shop',
+]);
+
+// ---------------------------------------------------------------------------
+// Links, comments
+// ---------------------------------------------------------------------------
+$key = static fn(string $name): string => (string) (($t = $tickets->find($made[$name])) === null ? '' : $t['project_code'] . '-' . $t['number']);
+
+$links->link($made['approval'], 'blocked_by', $key('timesheet'), $me);
+$links->link($made['rounding'], 'relates', $key('export'), $mark);
+$links->link($made['templates'], 'blocks', $key('shop'), $me);
+$links->link($made['checkout'], 'relates', $key('shop'), $eszter);
+
+$said = [];
+$say = static function (string $ticket, int $who, string $body, string $when) use (&$said, $comments, $made): void {
+    $said[] = [$comments->add($made[$ticket], $who, $body), $when];
+};
+
+$say('timesheet', $me, "Days as rows work well. @anna can you check the totals against {$key('worklog')}?\n\n- [x] rows per day\n- [ ] totals per project", $day(-2) . ' 15:10');
+$say('timesheet', $anna, 'Totals match. One thing: a holiday should not read as a short day — it should say it is a holiday.', $day(-1) . ' 09:40');
+$say('timesheet', $me, 'Good catch — holidays and days away now expect nothing, and the day says why.', $day(0) . ' 11:05');
+$say('rounding', $julia, "Reproduced. Three 5m entries show as `0.1 + 0.1 + 0.1` and a total of `0.3`, but the minutes add up to 15m = 0.25h.\n\n@mark let's show minutes in the table and keep the decimal for the export only.", $day(1) . ' 10:20');
+$say('mobile', $mark, 'The title needs `overflow-wrap: anywhere`; the column itself is fine.', $day(1) . ' 14:30');
+$say('copy', $eszter, 'The first four pages read really well. Could the Ethiopian one say where the farm is? Our customers ask.', $day(1) . ' 16:45');
+$say('copy', $julia, '@eszter added it, with the altitude too. The next four are coming on Friday.', $day(2) . ' 09:15');
+$say('checkout', $mark, "Found it: the old shop adds shipping per item for subscriptions. Fixed on the live site, and {$key('shop')} will not copy the rule.", $day(-4) . ' 13:00');
+
+// ---------------------------------------------------------------------------
+// The sprints: one finished, one running
+// ---------------------------------------------------------------------------
+$sprintOne = $sprintService->create($ctId, 'CT Sprint 1', 'Tickets on a board, and time on tickets.', $sprintOneStart->format('Y-m-d'), $sprintOneStart->modify('+11 days')->format('Y-m-d'));
+$sprintTwo = $sprintService->create($ctId, 'CT Sprint 2', 'A week you can hand in, and see where it went.', $thisMonday->format('Y-m-d'), $thisMonday->modify('+11 days')->format('Y-m-d'));
+
+$sprintService->assign([$made['board'], $made['numbering'], $made['filters'], $made['worklog'], $made['contrast'], $made['timesheet']], $sprintOne, $me);
+$sprintService->start((array) $sprints->find($sprintOne));
+$sprintService->close((array) $sprints->find($sprintOne), $sprintTwo, $me);
+$sprintService->assign([$made['approval'], $made['export'], $made['rounding'], $made['keyboard'], $made['dark'], $made['mobile']], $sprintTwo, $me);
+$sprintService->start((array) $sprints->find($sprintTwo));
+
+// ---------------------------------------------------------------------------
+// The hours: last week and this one
+// ---------------------------------------------------------------------------
 $entries = [
-    [$me, 'timesheet', 0, 165, 'Days as rows, entries under them.'],
-    [$me, 'worklog', 0, 120, 'The form on the ticket page.'],
-    [$me, 'board', 0, 90, 'Column widths on a narrow window.'],
-    [$me, 'worklog', 1, 210, 'Parsing "1h 30m", "90m" and "1:30".'],
-    [$me, 'numbering', 1, 135, 'The counter, and the transaction around it.'],
-    [$me, 'timesheet', 2, 240, 'Totals per project beside the week.'],
-    [$me, 'mobile', 2, 75, 'Reviewed the board on a phone.'],
-    [$me, 'timesheet', 3, 180, null],
-    [$me, 'export', 3, 60, 'Worked out what the CSV has to hold.'],
-    [$me, 'keyboard', 4, 150, 'Tab order through the board.'],
-
-    [$anna, 'contrast', 0, 90, 'Measured every pair in the palette.'],
-    [$anna, 'filters', 1, 180, null],
-    [$anna, 'keyboard', 2, 120, 'Focus rings on the cards.'],
-    [$anna, 'photos', 3, 240, 'Booked the studio.'],
-
-    [$mark, 'mobile', 0, 300, 'Board columns on a 375px screen.'],
-    [$mark, 'templates', 1, 360, null],
-    [$mark, 'export', 2, 120, 'Worked out the columns the invoicing needs.'],
-    [$mark, 'templates', 3, 300, null],
-
-    [$julia, 'copy', 0, 240, 'First pass on the services pages.'],
-    [$julia, 'copy', 2, 180, null],
+    // Last week
+    [$me, 'board', -7, 180, 'Columns from the project settings.'],
+    [$me, 'numbering', -7, 150, 'Reproduced with two browsers; counter moved onto the project.'],
+    [$me, 'worklog', -6, 240, 'The form on the ticket page, and parsing "1h 30m".'],
+    [$me, 'board', -5, 210, 'Drag and drop, and the select for the keyboard.'],
+    [$me, 'timesheet', -4, 270, 'Days as rows, entries under them.'],
+    [$me, 'worklog', -3, 120, 'Rounding up to the smallest slice.'],
+    [$me, 'filters', -3, 60, 'Reviewed the saved filters.'],
+    [$anna, 'filters', -7, 300, 'Filters in the query string.'],
+    [$anna, 'contrast', -6, 180, 'Measured every pair in the palette.'],
+    [$anna, 'dark', -5, 240, 'The dark palette, measured again.'],
+    [$anna, 'keyboard', -4, 210, 'Tab order through the board.'],
+    [$mark, 'templates', -7, 420, 'Landing template.'],
+    [$mark, 'templates', -6, 390, 'Product template.'],
+    [$mark, 'checkout', -5, 150, 'Found the double shipping.'],
+    [$mark, 'mobile', -4, 240, 'Board columns on a 375px screen.'],
+    [$mark, 'shop', -3, 360, 'Subscription rules, on paper first.'],
+    [$julia, 'copy', -7, 300, 'First pass on the product pages.'],
+    [$julia, 'copy', -5, 240, null],
+    [$julia, 'timesheet', -3, 90, 'Reviewed the week view.'],
+    // This week
+    [$me, 'timesheet', 0, 165, 'Holidays and days away expect nothing.'],
+    [$me, 'approval', 0, 120, 'Handing a week in.'],
+    [$me, 'approval', 1, 210, 'Approvals page, and the lock date.'],
+    [$me, 'api', 1, 90, 'Sketched the endpoints.'],
+    [$me, 'approval', 2, 240, 'Sending a week back with a reason.'],
+    [$me, 'rounding', 3, 60, null],
+    [$anna, 'keyboard', 0, 240, 'Focus rings on the cards.'],
+    [$anna, 'keyboard', 1, 180, 'Shortcuts dialog.'],
+    [$anna, 'photos', 2, 300, 'At the roastery.'],
+    [$mark, 'mobile', 0, 150, 'overflow-wrap on the titles.'],
+    [$mark, 'templates', 0, 270, 'Article template.'],
+    [$mark, 'rounding', 1, 180, 'Minutes in the table, decimals in the export.'],
+    [$mark, 'shop', 2, 330, 'Subscriptions: pausing.'],
+    [$julia, 'copy', 0, 360, 'Pages five to eight.'],
+    [$julia, 'copy', 2, 240, null],
 ];
 
 $logged = 0;
@@ -304,23 +400,87 @@ $logged = 0;
 foreach ($entries as [$userId, $ticket, $offset, $minutes, $note]) {
     $date = $day($offset);
 
-    // A week that has only just started has no Thursday yet, and logging
-    // against a day that has not happened is exactly what the application
-    // refuses elsewhere.
-    if ($date === null) {
+    // A week that has only just started has no Thursday yet, and hours on a
+    // day that has not happened are what the application refuses elsewhere.
+    if ($date > $today->format('Y-m-d')) {
         continue;
     }
 
-    $worklogs->create($made[$ticket], $userId, $date, $minutes, $note);
+    $row = $tickets->find($made[$ticket]);
+    $worklogs->create($made[$ticket], $userId, $date, $minutes, $note, (int) ($row['project_billable'] ?? 1) === 1);
     $logged += $minutes;
 }
 
+// Júlia was ill last Tuesday, and Márk is off next Friday.
+$calendar->addAbsence($julia, $day(-6), $day(-6), 'sick', '');
+$calendar->addAbsence($mark, $day(11), $day(11), 'vacation', 'Long weekend');
+
+// Last week: Anna's approved, Márk's waiting, Júlia's sent back with a note.
+$review = new WeekReview();
+$review->submit($anna, $lastMonday->format('Y-m-d'));
+$review->review($anna, $lastMonday->format('Y-m-d'), $julia, true, '');
+$review->submit($mark, $lastMonday->format('Y-m-d'));
+$review->submit($julia, $lastMonday->format('Y-m-d'));
+$review->review($julia, $lastMonday->format('Y-m-d'), $me, false, 'Thursday has nothing on it — was that the copy review?');
+
+// A filter the whole team shares — once, however often the demo is reset.
+$database->prepare("DELETE FROM saved_filters WHERE user_id = :me AND name = 'Open bugs'")->execute(['me' => $me]);
+(new SavedFilterRepository())->create($me, 'Open bugs', 'type=bug&open=1', true);
+
+// ---------------------------------------------------------------------------
+// And the dates moved back to when it all would have happened
+// ---------------------------------------------------------------------------
+$at = static fn(DateTimeImmutable $when, string $time): string => $when->format('Y-m-d') . ' ' . $time;
+$update = static function (string $sql, array $params) use ($database): void {
+    $database->prepare($sql)->execute($params);
+};
+
+// Every ticket was written down before the first sprint started, a few an
+// hour apart, and its "created" line in the history with it.
+$i = 0;
+foreach ($made as $id) {
+    $created = $sprintOneStart->modify('-3 days')->format('Y-m-d') . sprintf(' %02d:%02d:00', 9 + intdiv($i, 4), ($i % 4) * 13);
+    $update('UPDATE tickets SET created_at = :at, updated_at = GREATEST(updated_at, :at2) WHERE id = :id', ['at' => $created, 'at2' => $created, 'id' => $id]);
+    $update("UPDATE ticket_events SET created_at = :at WHERE ticket_id = :id AND kind = 'created'", ['at' => $created, 'id' => $id]);
+    $i++;
+}
+
+// The first sprint's tickets were finished during it, a day or two apart,
+// so its burndown goes down the way a real one does.
+$finished = ['numbering' => 1, 'board' => 3, 'filters' => 4, 'contrast' => 7, 'worklog' => 8, 'checkout' => 9, 'dark' => 15];
+foreach ($finished as $name => $offset) {
+    $when = $at($sprintOneStart->modify('+' . $offset . ' days'), '16:30:00');
+    $update('UPDATE tickets SET closed_at = :at WHERE id = :id', ['at' => $when, 'id' => $made[$name]]);
+    $update("UPDATE ticket_events SET created_at = :at WHERE ticket_id = :id AND kind = 'status'", ['at' => $when, 'id' => $made[$name]]);
+}
+
+$update('UPDATE sprints SET started_at = :started, closed_at = :closed WHERE id = :id', [
+    'started' => $at($sprintOneStart, '09:00:00'),
+    'closed' => $at($sprintOneStart->modify('+11 days'), '17:00:00'),
+    'id' => $sprintOne,
+]);
+$update('UPDATE sprints SET started_at = :started WHERE id = :id', ['started' => $at($thisMonday, '09:00:00'), 'id' => $sprintTwo]);
+// Put in the first sprint as it started, handed on when it closed, and the
+// second sprint's tickets put in on its first morning.
+$inMade = ' AND ticket_id IN (' . implode(',', array_map('intval', $made)) . ')';
+$update("UPDATE ticket_events SET created_at = :at WHERE kind = 'sprint' AND old_value IS NULL AND new_value = 'CT Sprint 1'" . $inMade, ['at' => $at($sprintOneStart, '08:45:00')]);
+$update("UPDATE ticket_events SET created_at = :at WHERE kind = 'sprint' AND old_value = 'CT Sprint 1'" . $inMade, ['at' => $at($sprintOneStart->modify('+11 days'), '17:00:00')]);
+$update("UPDATE ticket_events SET created_at = :at WHERE kind = 'sprint' AND old_value IS NULL AND new_value = 'CT Sprint 2'" . $inMade, ['at' => $at($thisMonday, '08:45:00')]);
+
+foreach ($said as [$commentId, $when]) {
+    $update('UPDATE comments SET created_at = :at WHERE id = :id', ['at' => $when . ':00', 'id' => $commentId]);
+}
+
+$update("UPDATE ticket_events SET created_at = :at WHERE kind = 'linked' AND ticket_id IN (" . implode(',', array_map('intval', $made)) . ')', ['at' => $at($sprintOneStart->modify('-2 days'), '10:00:00')]);
+$update('UPDATE timesheet_weeks SET submitted_at = :at WHERE week_start = :week', ['at' => $at($thisMonday, '08:30:00'), 'week' => $lastMonday->format('Y-m-d')]);
+$update("UPDATE timesheet_weeks SET reviewed_at = :at WHERE week_start = :week AND state <> 'submitted'", ['at' => $at($thisMonday, '10:15:00'), 'week' => $lastMonday->format('Y-m-d')]);
+
 printf(
-    '%sMade 2 projects, %d epics, %d tickets and %s of logged time.%s',
+    '%sMade 2 projects, 5 epics, %d tickets, %d comments, 2 sprints and %sh of logged time.%s',
     PHP_EOL,
-    5,
     count($made),
-    floor($logged / 60) . 'h',
+    count($said),
+    intdiv($logged, 60),
     PHP_EOL
 );
 

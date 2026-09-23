@@ -129,7 +129,7 @@
                 <span class="muted">{{ entry.work_date|day }}</span>
             {% endif %}
             {% if entry.note %}<span class="log__note">{{ entry.note }}</span>{% endif %}
-            {% if entry.billable is defined and not entry.billable %}<span class="tag" title="{{ 'Not billed'|t }}">{{ 'not billed'|t }}</span>{% endif %}
+            {% if entry.billable is defined and not entry.billable and entry.project_billable|default(1) %}<span class="tag" title="{{ 'Not billed'|t }}">{{ 'not billed'|t }}</span>{% endif %}
         </div>
 
         <span class="log__time">{{ entry.minutes|duration }}</span>

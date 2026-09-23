@@ -30,6 +30,7 @@ class WorklogRepository
                    p.id AS project_id,
                    p.code AS project_code,
                    p.name AS project_name,
+                   p.billable_default AS project_billable,
                    u.name AS user_name
             FROM worklogs w
             JOIN tickets t ON t.id = w.ticket_id

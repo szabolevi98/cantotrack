@@ -46,7 +46,7 @@
                             {{ ui.priority(ticket.priority) }}
                         </td>
                         <td>{{ ui.status(ticket.status_name, ticket.status_colour) }}</td>
-                        <td>{{ ui.person(ticket.assignee_name) }}</td>
+                        <td>{{ ui.person(ticket.assignee_name, ticket.assignee_id) }}</td>
                         <td class="table__number">{{ ticket.logged_minutes > 0 ? ticket.logged_minutes|duration : '—' }}</td>
                     </tr>
                 {% endfor %}

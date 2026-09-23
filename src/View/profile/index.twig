@@ -5,6 +5,26 @@
 {% block subheading %}<p class="content__sub">{{ me.email }}</p>{% endblock %}
 
 {% block content %}
+    {% import 'common/macros.twig' as ui %}
+    <section class="card card--narrow profile-picture">
+        <h2 class="card__title">{{ 'Your picture'|t }}</h2>
+        <div class="profile-picture__row">
+            {{ ui.face(me.name, me.id, 'avatar avatar--large') }}
+            <form method="post" action="{{ url('/profile/avatar') }}" enctype="multipart/form-data">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <input class="field" type="file" name="avatar" accept="image/png,image/jpeg,image/webp,image/gif" required aria-label="{{ 'Picture'|t }}">
+                <p class="hint">{{ 'PNG, JPEG, WebP or GIF, up to 5 MB. The middle square of it is used.'|t }}</p>
+                <button class="button button--small" type="submit">{{ 'Upload'|t }}</button>
+            </form>
+            {% if me.avatar %}
+                <form method="post" action="{{ url('/profile/avatar/delete') }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                    <button class="link-button link-button--text" type="submit">{{ 'Remove the picture'|t }}</button>
+                </form>
+            {% endif %}
+        </div>
+    </section>
+
     <section class="card card--narrow">
         <h2 class="card__title">{{ 'About you'|t }}</h2>
         {% if error %}<p class="flash flash--danger">{{ error }}</p>{% endif %}
@@ -90,6 +110,14 @@
                 <button class="button button--primary" type="submit">{{ 'Change password'|t }}</button>
             </div>
         </form>
+    </section>
+
+    <section class="card card--narrow">
+        <h2 class="card__title">{{ 'Two-step sign-in'|t }}</h2>
+        <p class="card__body">
+            {{ me.totp_enabled_at ? 'On: signing in also takes a code from your phone.'|t : 'Off: the password alone signs you in.'|t }}
+        </p>
+        <a class="button" href="{{ url('/profile/two-factor') }}">{{ me.totp_enabled_at ? 'Manage'|t : 'Set it up'|t }}</a>
     </section>
 
     <section class="card card--narrow">

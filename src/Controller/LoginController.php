@@ -7,6 +7,8 @@ use CantoTrack\Core\ClientIp;
 use CantoTrack\Core\Controller;
 use CantoTrack\Core\LoginThrottle;
 use CantoTrack\Core\Session;
+use CantoTrack\Model\UserRepository;
+use CantoTrack\Service\TwoFactor;
 
 /**
  * Signing in and out.
@@ -17,6 +19,8 @@ use CantoTrack\Core\Session;
  */
 class LoginController extends Controller
 {
+    private const PENDING = '_two_factor';
+
     public function show(): void
     {
         if (Auth::check()) {
@@ -65,10 +69,85 @@ class LoginController extends Controller
             return;
         }
 
+        // With two-step sign-in on, the password only gets as far as the
+        // second question. The failures count stays until that is answered
+        // too: a guessed password is not a free run at the codes.
+        if (TwoFactor::isOn($user)) {
+            Session::regenerate();
+            Session::put(self::PENDING, ['user' => (int) $user['id'], 'email' => $email, 'at' => time()]);
+            $this->redirect('/login/code');
+        }
+
         $throttle->clear($email);
         Auth::signIn($user);
 
         $this->goHome();
+    }
+
+    /** The second question: a code from the app, or a recovery code. */
+    public function showCode(): void
+    {
+        if ($this->pending() === null) {
+            $this->redirect('/login');
+        }
+
+        $this->render('auth/code.twig', ['error' => null]);
+    }
+
+    public function submitCode(): void
+    {
+        $pending = $this->pending();
+
+        if ($pending === null) {
+            $this->flash(__('That took too long. Sign in again.'), 'warning');
+            $this->redirect('/login');
+        }
+
+        $ip = ClientIp::get();
+        $throttle = new LoginThrottle();
+        $email = $pending['email'];
+
+        if ($throttle->isBlocked($email, $ip)) {
+            Session::forget(self::PENDING);
+            $this->render('auth/login.twig', [
+                'email' => $email,
+                'error' => __('Too many failed attempts. Wait {minutes} minutes and try again.', ['minutes' => LoginThrottle::WINDOW_MINUTES]),
+            ], 429);
+
+            return;
+        }
+
+        $user = (new UserRepository())->findActive($pending['user']);
+
+        if ($user === null || !(new TwoFactor())->check($user, $this->input('code'))) {
+            $throttle->recordFailure($email, $ip);
+            $this->render('auth/code.twig', ['error' => __('That code is not right. Codes change every 30 seconds — try the one showing now.')], 401);
+
+            return;
+        }
+
+        Session::forget(self::PENDING);
+        $throttle->clear($email);
+        Auth::signIn($user);
+
+        $this->goHome();
+    }
+
+    /**
+     * Who got the password right a moment ago, if it was a moment ago. Five
+     * minutes, then it is the password again.
+     *
+     * @return array{user: int, email: string, at: int}|null
+     */
+    private function pending(): ?array
+    {
+        $pending = Session::get(self::PENDING);
+
+        if (!is_array($pending) || !isset($pending['user'], $pending['email'], $pending['at']) || time() - (int) $pending['at'] > 300) {
+            return null;
+        }
+
+        return ['user' => (int) $pending['user'], 'email' => (string) $pending['email'], 'at' => (int) $pending['at']];
     }
 
     public function logout(): void

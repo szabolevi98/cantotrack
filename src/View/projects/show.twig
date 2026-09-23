@@ -152,7 +152,7 @@
         {% for lane in lanes %}
             {% if lane.title %}
                 <h3 class="board__lane-title">
-                    {% if lanes_by == 'assignee' and lane.value %}{{ ui.person(lane.title) }}{% else %}{{ lane.title }}{% endif %}
+                    {% if lanes_by == 'assignee' and lane.value %}{{ ui.person(lane.title, lane.value) }}{% else %}{{ lane.title }}{% endif %}
                 </h3>
             {% endif %}
 
@@ -182,7 +182,7 @@
                                 {% endif %}
 
                                 <div class="ticket-card__foot">
-                                    {% if lanes_by != 'assignee' %}{{ ui.person(ticket.assignee_name) }}{% else %}<span></span>{% endif %}
+                                    {% if lanes_by != 'assignee' %}{{ ui.person(ticket.assignee_name, ticket.assignee_id) }}{% else %}<span></span>{% endif %}
                                     <span class="ticket-card__meta">
                                         {{ ui.due(ticket.due_on, ticket.status_category == 'done') }}
                                         {% if ticket.story_points is not null %}

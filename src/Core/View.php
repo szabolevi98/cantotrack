@@ -87,6 +87,7 @@ class View
             Auth::check() ? (new \CantoTrack\Service\TimerService())->running((int) Auth::id()) : null));
         $twig->addFunction(new TwigFunction('unread_notifications', static fn(): int =>
             Auth::check() ? (new \CantoTrack\Model\NotificationRepository())->unreadCount((int) Auth::id()) : 0));
+        $twig->addFunction(new TwigFunction('avatar_url', [\CantoTrack\Service\Avatars::class, 'url']));
         $twig->addFunction(new TwigFunction('pending_weeks', static fn(): int =>
             Auth::isAdmin() ? count((new \CantoTrack\Service\WeekReview())->pending()) : 0));
         $twig->addFunction(new TwigFunction('burndown_chart', [Chart::class, 'burndown'], ['is_safe' => ['html']]));

@@ -13,6 +13,7 @@
 use CantoTrack\Controller\ApiController;
 use CantoTrack\Controller\ApiTokenController;
 use CantoTrack\Controller\AttachmentController;
+use CantoTrack\Controller\AvatarController;
 use CantoTrack\Controller\CommentController;
 use CantoTrack\Controller\DashboardController;
 use CantoTrack\Controller\EpicController;
@@ -31,6 +32,7 @@ use CantoTrack\Controller\SprintController;
 use CantoTrack\Controller\TicketController;
 use CantoTrack\Controller\TimerController;
 use CantoTrack\Controller\TimesheetController;
+use CantoTrack\Controller\TwoFactorController;
 use CantoTrack\Controller\WebhookController;
 use CantoTrack\Controller\WorklogController;
 
@@ -39,6 +41,8 @@ use CantoTrack\Controller\WorklogController;
 // ---------------------------------------------------------------------------
 $router->get('/login', static fn() => (new LoginController())->show());
 $router->post('/login', static fn() => (new LoginController())->submit());
+$router->get('/login/code', static fn() => (new LoginController())->showCode());
+$router->post('/login/code', static fn() => (new LoginController())->submitCode());
 // Signing out is a post: a GET that ends a session is one any page on the
 // internet can trigger with an <img> pointing at it.
 $router->post('/logout', static fn() => (new LoginController())->logout());
@@ -66,6 +70,15 @@ $router->get('/profile', static fn() => (new ProfileController())->show());
 $router->post('/profile', static fn() => (new ProfileController())->update());
 $router->post('/profile/password', static fn() => (new ProfileController())->changePassword());
 $router->get('/profile/tokens', static fn() => (new ApiTokenController())->index());
+$router->post('/profile/avatar', static fn() => (new AvatarController())->upload());
+$router->post('/profile/avatar/delete', static fn() => (new AvatarController())->remove());
+$router->get('/avatars/{id}/{file}', static fn($id, $file) => (new AvatarController())->show((int) $id, (string) $file));
+$router->get('/profile/two-factor', static fn() => (new TwoFactorController())->show());
+$router->post('/profile/two-factor/start', static fn() => (new TwoFactorController())->start());
+$router->post('/profile/two-factor/confirm', static fn() => (new TwoFactorController())->confirm());
+$router->post('/profile/two-factor/cancel', static fn() => (new TwoFactorController())->cancel());
+$router->post('/profile/two-factor/disable', static fn() => (new TwoFactorController())->disable());
+$router->post('/profile/two-factor/recovery', static fn() => (new TwoFactorController())->recoveryCodes());
 $router->post('/profile/tokens', static fn() => (new ApiTokenController())->create());
 $router->post('/profile/tokens/{id}/delete', static fn($id) => (new ApiTokenController())->revoke((int) $id));
 
@@ -166,6 +179,7 @@ $router->post('/people/create', static fn() => (new PeopleController())->create(
 $router->get('/people/{id}/edit', static fn($id) => (new PeopleController())->editForm((int) $id));
 $router->post('/people/{id}', static fn($id) => (new PeopleController())->update((int) $id));
 $router->post('/people/{id}/password', static fn($id) => (new PeopleController())->resetPassword((int) $id));
+$router->post('/people/{id}/two-factor/reset', static fn($id) => (new TwoFactorController())->reset((int) $id));
 
 $router->get('/settings', static fn() => (new SettingsController())->index());
 $router->post('/settings/lock', static fn() => (new SettingsController())->lock());

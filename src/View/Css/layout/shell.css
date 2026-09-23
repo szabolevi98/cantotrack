@@ -245,3 +245,56 @@ a.sidebar__user:hover {
 a.sidebar__user:hover strong {
     text-decoration: underline;
 }
+
+/* A picture where the initials would be: the same circle, filled. */
+img.face {
+    object-fit: cover;
+    padding: 0;
+}
+
+.avatar--large {
+    width: 72px;
+    height: 72px;
+    background: var(--ct-primary-soft);
+    color: var(--ct-primary);
+    font-size: 1.4rem;
+}
+
+.profile-picture__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    align-items: flex-start;
+}
+
+.profile-picture__row form {
+    flex: 1;
+    min-width: 12rem;
+}
+
+.qr svg {
+    display: block;
+    width: 200px;
+    height: 200px;
+    margin: 8px 0 12px;
+    padding: 8px;
+    border-radius: 8px;
+    background: #fff;
+}
+
+.secret-key {
+    font-family: var(--ct-mono);
+    letter-spacing: 0.04em;
+    word-spacing: 0.3em;
+}
+
+.recovery-codes {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 6px 16px;
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+    font-family: var(--ct-mono);
+    font-size: 0.95rem;
+}

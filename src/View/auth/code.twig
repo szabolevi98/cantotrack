@@ -1,0 +1,24 @@
+{% extends 'auth/frame.twig' %}
+
+{% block title %}{{ 'Two-step sign-in'|t }}{% endblock %}
+
+{% block card %}
+    <h1>{{ 'One more step'|t }}</h1>
+    <p class="auth__lead">{{ 'Type the six digits your authenticator app shows for {app} — or one of your recovery codes.'|t({app: app_name}) }}</p>
+
+    {% if error %}
+        <p class="flash flash--danger" role="alert">{{ error }}</p>
+    {% endif %}
+
+    <form method="post" action="{{ url('/login/code') }}" novalidate>
+        <input type="hidden" name="_token" value="{{ csrf_token }}">
+
+        <label for="code">{{ 'Code'|t }}</label>
+        <input id="code" class="field field--code" type="text" name="code" inputmode="numeric"
+               autocomplete="one-time-code" maxlength="16" autofocus required>
+
+        <button class="button button--primary button--block" type="submit">{{ 'Sign in'|t }}</button>
+    </form>
+
+    <p class="auth__back"><a href="{{ url('/login') }}">{{ 'Start again'|t }}</a></p>
+{% endblock %}

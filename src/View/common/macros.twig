@@ -44,9 +44,23 @@
     <a class="ticket-key" href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.project_code }}-{{ ticket.number }}</a>
 {% endmacro %}
 
-{% macro person(name) %}
+{#
+    Somebody's face: their picture when they have one, their initials when
+    not. The picture is decoration beside the name, so it says nothing to a
+    screen reader.
+#}
+{% macro face(name, id = null, class = 'person__mark') %}
+    {%- set picture = avatar_url(id) -%}
+    {%- if picture -%}
+        <img class="{{ class }} face" src="{{ picture }}" alt="" width="24" height="24" loading="lazy">
+    {%- else -%}
+        <span class="{{ class }}" aria-hidden="true">{{ name|initials }}</span>
+    {%- endif -%}
+{% endmacro %}
+
+{% macro person(name, id = null) %}
     {% if name %}
-        <span class="person"><span class="person__mark">{{ name|initials }}</span>{{ name }}</span>
+        <span class="person">{{ _self.face(name, id) }}{{ name }}</span>
     {% else %}
         <span class="muted">{{ 'Unassigned'|t }}</span>
     {% endif %}

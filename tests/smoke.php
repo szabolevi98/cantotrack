@@ -1061,6 +1061,68 @@ if ($email === null || $password === null) {
         check('and GitHub can be turned off again', $send('ping', '{}', $githubSecret)['status'] === 404);
     }
 
+    // ---------------------------------------------------------------------
+    // A picture, and two-step sign-in: set up, used with a recovery code
+    // from a fresh browser, and turned off again.
+    // ---------------------------------------------------------------------
+    $picture = imagecreatetruecolor(300, 200);
+    imagefill($picture, 0, 0, (int) imagecolorallocate($picture, 26, 95, 191));
+    $picturePath = tempnam(sys_get_temp_dir(), 'ct-face-') . '.png';
+    imagepng($picture, $picturePath);
+
+    $handle = curl_init($baseUrl . '/profile/avatar');
+    curl_setopt_array($handle, [
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => ['_token' => $token, 'avatar' => new CURLFile($picturePath, 'image/png', 'me.png')],
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_COOKIEJAR => $jar,
+        CURLOPT_COOKIEFILE => $jar,
+    ]);
+    curl_exec($handle);
+    curl_close($handle);
+    @unlink($picturePath);
+
+    preg_match('#src="([^"]*/avatars/\d+/[^"]+)"#', request($baseUrl . '/profile', [], $jar)['body'], $m);
+    $face = $m[1] ?? '';
+    check('a picture can be uploaded to the profile', $face !== '');
+    $served = $face === '' ? ['status' => 0, 'headers' => ''] : request($face, [], $jar);
+    check('and is served, as a picture', $served['status'] === 200 && preg_match('#Content-Type: image/(webp|png)#i', $served['headers']) === 1);
+    check('but not to somebody signed out', $face !== '' && request($face)['status'] === 302);
+    request($baseUrl . '/profile/avatar/delete', ['_token' => $token], $jar);
+    check('and removed again', !str_contains(request($baseUrl . '/profile', [], $jar)['body'], '/avatars/'));
+
+    request($baseUrl . '/profile/two-factor/start', ['_token' => $token], $jar);
+    preg_match('#<code class="secret-key">([A-Z2-7 ]+)</code>#', request($baseUrl . '/profile/two-factor', [], $jar)['body'], $m);
+    $totpSecret = str_replace(' ', '', $m[1] ?? '');
+    check('two-step sign-in shows a key to scan', $totpSecret !== '');
+
+    // The code of the step before, so the one a sign-in below would need
+    // is not used up by setting it up.
+    request($baseUrl . '/profile/two-factor/confirm', [
+        '_token' => $token,
+        'code' => \CantoTrack\Core\Totp::code($totpSecret, \CantoTrack\Core\Totp::step() - 1),
+    ], $jar);
+    preg_match_all('#<li><code>([a-z2-9]{5}-[a-z2-9]{5})</code></li>#', request($baseUrl . '/profile/two-factor', [], $jar)['body'], $m);
+    $recovery = $m[1];
+    check('and once a code from it is typed in, it is on, with ten recovery codes', count($recovery) === 10);
+
+    $secondJar = tempnam(sys_get_temp_dir(), 'ct-smoke-');
+    preg_match('/name="_token" value="([^"]+)"/', request($baseUrl . '/login', [], $secondJar)['body'], $m);
+    $secondToken = $m[1] ?? '';
+    $firstStep = request($baseUrl . '/login', ['_token' => $secondToken, 'email' => $email, 'password' => $password], $secondJar);
+    check('the password alone then leads to the second question', $firstStep['status'] === 302 && str_contains($firstStep['headers'], '/login/code'));
+    check('and does not sign in', request($baseUrl . '/', [], $secondJar)['status'] === 302);
+
+    preg_match('/name="_token" value="([^"]+)"/', request($baseUrl . '/login/code', [], $secondJar)['body'], $m);
+    $secondToken = $m[1] ?? $secondToken;
+    check('a wrong code is refused', request($baseUrl . '/login/code', ['_token' => $secondToken, 'code' => '000000'], $secondJar)['status'] === 401);
+    $signedIn = request($baseUrl . '/login/code', ['_token' => $secondToken, 'code' => $recovery[0] ?? ''], $secondJar);
+    check('a recovery code signs in', $signedIn['status'] === 302 && request($baseUrl . '/', [], $secondJar)['status'] === 200);
+    @unlink($secondJar);
+
+    request($baseUrl . '/profile/two-factor/disable', ['_token' => $token, 'password' => $password], $jar);
+    check('and it can be turned off with the password', str_contains(request($baseUrl . '/profile/two-factor', [], $jar)['body'], '/profile/two-factor/start'));
+
     // Tidy up after itself: the hours first, one by one — the slow way,
     // deliberately — and then the project takes the epic and the ticket.
     $page = request($baseUrl . '/tickets/' . $ticketId, [], $jar);

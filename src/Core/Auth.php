@@ -20,20 +20,6 @@ class Auth
 
     private static ?array $user = null;
 
-    /** Checks the password and signs the user in. */
-    public static function attempt(string $email, string $password): bool
-    {
-        $user = self::verifyCredentials($email, $password);
-
-        if ($user === null) {
-            return false;
-        }
-
-        self::signIn($user);
-
-        return true;
-    }
-
     /**
      * The account an address and password belong to, or null — without
      * signing anybody in. Separate from signIn() because an account with a

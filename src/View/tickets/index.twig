@@ -158,7 +158,7 @@
                             {{ ui.labels(ticket.label_names|lines, false) }}
                         </td>
                         <td>{{ ui.status(ticket.status_name, ticket.status_colour) }}</td>
-                        <td>{{ ui.person(ticket.assignee_name) }}</td>
+                        <td>{{ ui.person(ticket.assignee_name, ticket.assignee_id) }}</td>
                         <td>{{ ui.due(ticket.due_on, ticket.status_category == 'done') }}</td>
                         <td class="table__number">{{ ticket.estimate_minutes ? ticket.estimate_minutes|duration : '—' }}</td>
                         <td class="table__number">{{ ticket.logged_minutes > 0 ? ticket.logged_minutes|duration : '—' }}</td>

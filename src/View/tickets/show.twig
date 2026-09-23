@@ -177,7 +177,7 @@
                             {% if item.kind == 'comment' %}
                                 {% set comment = item.comment %}
                                 <li class="timeline__comment" id="comment-{{ comment.id }}">
-                                    <span class="avatar avatar--small" aria-hidden="true">{{ comment.user_name|initials }}</span>
+                                    {{ ui.face(comment.user_name, comment.user_id, 'avatar avatar--small') }}
                                     <div class="comment">
                                         <header class="comment__head">
                                             <strong>{{ comment.user_name }}</strong>
@@ -353,10 +353,10 @@
                     <dd>{{ ticket.priority == 'normal' ? ui.priority_label('normal') : ui.priority(ticket.priority) }}</dd>
 
                     <dt>{{ 'Assignee'|t }}</dt>
-                    <dd>{{ ui.person(ticket.assignee_name) }}</dd>
+                    <dd>{{ ui.person(ticket.assignee_name, ticket.assignee_id) }}</dd>
 
                     <dt>{{ 'Reporter'|t }}</dt>
-                    <dd>{{ ui.person(ticket.reporter_name) }}</dd>
+                    <dd>{{ ui.person(ticket.reporter_name, ticket.reporter_id) }}</dd>
 
                     <dt>{{ 'Due'|t }}</dt>
                     <dd>{{ ticket.due_on ? ui.due(ticket.due_on, finished) : '—' }}</dd>

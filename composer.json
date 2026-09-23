@@ -4,6 +4,7 @@
     "license": "MIT",
     "require": {
         "php": ">=8.4",
+        "bacon/bacon-qr-code": "^3.0",
         "league/commonmark": "^2.6",
         "symfony/event-dispatcher": "^7.3",
         "symfony/mailer": "^7.3",

@@ -109,10 +109,11 @@
     {% endif %}
 
     <div class="sidebar__foot">
-        <span class="avatar" title="{{ current_user.name }}">{{ current_user.name|initials }}</span>
+        {% import 'common/macros.twig' as faces %}
+        {{ faces.face(current_user.name, current_user.id, 'avatar') }}
         <a class="sidebar__user" href="{{ url('/profile') }}" title="{{ 'Your profile'|t }}">
             <strong>{{ current_user.name }}</strong>
-            <small>{{ current_user.role == 'admin' ? 'Administrator'|t : 'Member'|t }}</small>
+            <small>{{ {admin: 'Administrator', guest: 'Guest'}[current_user.role]|default('Member')|t }}</small>
         </a>
         {# A form, because signing out changes something: a link would let any
            page on the internet sign somebody out with an image tag. #}

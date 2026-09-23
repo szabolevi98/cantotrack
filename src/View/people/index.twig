@@ -1,4 +1,5 @@
 {% extends 'layout.twig' %}
+{% import 'common/macros.twig' as ui %}
 
 {% block title %}People — {{ app_name }}{% endblock %}
 {% block heading %}People{% endblock %}
@@ -47,7 +48,7 @@
             {% for person in people %}
                 <tr class="{{ person.is_active ? '' : 'row--muted' }}">
                     <td>
-                        <span class="person"><span class="person__mark">{{ person.name|initials }}</span>{{ person.name }}</span>
+                        {{ ui.person(person.name, person.id) }}
                         {% if not person.is_active %}<span class="badge badge--muted">Deactivated</span>{% endif %}
                         {% if person.id == current_user.id %}<span class="badge">You</span>{% endif %}
                     </td>

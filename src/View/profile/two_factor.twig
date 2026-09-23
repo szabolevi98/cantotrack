@@ -1,0 +1,75 @@
+{% extends 'layout.twig' %}
+
+{% block title %}{{ 'Two-step sign-in'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Two-step sign-in'|t }}{% endblock %}
+{% block subheading %}<p class="content__sub"><a href="{{ url('/profile') }}">← {{ 'Your profile'|t }}</a></p>{% endblock %}
+
+{% block content %}
+    {% if new_codes %}
+        <section class="card card--narrow new-secret" role="status">
+            <h2 class="card__title">{{ 'Your recovery codes'|t }}</h2>
+            <p class="card__body">{{ 'Each works once, instead of a code from the app — for the day the phone is lost. Print them or keep them in a password manager. They are not shown again.'|t }}</p>
+            <ul class="recovery-codes">
+                {% for code in new_codes %}<li><code>{{ code }}</code></li>{% endfor %}
+            </ul>
+        </section>
+    {% endif %}
+
+    {% if setup %}
+        <section class="card card--narrow">
+            <h2 class="card__title">{{ 'Scan this with the app'|t }}</h2>
+            <p class="card__body">{{ 'Any authenticator app works — Google Authenticator, Microsoft Authenticator, 1Password, Bitwarden, Aegis.'|t }}</p>
+            <div class="qr">{{ qr|raw }}</div>
+            <p class="hint">{{ 'Or type the key in by hand:'|t }} <code class="secret-key">{{ setup|split('')|batch(4)|map(group => group|join)|join(' ') }}</code></p>
+            <form method="post" action="{{ url('/profile/two-factor/confirm') }}">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <label for="code">{{ 'The code the app shows now'|t }}</label>
+                <input id="code" class="field field--code" type="text" name="code" inputmode="numeric" autocomplete="one-time-code" maxlength="7" required autofocus>
+                <div class="form__actions">
+                    <button class="button button--primary" type="submit">{{ 'Turn it on'|t }}</button>
+                </div>
+            </form>
+            <form method="post" action="{{ url('/profile/two-factor/cancel') }}">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <button class="link-button link-button--text" type="submit">{{ 'Not now'|t }}</button>
+            </form>
+        </section>
+    {% elseif on %}
+        <section class="card card--narrow">
+            <h2 class="card__title"><span class="badge badge--green">{{ 'On'|t }}</span> {{ 'Signing in takes a code from your app'|t }}</h2>
+            <p class="card__body">{{ plural('{count} recovery code left.', '{count} recovery codes left.', codes_left) }}</p>
+
+            <form method="post" action="{{ url('/profile/two-factor/recovery') }}">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <input type="email" name="username" value="{{ current_user.email }}" autocomplete="username" hidden>
+                <label for="password_codes">{{ 'Your password, to make new recovery codes'|t }}</label>
+                <input id="password_codes" class="field" type="password" name="password" autocomplete="current-password" required>
+                <div class="form__actions">
+                    <button class="button" type="submit">{{ 'Make new recovery codes'|t }}</button>
+                </div>
+            </form>
+        </section>
+
+        <section class="card card--narrow">
+            <h2 class="card__title">{{ 'Turn it off'|t }}</h2>
+            <form method="post" action="{{ url('/profile/two-factor/disable') }}">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <input type="email" name="username" value="{{ current_user.email }}" autocomplete="username" hidden>
+                <label for="password_off">{{ 'Your password'|t }}</label>
+                <input id="password_off" class="field" type="password" name="password" autocomplete="current-password" required>
+                <div class="form__actions">
+                    <button class="button button--danger" type="submit">{{ 'Turn two-step sign-in off'|t }}</button>
+                </div>
+            </form>
+        </section>
+    {% else %}
+        <section class="card card--narrow">
+            <h2 class="card__title"><span class="badge badge--muted">{{ 'Off'|t }}</span> {{ 'The password alone signs you in'|t }}</h2>
+            <p class="card__body">{{ 'With two-step sign-in on, a password that got out is not enough: signing in also takes the six digits an app on your phone shows.'|t }}</p>
+            <form method="post" action="{{ url('/profile/two-factor/start') }}">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <button class="button button--primary" type="submit">{{ 'Set it up'|t }}</button>
+            </form>
+        </section>
+    {% endif %}
+{% endblock %}

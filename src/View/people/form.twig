@@ -83,5 +83,17 @@
                 <button class="button" type="submit">Make a new password</button>
             </form>
         </section>
+
+        {% if person.totp_enabled_at|default(null) %}
+            <section class="card card--narrow">
+                <h2 class="card__title">{{ 'Two-step sign-in'|t }}</h2>
+                <p class="card__body">{{ 'On for {name}. If they have lost their phone and their recovery codes, turn it off; they can set it up again.'|t({name: person.name}) }}</p>
+                <form method="post" action="{{ url('/people/' ~ person.id ~ '/two-factor/reset') }}"
+                      data-confirm="{{ 'Turn two-step sign-in off for {name}?'|t({name: person.name}) }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                    <button class="button button--danger" type="submit">{{ 'Turn it off'|t }}</button>
+                </form>
+            </section>
+        {% endif %}
     {% endif %}
 {% endblock %}

@@ -60,7 +60,7 @@ class TicketController extends Controller
             'per_page' => self::PER_PAGE,
             // The query string without the page, so the page links keep the
             // filters they were drawn under.
-            'query' => http_build_query(array_diff_key($_GET, ['page' => true])),
+            'query' => http_build_query(array_diff_key($_GET, ['page' => true, 'filter' => true])),
             'projects' => (new ProjectRepository())->allWithCounts(),
             'people' => (new UserRepository())->active(),
             // A project's own columns once one project is picked; across
@@ -68,7 +68,25 @@ class TicketController extends Controller
             'statuses' => $filters['project_id'] ? (new StatusRepository())->forProject($filters['project_id']) : [],
             'labels' => (new LabelRepository())->all(),
             'types' => TicketRepository::TYPES,
+            'sprints' => $filters['project_id'] ? array_values(array_filter(
+                (new SprintRepository())->forProject($filters['project_id']),
+                static fn(array $s): bool => $s['state'] !== 'closed'
+            )) : [],
+            'saved' => $this->savedFilter(),
         ]);
+    }
+
+    /** The saved filter the list was opened from, if it is one this person may see. */
+    private function savedFilter(): ?array
+    {
+        $id = $this->idQuery('filter');
+        $filter = $id === null ? null : (new \CantoTrack\Model\SavedFilterRepository())->find($id);
+
+        if ($filter === null || ((int) $filter['user_id'] !== (int) Auth::id() && (int) $filter['is_shared'] !== 1)) {
+            return null;
+        }
+
+        return $filter;
     }
 
     /**
@@ -241,6 +259,90 @@ class TicketController extends Controller
         // Back where it was clicked, so moving a ticket from the board does not
         // land somebody on the ticket's own page.
         $this->back('/tickets/' . $id);
+    }
+
+    /**
+     * The same change made to many tickets at once, from the list.
+     *
+     * Each ticket is changed through the same rules as its own edit form, one
+     * by one — so a person who cannot be assigned is refused for all of them,
+     * and each ticket's history says who changed what. The ones a change does
+     * not fit (a column of another project) are skipped and counted.
+     */
+    public function bulk(): void
+    {
+        Auth::require();
+
+        $ids = array_values(array_unique(array_filter(
+            array_map('intval', (array) ($_POST['ids'] ?? [])),
+            static fn(int $id): bool => $id > 0
+        )));
+
+        if ($ids === []) {
+            $this->flash(__('Tick the tickets to change first.'), 'danger');
+            $this->back('/tickets');
+        }
+
+        $changes = [];
+        $assignee = $this->input('set_assignee');
+        if ($assignee !== '') {
+            $changes['assignee_id'] = $assignee === 'none' ? null : (int) $assignee;
+        }
+        foreach (['set_priority' => 'priority', 'set_type' => 'type'] as $field => $key) {
+            if ($this->input($field) !== '') {
+                $changes[$key] = $this->input($field);
+            }
+        }
+
+        $status = $this->input('set_status');
+        $sprint = $this->input('set_sprint');
+        $addLabel = $this->input('add_label');
+        $removeLabel = mb_strtolower($this->input('remove_label'));
+
+        $service = new TicketService();
+        $sprints = new \CantoTrack\Service\SprintService();
+        $labels = new LabelRepository();
+        $changed = 0;
+        $skipped = [];
+
+        foreach ($ids as $id) {
+            try {
+                $ticketChanges = $changes;
+
+                if ($addLabel !== '' || $removeLabel !== '') {
+                    $current = $labels->forTicket($id);
+                    $next = array_values(array_filter($current, static fn(string $l): bool => mb_strtolower($l) !== $removeLabel));
+                    if ($addLabel !== '') {
+                        $next[] = $addLabel;
+                    }
+                    $ticketChanges['labels'] = $next;
+                }
+
+                if ($ticketChanges !== []) {
+                    $service->update($id, $ticketChanges, Auth::id());
+                }
+
+                if ($status !== '') {
+                    $service->changeStatus($id, $status, Auth::id());
+                }
+
+                if ($sprint !== '') {
+                    $sprints->assign([$id], $sprint === 'backlog' ? null : (int) $sprint, Auth::id());
+                }
+
+                $changed++;
+            } catch (ValidationError $e) {
+                $skipped[$e->getMessage()] = ($skipped[$e->getMessage()] ?? 0) + 1;
+            }
+        }
+
+        $this->flash(__n('{count} ticket changed.', '{count} tickets changed.', $changed), $changed > 0 ? 'success' : 'warning');
+
+        foreach ($skipped as $reason => $count) {
+            $this->flash(__n('{count} was left as it was: {reason}', '{count} were left as they were: {reason}', $count, ['reason' => $reason]), 'warning');
+        }
+
+        $this->back('/tickets');
     }
 
     /**

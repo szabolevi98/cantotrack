@@ -357,6 +357,47 @@ if ($email === null || $password === null) {
     check('the ticket can be found by its name', str_contains($list['body'], 'Smoke test ticket'));
     check('and the list says how many it found', str_contains($list['body'], 'Showing 1–1 of 1'));
 
+    // The search box: a ticket's name is a jump to it, anything else a search.
+    $jump = request($baseUrl . '/search?q=' . strtolower($code) . '-1', [], $jar);
+    check(
+        'typing a ticket’s name in the search box goes straight to it',
+        $jump['status'] === 302 && str_contains($jump['headers'], '/tickets/' . $ticketId)
+    );
+    $words = request($baseUrl . '/search?q=' . urlencode('Smoke test'), [], $jar);
+    check('anything else searches the list', $words['status'] === 302 && str_contains($words['headers'], '/tickets?q=Smoke'));
+
+    // A list kept by name, in the sidebar from then on.
+    $saved = request($baseUrl . '/filters', ['_token' => $token, 'name' => 'Smoke list ' . $code, 'query' => 'project=' . $projectId . '&open=1&evil=x'], $jar);
+    $withSidebar = request($baseUrl . '/', [], $jar)['body'];
+    check(
+        'a filtered list can be saved, and appears in the sidebar',
+        $saved['status'] === 302 && str_contains($withSidebar, 'Smoke list ' . $code) && !str_contains($withSidebar, 'evil=x')
+    );
+    preg_match('#filter=(\d+)#', $saved['headers'], $m);
+    $filterId = (int) ($m[1] ?? 0);
+
+    // Many tickets at once, each through its own rules and into its history.
+    $bulk = request($baseUrl . '/tickets/bulk', [
+        '_token' => $token,
+        'ids' => [$ticketId, 999999],
+        'set_priority' => 'low',
+        'set_assignee' => '999999',
+        'back' => '/tickets?project=' . $projectId,
+    ], $jar);
+    $afterBulk = request($baseUrl . '/tickets?project=' . $projectId, [], $jar)['body'];
+    check(
+        'a change for many tickets is refused, ticket by ticket, where it does not fit',
+        $bulk['status'] === 302 && str_contains($afterBulk, 'was left as it was') && str_contains($afterBulk, 'no such active account')
+    );
+    request($baseUrl . '/tickets/bulk', ['_token' => $token, 'ids' => [$ticketId], 'set_priority' => 'low', 'add_label' => 'bulk'], $jar);
+    $afterBulk = request($baseUrl . '/tickets/' . $ticketId . '?activity=history', [], $jar)['body'];
+    check(
+        'and made where it does, with the history to say so',
+        str_contains($afterBulk, 'changed the priority from High to Low') && str_contains($afterBulk, '>bulk</a>')
+    );
+
+    request($baseUrl . '/filters/' . $filterId . '/delete', ['_token' => $token], $jar);
+
     // ---------------------------------------------------------------------
     // What a ticket may not be made with. Each of these used to be written
     // as sent — the first as a foreign-key error and a 500.

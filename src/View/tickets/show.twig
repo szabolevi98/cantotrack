@@ -2,6 +2,7 @@
 {% import 'common/macros.twig' as ui %}
 
 {% set key = ticket.project_code ~ '-' ~ ticket.number %}
+{% set search_project = {id: ticket.project_id, code: ticket.project_code} %}
 {% set finished = ticket.status_category == 'done' %}
 
 {% block title %}{{ key }} {{ ticket.title }} — {{ app_name }}{% endblock %}

@@ -37,6 +37,7 @@ $bundles = [
             'components/worklog.css',
             'components/activity.css',
             'components/planning.css',
+            'components/navigation.css',
             'pages/auth.css',
         ],
     ],
@@ -47,6 +48,7 @@ $bundles = [
             'core.js',
             'uploads.js',
             'board.js',
+            'shortcuts.js',
         ],
     ],
 ];

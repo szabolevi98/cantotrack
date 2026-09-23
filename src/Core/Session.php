@@ -122,15 +122,22 @@ class Session
      */
     public static function flash(string $message, string $kind = 'success'): void
     {
-        $_SESSION['_flash'] = ['message' => $message, 'kind' => $kind];
+        // Several can queue up: a bulk change says how many it changed and,
+        // separately, why the rest were left alone.
+        $messages = $_SESSION['_flash'] ?? [];
+        $messages = isset($messages['message']) ? [$messages] : (array) $messages;
+        $messages[] = ['message' => $message, 'kind' => $kind];
+
+        $_SESSION['_flash'] = $messages;
     }
 
-    public static function takeFlash(): ?array
+    /** @return list<array{message: string, kind: string}> */
+    public static function takeFlash(): array
     {
-        $flash = $_SESSION['_flash'] ?? null;
+        $messages = $_SESSION['_flash'] ?? [];
         unset($_SESSION['_flash']);
 
-        return $flash;
+        return isset($messages['message']) ? [$messages] : array_values((array) $messages);
     }
 
     /**

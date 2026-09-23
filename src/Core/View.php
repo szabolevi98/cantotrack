@@ -75,6 +75,10 @@ class View
         // What people typed, as HTML. Safe to print unescaped only because the
         // renderer escapes any HTML in the text itself — see Markdown.
         $twig->addFilter(new TwigFilter('markdown', static fn(?string $text): string => Markdown::toHtml($text), ['is_safe' => ['html']]));
+        // The sidebar's saved filters, read only when a page that has the
+        // sidebar is drawn — the login page and the error page do not ask.
+        $twig->addFunction(new TwigFunction('saved_filters', static fn(): array =>
+            Auth::check() ? (new \CantoTrack\Model\SavedFilterRepository())->visibleTo((int) Auth::id()) : []));
         $twig->addFunction(new TwigFunction('burndown_chart', [Chart::class, 'burndown'], ['is_safe' => ['html']]));
         $twig->addFunction(new TwigFunction('velocity_chart', [Chart::class, 'velocity'], ['is_safe' => ['html']]));
         $twig->addFilter(new TwigFilter('bytes', static fn(?int $bytes): string => Format::bytes((int) $bytes)));

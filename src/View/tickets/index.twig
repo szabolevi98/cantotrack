@@ -81,6 +81,38 @@
         <a class="button" href="{{ url('/tickets') }}">{{ 'Clear'|t }}</a>
     </form>
 
+    {# Keeping this list: a name, and whether the rest of the team sees it too. #}
+    <details class="save-filter"{{ saved ? '' : '' }}>
+        <summary class="link-button link-button--text">
+            {{ saved ? 'Saved filter: {name}'|t({name: saved.name}) : 'Save this filter'|t }}
+        </summary>
+        {% if saved %}
+            {% if saved.user_id == current_user.id or is_admin %}
+                <form method="post" action="{{ url('/filters/' ~ saved.id ~ '/delete') }}"
+                      data-confirm="{{ 'Delete the filter “{name}”?'|t({name: saved.name}) }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                    <button class="button button--small button--danger" type="submit">{{ 'Delete this filter'|t }}</button>
+                </form>
+            {% endif %}
+        {% else %}
+            <form class="save-filter__form" method="post" action="{{ url('/filters') }}">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <input type="hidden" name="query" value="{{ query }}">
+                <input class="field field--inline" type="text" name="name" maxlength="80" required
+                       placeholder="{{ 'My open bugs'|t }}" aria-label="{{ 'Name'|t }}">
+                <label class="check check--inline"><input type="checkbox" name="is_shared" value="1"> {{ 'Share with everybody'|t }}</label>
+                <button class="button button--small" type="submit">{{ 'Save'|t }}</button>
+            </form>
+        {% endif %}
+    </details>
+
+    {#
+        The list is a form of its own: ticking rows and choosing a change in
+        the bar under it changes them all, each through its own rules.
+    #}
+    <form method="post" action="{{ url('/tickets/bulk') }}" class="bulk" data-bulk>
+    <input type="hidden" name="_token" value="{{ csrf_token }}">
+    <input type="hidden" name="back" value="/tickets{{ query ? '?' ~ query : '' }}">
     <section class="card card--flush">
         {% if tickets is empty %}
             <p class="card__empty">{{ 'Nothing matches that.'|t }}</p>
@@ -99,6 +131,9 @@
             <table class="table">
                 <thead>
                 <tr>
+                    <th class="table__check">
+                        <input type="checkbox" data-bulk-all aria-label="{{ 'Tick every ticket on this page'|t }}">
+                    </th>
                     <th class="table__key">{{ 'Ticket'|t }}</th>
                     <th>{{ 'Title'|t }}</th>
                     <th>{{ 'Status'|t }}</th>
@@ -111,6 +146,10 @@
                 <tbody>
                 {% for ticket in tickets %}
                     <tr>
+                        <td class="table__check">
+                            <input type="checkbox" name="ids[]" value="{{ ticket.id }}"
+                                   aria-label="{{ 'Tick {key}'|t({key: ticket.project_code ~ '-' ~ ticket.number}) }}">
+                        </td>
                         <td class="table__key">{{ ui.type_icon(ticket.type) }} {{ ui.ticket_key(ticket) }}</td>
                         <td>
                             <a href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a>
@@ -129,6 +168,59 @@
             </table>
         {% endif %}
     </section>
+
+    {% if tickets is not empty %}
+        {# The change for the ticked rows. Only what is chosen changes; the
+           rest of each ticket stays as it is. #}
+        <div class="bulk__bar card" data-bulk-bar>
+            <strong class="bulk__count" data-bulk-count>{{ 'Change the ticked tickets'|t }}</strong>
+
+            <select class="field field--inline" name="set_status" aria-label="{{ 'Status'|t }}">
+                <option value="">{{ 'Status…'|t }}</option>
+                {% for category in ['todo', 'in_progress', 'done'] %}
+                    <option value="{{ category }}">{{ ui.category_label(category) }}</option>
+                {% endfor %}
+                {% if statuses is not empty %}
+                    <optgroup label="{{ 'Columns'|t }}">
+                        {% for status in statuses %}<option value="{{ status.id }}">{{ status.name|t }}</option>{% endfor %}
+                    </optgroup>
+                {% endif %}
+            </select>
+
+            <select class="field field--inline" name="set_assignee" aria-label="{{ 'Assignee'|t }}">
+                <option value="">{{ 'Assignee…'|t }}</option>
+                <option value="none">{{ 'Unassigned'|t }}</option>
+                {% for person in people %}<option value="{{ person.id }}">{{ person.name }}</option>{% endfor %}
+            </select>
+
+            <select class="field field--inline" name="set_priority" aria-label="{{ 'Priority'|t }}">
+                <option value="">{{ 'Priority…'|t }}</option>
+                {% for value in ['low', 'normal', 'high', 'urgent'] %}<option value="{{ value }}">{{ ui.priority_label(value) }}</option>{% endfor %}
+            </select>
+
+            <select class="field field--inline" name="set_type" aria-label="{{ 'Type'|t }}">
+                <option value="">{{ 'Type…'|t }}</option>
+                {% for value in types %}<option value="{{ value }}">{{ ui.type_label(value) }}</option>{% endfor %}
+            </select>
+
+            {% if sprints is not empty %}
+                <select class="field field--inline" name="set_sprint" aria-label="{{ 'Sprint'|t }}">
+                    <option value="">{{ 'Sprint…'|t }}</option>
+                    <option value="backlog">{{ 'Backlog'|t }}</option>
+                    {% for sprint in sprints %}<option value="{{ sprint.id }}">{{ sprint.name }}</option>{% endfor %}
+                </select>
+            {% endif %}
+
+            <input class="field field--inline bulk__label" type="text" name="add_label" list="bulk-labels"
+                   placeholder="{{ '+ label'|t }}" aria-label="{{ 'Add a label'|t }}">
+            <input class="field field--inline bulk__label" type="text" name="remove_label" list="bulk-labels"
+                   placeholder="{{ '− label'|t }}" aria-label="{{ 'Remove a label'|t }}">
+            <datalist id="bulk-labels">{% for label in labels %}<option value="{{ label.name }}">{% endfor %}</datalist>
+
+            <button class="button button--primary" type="submit">{{ 'Apply'|t }}</button>
+        </div>
+    {% endif %}
+    </form>
 
     {{ ui.pages('/tickets', query, page, pages) }}
 {% endblock %}

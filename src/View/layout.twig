@@ -13,19 +13,30 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     {# For the few requests the page's own script sends; forms carry theirs. #}
     <meta name="csrf-token" content="{{ csrf_token }}">
+    <meta name="base-url" content="{{ base_url }}">
     <title>{% block title %}{{ app_name }}{% endblock %}</title>
     <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">
     <link rel="stylesheet" href="{{ asset('css/app.css') }}">
     <script src="{{ asset('js/app.js') }}" defer></script>
 </head>
-<body class="app">
+<body class="app"{% if search_project is defined %} data-project-id="{{ search_project.id }}"{% endif %}>
+<a class="skip-link" href="#main">{{ 'Skip to the content'|t }}</a>
+
 <aside class="sidebar">
     <a class="sidebar__brand" href="{{ url('/') }}">
         <span class="sidebar__mark">CT</span>
         <span class="sidebar__name">{{ app_name }}</span>
     </a>
 
-    <nav class="sidebar__nav">
+    {# Type a ticket's name and be on it; anything else searches the list.
+       "/" puts the cursor here from anywhere. #}
+    <form class="sidebar__search" method="get" action="{{ url('/search') }}" role="search">
+        <input class="field" type="search" name="q" placeholder="{{ 'Search or jump to CT-14'|t }}"
+               aria-label="{{ 'Search'|t }}" data-shortcut-search>
+        {% if search_project is defined %}<input type="hidden" name="project" value="{{ search_project.code }}">{% endif %}
+    </form>
+
+    <nav class="sidebar__nav" aria-label="{{ 'Main'|t }}">
         {% set items = [
             { path: '/', label: 'Dashboard' },
             { path: '/projects', label: 'Projects' },
@@ -38,13 +49,27 @@
                other path starts with a slash and a word, so "starts with" would
                make "/" current on every page. #}
             {% set active = item.path == '/' ? current_path == '/' : current_path starts with item.path %}
-            <a class="sidebar__link{{ active ? ' is-active' : '' }}" href="{{ url(item.path) }}">{{ item.label }}</a>
+            <a class="sidebar__link{{ active ? ' is-active' : '' }}" href="{{ url(item.path) }}"
+               {{ active ? 'aria-current="page"' : '' }}>{{ item.label|t }}</a>
         {% endfor %}
 
+        {# Named apart from `filters`, which the list pages use for their own:
+           a template and its layout share one set of variables. #}
+        {% set sidebar_filters = saved_filters() %}
+        {% if sidebar_filters is not empty %}
+            <span class="sidebar__section">{{ 'Filters'|t }}</span>
+            {% for filter in sidebar_filters %}
+                <a class="sidebar__link sidebar__link--filter" href="{{ url('/tickets?' ~ filter.query ~ (filter.query ? '&' : '') ~ 'filter=' ~ filter.id) }}"
+                   title="{{ filter.mine ? '' : 'Shared by {name}'|t({name: filter.user_name}) }}">
+                    {{ filter.name }}{% if not filter.mine %} <span class="sidebar__shared">↗</span>{% endif %}
+                </a>
+            {% endfor %}
+        {% endif %}
+
         {% if is_admin %}
-            <span class="sidebar__section">Administration</span>
+            <span class="sidebar__section">{{ 'Administration'|t }}</span>
             <a class="sidebar__link{{ current_path starts with '/people' ? ' is-active' : '' }}"
-               href="{{ url('/people') }}">People</a>
+               href="{{ url('/people') }}">{{ 'People'|t }}</a>
         {% endif %}
     </nav>
 
@@ -59,11 +84,13 @@
         <form class="sidebar__logout" method="post" action="{{ url('/logout') }}">
             <input type="hidden" name="_token" value="{{ csrf_token }}">
             <button class="link-button link-button--quiet" type="submit">{{ 'Sign out'|t }}</button>
+            <button class="link-button link-button--quiet" type="button" data-shortcut-help
+                    title="{{ 'Keyboard shortcuts'|t }}">?</button>
         </form>
     </div>
 </aside>
 
-<main class="content">
+<main class="content" id="main">
     <header class="content__head">
         <div>
             <h1>{% block heading %}{% endblock %}</h1>
@@ -72,11 +99,28 @@
         <div class="content__actions">{% block actions %}{% endblock %}</div>
     </header>
 
-    {% if flash %}
-        <p class="flash flash--{{ flash.kind }}">{{ flash.message }}</p>
-    {% endif %}
+    {% for message in flash %}
+        <p class="flash flash--{{ message.kind }}" role="{{ message.kind == 'danger' ? 'alert' : 'status' }}">{{ message.message }}</p>
+    {% endfor %}
 
     {% block content %}{% endblock %}
 </main>
+
+{# The keyboard shortcuts, opened with "?". A dialog element, so the browser
+   handles focus and Escape. #}
+<dialog class="shortcuts" id="shortcuts" aria-labelledby="shortcuts-title">
+    <h2 id="shortcuts-title">{{ 'Keyboard shortcuts'|t }}</h2>
+    <dl class="shortcuts__list">
+        <dt><kbd>/</kbd></dt><dd>{{ 'Search, or jump to a ticket by its name'|t }}</dd>
+        <dt><kbd>c</kbd></dt><dd>{{ 'Create a ticket'|t }}</dd>
+        <dt><kbd>g</kbd> <kbd>d</kbd></dt><dd>{{ 'Go to the dashboard'|t }}</dd>
+        <dt><kbd>g</kbd> <kbd>p</kbd></dt><dd>{{ 'Go to the projects'|t }}</dd>
+        <dt><kbd>g</kbd> <kbd>t</kbd></dt><dd>{{ 'Go to the tickets'|t }}</dd>
+        <dt><kbd>g</kbd> <kbd>s</kbd></dt><dd>{{ 'Go to your timesheet'|t }}</dd>
+        <dt><kbd>g</kbd> <kbd>b</kbd></dt><dd>{{ 'Go to this project’s board'|t }}</dd>
+        <dt><kbd>?</kbd></dt><dd>{{ 'Show this list'|t }}</dd>
+    </dl>
+    <form method="dialog"><button class="button">{{ 'Close'|t }}</button></form>
+</dialog>
 </body>
 </html>

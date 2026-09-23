@@ -1,6 +1,7 @@
 {% extends 'layout.twig' %}
 {% import 'common/macros.twig' as ui %}
 {% import _self as plan %}
+{% set search_project = {id: project.id, code: project.code} %}
 
 {% block title %}{{ 'Backlog'|t }} — {{ project.code }} — {{ app_name }}{% endblock %}
 {% block heading %}{{ 'Backlog & sprints'|t }}{% endblock %}

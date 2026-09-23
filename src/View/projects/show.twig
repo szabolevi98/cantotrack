@@ -1,5 +1,6 @@
 {% extends 'layout.twig' %}
 {% import 'common/macros.twig' as ui %}
+{% set search_project = {id: project.id, code: project.code} %}
 
 {% block title %}{{ project.code }} — {{ app_name }}{% endblock %}
 {% block heading %}{{ project.name }}{% endblock %}

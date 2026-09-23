@@ -19,6 +19,7 @@ use CantoTrack\Controller\LoginController;
 use CantoTrack\Controller\PeopleController;
 use CantoTrack\Controller\ProfileController;
 use CantoTrack\Controller\ProjectController;
+use CantoTrack\Controller\SearchController;
 use CantoTrack\Controller\SprintController;
 use CantoTrack\Controller\TicketController;
 use CantoTrack\Controller\TimesheetController;
@@ -37,6 +38,10 @@ $router->post('/logout', static fn() => (new LoginController())->logout());
 // The application
 // ---------------------------------------------------------------------------
 $router->get('/', static fn() => (new DashboardController())->index());
+
+$router->get('/search', static fn() => (new SearchController())->search());
+$router->post('/filters', static fn() => (new SearchController())->saveFilter());
+$router->post('/filters/{id}/delete', static fn($id) => (new SearchController())->deleteFilter((int) $id));
 
 $router->get('/profile', static fn() => (new ProfileController())->show());
 $router->post('/profile', static fn() => (new ProfileController())->update());
@@ -82,6 +87,7 @@ $router->post('/epics/{id}/delete', static fn($id) => (new EpicController())->de
 $router->get('/tickets', static fn() => (new TicketController())->index());
 $router->get('/tickets/create', static fn() => (new TicketController())->createForm());
 $router->post('/tickets/create', static fn() => (new TicketController())->create());
+$router->post('/tickets/bulk', static fn() => (new TicketController())->bulk());
 $router->get('/tickets/{id}', static fn($id) => (new TicketController())->show((int) $id));
 $router->get('/tickets/{id}/edit', static fn($id) => (new TicketController())->editForm((int) $id));
 $router->post('/tickets/{id}', static fn($id) => (new TicketController())->update((int) $id));

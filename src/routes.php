@@ -14,6 +14,7 @@ use CantoTrack\Controller\DashboardController;
 use CantoTrack\Controller\EpicController;
 use CantoTrack\Controller\LoginController;
 use CantoTrack\Controller\PeopleController;
+use CantoTrack\Controller\ProfileController;
 use CantoTrack\Controller\ProjectController;
 use CantoTrack\Controller\TicketController;
 use CantoTrack\Controller\TimesheetController;
@@ -32,6 +33,10 @@ $router->post('/logout', static fn() => (new LoginController())->logout());
 // The application
 // ---------------------------------------------------------------------------
 $router->get('/', static fn() => (new DashboardController())->index());
+
+$router->get('/profile', static fn() => (new ProfileController())->show());
+$router->post('/profile', static fn() => (new ProfileController())->update());
+$router->post('/profile/password', static fn() => (new ProfileController())->changePassword());
 
 // ---------------------------------------------------------------------------
 // Projects and the epics inside them

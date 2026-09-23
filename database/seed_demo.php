@@ -60,8 +60,14 @@ if ($reset) {
         $existing = $projects->findByCode($code);
 
         if ($existing !== null) {
-            // Deleting the project takes its epics, tickets and worklogs with
-            // it — which is the whole point of the cascade being where it is.
+            // The hours first, and deliberately: the database no longer lets a
+            // ticket go while hours point at it, because hours are what gets
+            // invoiced. Here they are demo hours, and going is the point.
+            $database->prepare(
+                'DELETE w FROM worklogs w JOIN tickets t ON t.id = w.ticket_id WHERE t.project_id = :project'
+            )->execute(['project' => (int) $existing['id']]);
+
+            // The project then takes its epics and tickets with it.
             $projects->delete((int) $existing['id']);
             printf("  removed %s and everything in it%s", $code, PHP_EOL);
         }

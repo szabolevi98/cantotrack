@@ -1,11 +1,11 @@
 {% extends 'layout.twig' %}
 {% import 'common/macros.twig' as ui %}
 
-{% block title %}Tickets — {{ app_name }}{% endblock %}
-{% block heading %}Tickets{% endblock %}
+{% block title %}{{ 'Tickets'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Tickets'|t }}{% endblock %}
 
 {% block actions %}
-    <a class="button button--primary" href="{{ url('/tickets/create') }}">New ticket</a>
+    <a class="button button--primary" href="{{ url('/tickets/create') }}">{{ 'New ticket'|t }}</a>
 {% endblock %}
 
 {% block content %}
@@ -16,10 +16,10 @@
     #}
     <form class="filters card" method="get" action="{{ url('/tickets') }}">
         <input class="field field--inline filters__search" type="search" name="q"
-               value="{{ filters.q }}" placeholder="Search title, text or CT-14" aria-label="Search tickets">
+               value="{{ filters.q }}" placeholder="{{ 'Search title, text or CT-14'|t }}" aria-label="{{ 'Search tickets'|t }}">
 
-        <select class="field field--inline" name="project" aria-label="Project">
-            <option value="">Every project</option>
+        <select class="field field--inline" name="project" aria-label="{{ 'Project'|t }}">
+            <option value="">{{ 'Every project'|t }}</option>
             {% for project in projects %}
                 <option value="{{ project.id }}"{{ filters.project_id == project.id ? ' selected' : '' }}>
                     {{ project.code }} — {{ project.name }}
@@ -27,17 +27,15 @@
             {% endfor %}
         </select>
 
-        <select class="field field--inline" name="status" aria-label="Status">
-            <option value="">Any status</option>
+        <select class="field field--inline" name="status" aria-label="{{ 'Status'|t }}">
+            <option value="">{{ 'Any status'|t }}</option>
             {% for status in statuses %}
-                <option value="{{ status }}"{{ filters.status == status ? ' selected' : '' }}>
-                    {{ { backlog: 'Backlog', todo: 'To do', in_progress: 'In progress', review: 'Review', done: 'Done' }[status] }}
-                </option>
+                <option value="{{ status }}"{{ filters.status == status ? ' selected' : '' }}>{{ ui.status_label(status) }}</option>
             {% endfor %}
         </select>
 
-        <select class="field field--inline" name="assignee" aria-label="Assignee">
-            <option value="">Anyone</option>
+        <select class="field field--inline" name="assignee" aria-label="{{ 'Assignee'|t }}">
+            <option value="">{{ 'Anyone'|t }}</option>
             {% for person in people %}
                 <option value="{{ person.id }}"{{ filters.assignee_id == person.id ? ' selected' : '' }}>{{ person.name }}</option>
             {% endfor %}
@@ -45,26 +43,37 @@
 
         <label class="check check--inline">
             <input type="checkbox" name="open" value="1"{{ filters.open_only ? ' checked' : '' }}>
-            Open only
+            {{ 'Open only'|t }}
         </label>
 
-        <button class="button" type="submit">Filter</button>
-        <a class="button" href="{{ url('/tickets') }}">Clear</a>
+        <button class="button" type="submit">{{ 'Filter'|t }}</button>
+        <a class="button" href="{{ url('/tickets') }}">{{ 'Clear'|t }}</a>
     </form>
 
     <section class="card card--flush">
         {% if tickets is empty %}
-            <p class="card__empty">Nothing matches that.</p>
+            <p class="card__empty">{{ 'Nothing matches that.'|t }}</p>
         {% else %}
+            <header class="card__head">
+                {# The count is said out loud: a list that stops at a page size
+                   without saying so is a list that hides work. #}
+                <span class="muted">
+                    {{ 'Showing {from}–{to} of {total}'|t({
+                        from: (page - 1) * per_page + 1,
+                        to: min(page * per_page, total),
+                        total: total
+                    }) }}
+                </span>
+            </header>
             <table class="table">
                 <thead>
                 <tr>
-                    <th class="table__key">Ticket</th>
-                    <th>Title</th>
-                    <th>Status</th>
-                    <th>Assignee</th>
-                    <th class="table__number">Est.</th>
-                    <th class="table__number">Logged</th>
+                    <th class="table__key">{{ 'Ticket'|t }}</th>
+                    <th>{{ 'Title'|t }}</th>
+                    <th>{{ 'Status'|t }}</th>
+                    <th>{{ 'Assignee'|t }}</th>
+                    <th class="table__number">{{ 'Est.'|t }}</th>
+                    <th class="table__number">{{ 'Logged'|t }}</th>
                 </tr>
                 </thead>
                 <tbody>
@@ -86,4 +95,6 @@
             </table>
         {% endif %}
     </section>
+
+    {{ ui.pages('/tickets', query, page, pages) }}
 {% endblock %}

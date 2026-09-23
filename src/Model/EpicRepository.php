@@ -16,9 +16,9 @@ class EpicRepository
 {
     private PDO $db;
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
-        $this->db = DatabaseConnection::get();
+        $this->db = $db ?? DatabaseConnection::get();
     }
 
     /** The epics of a project, each with how many tickets it holds and how many are done. */

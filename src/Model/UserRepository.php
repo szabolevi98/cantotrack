@@ -3,6 +3,7 @@
 namespace CantoTrack\Model;
 
 use CantoTrack\Core\DatabaseConnection;
+use CantoTrack\Core\Password;
 use PDO;
 
 /**
@@ -17,9 +18,9 @@ class UserRepository
 {
     private PDO $db;
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
-        $this->db = DatabaseConnection::get();
+        $this->db = $db ?? DatabaseConnection::get();
     }
 
     public function find(int $id): ?array
@@ -28,6 +29,14 @@ class UserRepository
         $statement->execute(['id' => $id]);
 
         return $statement->fetch() ?: null;
+    }
+
+    /** An account that can be assigned work and can sign in — or nothing. */
+    public function findActive(int $id): ?array
+    {
+        $user = $this->find($id);
+
+        return $user !== null && (int) $user['is_active'] === 1 ? $user : null;
     }
 
     public function findByEmail(string $email): ?array
@@ -61,10 +70,8 @@ class UserRepository
         $statement->execute([
             'name' => trim($name),
             'email' => mb_strtolower(trim($email)),
-            // PASSWORD_DEFAULT rather than a named algorithm, so a PHP upgrade
-            // that brings a better one is picked up without an edit here.
-            'hash' => password_hash($password, PASSWORD_DEFAULT),
-            'role' => $role,
+            'hash' => Password::hash($password),
+            'role' => self::role($role),
         ]);
 
         return (int) $this->db->lastInsertId();
@@ -99,8 +106,24 @@ class UserRepository
         $statement->execute([
             'name' => trim($name),
             'email' => mb_strtolower(trim($email)),
-            'role' => $role === 'admin' ? 'admin' : 'member',
+            'role' => self::role($role),
             'active' => $isActive ? 1 : 0,
+            'id' => $id,
+        ]);
+    }
+
+    /** What a person may change about themselves on their profile. */
+    public function updateProfile(int $id, string $name, ?string $shortName, ?string $locale, string $theme): void
+    {
+        $statement = $this->db->prepare(
+            'UPDATE users SET name = :name, short_name = :short_name, locale = :locale, theme = :theme WHERE id = :id'
+        );
+
+        $statement->execute([
+            'name' => trim($name),
+            'short_name' => trim((string) $shortName) ?: null,
+            'locale' => $locale ?: null,
+            'theme' => in_array($theme, ['system', 'light', 'dark'], true) ? $theme : 'system',
             'id' => $id,
         ]);
     }
@@ -114,8 +137,20 @@ class UserRepository
      */
     public function setPassword(int $id, string $password): void
     {
-        $statement = $this->db->prepare('UPDATE users SET password_hash = :hash WHERE id = :id');
-        $statement->execute(['hash' => password_hash($password, PASSWORD_DEFAULT), 'id' => $id]);
+        $statement = $this->db->prepare(
+            'UPDATE users SET password_hash = :hash, password_changed_at = NOW() WHERE id = :id'
+        );
+        $statement->execute(['hash' => Password::hash($password), 'id' => $id]);
+    }
+
+    /**
+     * Stores the same password under a stronger hash. Not a change of password,
+     * so the date it was last changed stays what it was.
+     */
+    public function rehash(int $id, string $password): void
+    {
+        $this->db->prepare('UPDATE users SET password_hash = :hash WHERE id = :id')
+            ->execute(['hash' => Password::hash($password), 'id' => $id]);
     }
 
     /**
@@ -152,5 +187,16 @@ class UserRepository
     {
         $statement = $this->db->prepare('UPDATE users SET last_login_at = NOW() WHERE id = :id');
         $statement->execute(['id' => $id]);
+    }
+
+    /** What to call somebody in a sentence addressed to them. */
+    public static function callName(array $user): string
+    {
+        return trim((string) ($user['short_name'] ?? '')) ?: (string) ($user['name'] ?? '');
+    }
+
+    private static function role(string $role): string
+    {
+        return $role === 'admin' ? 'admin' : 'member';
     }
 }

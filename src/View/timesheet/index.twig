@@ -75,25 +75,7 @@
                     {% else %}
                         <ul class="logs">
                             {% for entry in day.entries %}
-                                <li class="log">
-                                    <div class="log__what">
-                                        <a class="ticket-key" href="{{ url('/tickets/' ~ entry.ticket_id) }}">{{ entry.project_code }}-{{ entry.ticket_number }}</a>
-                                        <a href="{{ url('/tickets/' ~ entry.ticket_id) }}">{{ entry.ticket_title }}</a>
-                                        {% if entry.note %}<span class="log__note">{{ entry.note }}</span>{% endif %}
-                                    </div>
-
-                                    <span class="log__time">{{ entry.minutes|duration }}</span>
-
-                                    {% if is_mine or is_admin %}
-                                        <form class="log__delete" method="post"
-                                              action="{{ url('/worklogs/' ~ entry.id ~ '/delete') }}"
-                                              data-confirm="{{ 'Delete this {duration} entry?'|t({duration: entry.minutes|duration}) }}">
-                                            <input type="hidden" name="_token" value="{{ csrf_token }}">
-                                            <input type="hidden" name="back" value="/timesheet?week={{ monday }}&user={{ person.id }}">
-                                            <button class="link-button" type="submit" title="Delete this entry">×</button>
-                                        </form>
-                                    {% endif %}
-                                </li>
+                                {{ ui.log_entry(entry, '/timesheet?week=' ~ monday ~ '&user=' ~ person.id, 'timesheet') }}
                             {% endfor %}
                         </ul>
                     {% endif %}

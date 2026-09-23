@@ -232,3 +232,16 @@
     color: var(--ct-sidebar-text-active);
     text-decoration: underline;
 }
+
+/* The name at the foot of the sidebar is the way to one's own profile. */
+a.sidebar__user {
+    color: inherit;
+}
+
+a.sidebar__user:hover {
+    text-decoration: none;
+}
+
+a.sidebar__user:hover strong {
+    text-decoration: underline;
+}

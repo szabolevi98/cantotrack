@@ -12,9 +12,9 @@ class ProjectRepository
 {
     private PDO $db;
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
-        $this->db = DatabaseConnection::get();
+        $this->db = $db ?? DatabaseConnection::get();
     }
 
     /** The projects worth showing in a list, with how much work is in each. */
@@ -80,6 +80,19 @@ class ProjectRepository
             'archived' => $isArchived ? 1 : 0,
             'id' => $id,
         ]);
+    }
+
+    /** Whether any hour has been logged against any ticket in the project. */
+    public function hasWorklogs(int $id): bool
+    {
+        $statement = $this->db->prepare(
+            'SELECT EXISTS (
+                 SELECT 1 FROM worklogs w JOIN tickets t ON t.id = w.ticket_id WHERE t.project_id = :id
+             )'
+        );
+        $statement->execute(['id' => $id]);
+
+        return (bool) $statement->fetchColumn();
     }
 
     public function delete(int $id): void

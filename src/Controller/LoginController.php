@@ -3,10 +3,10 @@
 namespace CantoTrack\Controller;
 
 use CantoTrack\Core\Auth;
+use CantoTrack\Core\ClientIp;
 use CantoTrack\Core\Controller;
-use CantoTrack\Core\Config;
+use CantoTrack\Core\LoginThrottle;
 use CantoTrack\Core\Session;
-use CantoTrack\Core\View;
 
 /**
  * Signing in and out.
@@ -27,34 +27,55 @@ class LoginController extends Controller
         // something the controller did not pass is an error rather than an
         // empty string — which is the point of the setting, and means the
         // controller has to say "no error" out loud.
-        View::render('auth/login.twig', ['email' => '', 'error' => null]);
+        $this->render('auth/login.twig', ['email' => '', 'error' => null]);
     }
 
     public function submit(): void
     {
-        $email = trim((string) ($_POST['email'] ?? ''));
+        $email = $this->input('email');
         $password = (string) ($_POST['password'] ?? '');
+        $ip = ClientIp::get();
+        $throttle = new LoginThrottle();
 
-        if (Auth::attempt($email, $password)) {
-            $this->goHome();
+        // Checked before the password, so that an address under attack costs
+        // the attacker nothing more than this sentence — not a hash per guess.
+        if ($throttle->isBlocked($email, $ip)) {
+            $this->render('auth/login.twig', [
+                'email' => $email,
+                'error' => __('Too many failed attempts. Wait {minutes} minutes and try again.', [
+                    'minutes' => LoginThrottle::WINDOW_MINUTES,
+                ]),
+            ], 429);
+
+            return;
         }
 
-        // 401 rather than 200, so that the failure is visible to anything
-        // reading the response rather than only to a person looking at it.
-        http_response_code(401);
+        $user = Auth::verifyCredentials($email, $password);
 
-        View::render('auth/login.twig', [
-            'email' => $email,
-            'error' => 'That email address and password do not match an account.',
-        ]);
+        if ($user === null) {
+            $throttle->recordFailure($email, $ip);
+
+            // 401 rather than 200, so that the failure is visible to anything
+            // reading the response rather than only to a person looking at it.
+            $this->render('auth/login.twig', [
+                'email' => $email,
+                'error' => __('That email address and password do not match an account.'),
+            ], 401);
+
+            return;
+        }
+
+        $throttle->clear($email);
+        Auth::signIn($user);
+
+        $this->goHome();
     }
 
     public function logout(): void
     {
         Auth::logout();
 
-        header('Location: ' . Config::get('app.base_url') . '/login');
-        exit;
+        $this->redirect('/login');
     }
 
     /**
@@ -67,11 +88,6 @@ class LoginController extends Controller
         $intended = Session::get('_intended');
         Session::forget('_intended');
 
-        $path = is_string($intended) && str_starts_with($intended, '/') && !str_starts_with($intended, '//')
-            ? $intended
-            : '/';
-
-        header('Location: ' . rtrim((string) Config::get('app.base_url'), '/') . $path);
-        exit;
+        $this->redirect(is_string($intended) && self::isLocalPath($intended) ? $intended : '/');
     }
 }

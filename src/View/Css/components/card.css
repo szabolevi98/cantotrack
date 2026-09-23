@@ -92,3 +92,10 @@
     font-weight: 600;
     font-variant-numeric: tabular-nums;
 }
+
+/* After a save that lost a race: what the other person saved, marked so it
+   cannot be mistaken for the form below it. */
+.card--conflict {
+    border-color: rgba(164, 112, 29, 0.35);
+    background: var(--ct-warning-soft);
+}

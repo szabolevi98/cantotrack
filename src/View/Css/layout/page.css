@@ -103,3 +103,17 @@ code {
         grid-template-columns: minmax(0, 1fr);
     }
 }
+
+/* Page links under a list. */
+.pager {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    margin: calc(var(--ct-gap) * -0.4) 0 var(--ct-gap);
+}
+
+.pager__where {
+    color: var(--ct-muted);
+    font-size: 0.86rem;
+}

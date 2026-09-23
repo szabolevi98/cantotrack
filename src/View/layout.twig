@@ -48,10 +48,10 @@
 
     <div class="sidebar__foot">
         <span class="avatar" title="{{ current_user.name }}">{{ current_user.name|initials }}</span>
-        <span class="sidebar__user">
+        <a class="sidebar__user" href="{{ url('/profile') }}" title="{{ 'Your profile'|t }}">
             <strong>{{ current_user.name }}</strong>
-            <small>{{ current_user.role == 'admin' ? 'Administrator' : 'Member' }}</small>
-        </span>
+            <small>{{ current_user.role == 'admin' ? 'Administrator'|t : 'Member'|t }}</small>
+        </a>
         {# A form, because signing out changes something: a link would let any
            page on the internet sign somebody out with an image tag. #}
         <form class="sidebar__logout" method="post" action="{{ url('/logout') }}">

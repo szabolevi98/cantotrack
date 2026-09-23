@@ -2,7 +2,9 @@
 {% import 'common/macros.twig' as ui %}
 
 {% block title %}Dashboard — {{ app_name }}{% endblock %}
-{% block heading %}Hello, {{ current_user.name|split(' ')|first }}{% endblock %}
+{# Greeted by what they asked to be called, or by their whole name — never by
+   the first word of it, which in a Hungarian name is the surname. #}
+{% block heading %}{{ 'Hello, {name}'|t({name: current_user.short_name ?: current_user.name}) }}{% endblock %}
 {% block subheading %}<p class="content__sub">What is on your plate today.</p>{% endblock %}
 
 {% block actions %}

@@ -7,7 +7,7 @@
 {% block subheading %}
     <p class="content__sub">
         <span class="ticket-key ticket-key--plain">{{ ticket.project_code }}-{{ ticket.number }}</span>
-        in <a href="{{ url('/projects/' ~ ticket.project_id) }}">{{ ticket.project_name }}</a>
+        {{ 'in'|t }} <a href="{{ url('/projects/' ~ ticket.project_id) }}">{{ ticket.project_name }}</a>
         {% if ticket.epic_title %}
             · <a href="{{ url('/epics/' ~ ticket.epic_id) }}">{{ ticket.epic_title }}</a>
         {% endif %}
@@ -16,22 +16,23 @@
 
 {% block actions %}
     {{ ui.move(ticket, statuses, '/tickets/' ~ ticket.id) }}
-    <a class="button" href="{{ url('/tickets/' ~ ticket.id ~ '/edit') }}">Edit</a>
+    <a class="button" href="{{ url('/tickets/' ~ ticket.id ~ '/edit') }}">{{ 'Edit'|t }}</a>
 {% endblock %}
 
 {% block content %}
     <div class="split">
         <div class="split__main">
             <section class="card">
-                <h2 class="card__title">Description</h2>
+                <h2 class="card__title">{{ 'Description'|t }}</h2>
                 {% if ticket.description %}
                     <p class="card__body prose">{{ ticket.description|nl2br }}</p>
                 {% else %}
-                    <p class="card__body muted">Nothing written down yet.</p>
+                    <p class="card__body muted">{{ 'Nothing written down yet.'|t }}</p>
                 {% endif %}
             </section>
+
             <section class="card">
-                <h2 class="card__title">Log time</h2>
+                <h2 class="card__title">{{ 'Log time'|t }}</h2>
                 {#
                     On the ticket rather than on a separate page: the moment
                     somebody is willing to write down where an hour went is the
@@ -41,12 +42,12 @@
                     <input type="hidden" name="_token" value="{{ csrf_token }}">
 
                     <div>
-                        <label for="time">How long</label>
+                        <label for="time">{{ 'How long'|t }}</label>
                         <input id="time" class="field" type="text" name="time" placeholder="1h 30m" required>
                     </div>
 
                     <div>
-                        <label for="work_date">Which day</label>
+                        <label for="work_date">{{ 'Which day'|t }}</label>
                         {# Defaults to today, which it is nine times in ten, and
                            accepts any past day because Friday's hours are
                            regularly written down on Monday. #}
@@ -55,38 +56,20 @@
                     </div>
 
                     <div class="log-form__note">
-                        <label for="note">What you did</label>
+                        <label for="note">{{ 'What you did'|t }}</label>
                         <input id="note" class="field" type="text" name="note" maxlength="500"
-                               placeholder="Optional">
+                               placeholder="{{ 'Optional'|t }}">
                     </div>
 
-                    <button class="button button--primary" type="submit">Log it</button>
+                    <button class="button button--primary" type="submit">{{ 'Log it'|t }}</button>
                 </form>
 
                 {% if worklogs is empty %}
-                    <p class="card__body">No hours logged against this ticket yet.</p>
+                    <p class="card__body">{{ 'No hours logged against this ticket yet.'|t }}</p>
                 {% else %}
                     <ul class="logs logs--ticket">
                         {% for entry in worklogs %}
-                            <li class="log">
-                                <div class="log__what">
-                                    <strong>{{ entry.user_name }}</strong>
-                                    <span class="muted">{{ entry.work_date|day }}</span>
-                                    {% if entry.note %}<span class="log__note">{{ entry.note }}</span>{% endif %}
-                                </div>
-
-                                <span class="log__time">{{ entry.minutes|duration }}</span>
-
-                                {% if entry.user_id == current_user.id or is_admin %}
-                                    <form class="log__delete" method="post"
-                                          action="{{ url('/worklogs/' ~ entry.id ~ '/delete') }}"
-                                          data-confirm="{{ 'Delete this {duration} entry?'|t({duration: entry.minutes|duration}) }}">
-                                        <input type="hidden" name="_token" value="{{ csrf_token }}">
-                                        <input type="hidden" name="back" value="/tickets/{{ ticket.id }}">
-                                        <button class="link-button" type="submit" title="Delete this entry">×</button>
-                                    </form>
-                                {% endif %}
-                            </li>
+                            {{ ui.log_entry(entry, '/tickets/' ~ ticket.id, 'ticket') }}
                         {% endfor %}
                     </ul>
                 {% endif %}
@@ -96,22 +79,22 @@
         <aside class="split__side">
             <section class="card">
                 <dl class="facts">
-                    <dt>Status</dt>
+                    <dt>{{ 'Status'|t }}</dt>
                     <dd>{{ ui.status(ticket.status) }}</dd>
 
-                    <dt>Priority</dt>
-                    <dd>{{ ticket.priority == 'normal' ? 'Normal' : '' }}{{ ui.priority(ticket.priority) }}</dd>
+                    <dt>{{ 'Priority'|t }}</dt>
+                    <dd>{{ ticket.priority == 'normal' ? ui.priority_label('normal') : ui.priority(ticket.priority) }}</dd>
 
-                    <dt>Assignee</dt>
+                    <dt>{{ 'Assignee'|t }}</dt>
                     <dd>{{ ui.person(ticket.assignee_name) }}</dd>
 
-                    <dt>Reporter</dt>
+                    <dt>{{ 'Reporter'|t }}</dt>
                     <dd>{{ ui.person(ticket.reporter_name) }}</dd>
 
-                    <dt>Estimate</dt>
+                    <dt>{{ 'Estimate'|t }}</dt>
                     <dd>{{ ticket.estimate_minutes ? ticket.estimate_minutes|duration : '—' }}</dd>
 
-                    <dt>Logged</dt>
+                    <dt>{{ 'Logged'|t }}</dt>
                     <dd>
                         {{ ticket.logged_minutes > 0 ? ticket.logged_minutes|duration : '—' }}
                         {#
@@ -120,16 +103,15 @@
                             number on this page somebody acts on.
                         #}
                         {% if ticket.estimate_minutes and ticket.logged_minutes > ticket.estimate_minutes %}
-                            <span class="badge badge--urgent">over by
-                                {{ (ticket.logged_minutes - ticket.estimate_minutes)|duration }}</span>
+                            <span class="badge badge--urgent">{{ 'over by {duration}'|t({duration: (ticket.logged_minutes - ticket.estimate_minutes)|duration}) }}</span>
                         {% endif %}
                     </dd>
 
-                    <dt>Created</dt>
+                    <dt>{{ 'Created'|t }}</dt>
                     <dd>{{ ticket.created_at|day }}</dd>
 
                     {% if ticket.closed_at %}
-                        <dt>Finished</dt>
+                        <dt>{{ 'Finished'|t }}</dt>
                         <dd>{{ ticket.closed_at|day }}</dd>
                     {% endif %}
                 </dl>
@@ -137,13 +119,18 @@
 
             {% if is_admin %}
                 <section class="card">
-                    <h2 class="card__title">Delete</h2>
-                    <p class="card__body">This takes the hours logged against it as well.</p>
-                    <form method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/delete') }}"
-                          data-confirm="{{ 'Delete {key}?'|t({key: ticket.project_code ~ '-' ~ ticket.number}) }}">
-                        <input type="hidden" name="_token" value="{{ csrf_token }}">
-                        <button class="button button--danger" type="submit">Delete ticket</button>
-                    </form>
+                    <h2 class="card__title">{{ 'Delete'|t }}</h2>
+                    {% if worklogs is empty %}
+                        <form method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/delete') }}"
+                              data-confirm="{{ 'Delete {key}?'|t({key: ticket.project_code ~ '-' ~ ticket.number}) }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                            <button class="button button--danger" type="submit">{{ 'Delete ticket'|t }}</button>
+                        </form>
+                    {% else %}
+                        {# Hours are not deleted along with a ticket: they are what
+                           gets reported and invoiced. #}
+                        <p class="card__body">{{ 'This ticket has hours logged against it, so it cannot be deleted. Move it to done instead.'|t }}</p>
+                    {% endif %}
                 </section>
             {% endif %}
         </aside>

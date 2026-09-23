@@ -40,9 +40,12 @@ class ProjectController extends Controller
         $project = $this->projectOr404($id);
         $tickets = new TicketRepository();
 
+        $board = $tickets->board($id);
+
         View::render('projects/show.twig', [
             'project' => $project,
-            'board' => $tickets->board($id),
+            'board' => $board['columns'],
+            'more_done' => $board['more_done'],
             'counts' => $tickets->countsByStatus($id),
             'statuses' => TicketRepository::STATUSES,
             'epics' => (new EpicRepository())->forProject($id),
@@ -148,10 +151,21 @@ class ProjectController extends Controller
         Auth::requireAdmin();
 
         $project = $this->projectOr404($id);
-        (new ProjectRepository())->delete($id);
+        $projects = new ProjectRepository();
 
-        // Said plainly, because this took the tickets and their hours with it.
-        Session::flash('Project ' . $project['code'] . ' and everything in it was deleted.', 'warning');
+        // A project with hours in it is archived, not deleted: the hours are
+        // what was reported and invoiced, and a delete used to take them along.
+        if ($projects->hasWorklogs($id)) {
+            $this->flash(
+                __('{code} has hours logged in it, so it cannot be deleted. Archive it instead: it keeps its history and gets out of the way.', ['code' => $project['code']]),
+                'danger'
+            );
+            $this->redirect('/projects/' . $id . '/edit');
+        }
+
+        $projects->delete($id);
+
+        $this->flash(__('Project {code} and its tickets were deleted.', ['code' => $project['code']]), 'warning');
         $this->redirect('/projects');
     }
 

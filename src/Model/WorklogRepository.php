@@ -17,9 +17,9 @@ class WorklogRepository
 {
     private PDO $db;
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
-        $this->db = DatabaseConnection::get();
+        $this->db = $db ?? DatabaseConnection::get();
     }
 
     /** What every list of hours needs beside the row itself. */

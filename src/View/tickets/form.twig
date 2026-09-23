@@ -1,33 +1,64 @@
 {% extends 'layout.twig' %}
+{% import 'common/macros.twig' as ui %}
 
-{% set editing = ticket is not null and ticket.id is defined and ticket.id %}
+{#
+    `ticket` is the ticket being edited (or null for a new one) and never
+    changes while the form is drawn. `values` is what the fields hold: the
+    stored ticket on a first draw, what was typed when the form comes back with
+    an error. Keeping the two apart is what lets a failed save show both.
+#}
+{% set editing = ticket is not null %}
 
-{% block title %}{{ editing ? 'Edit ticket' : 'New ticket' }} — {{ app_name }}{% endblock %}
-{% block heading %}{{ editing ? 'Edit ticket' : 'New ticket' }}{% endblock %}
+{% block title %}{{ editing ? 'Edit ticket'|t : 'New ticket'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ editing ? 'Edit {key}'|t({key: ticket.project_code ~ '-' ~ ticket.number}) : 'New ticket'|t }}{% endblock %}
 
 {% block content %}
     {% if error %}<p class="flash flash--danger">{{ error }}</p>{% endif %}
 
+    {% if theirs %}
+        {# After a conflict: what the other person saved, beside what this
+           person typed — so "save anyway" is a choice made with both in view. #}
+        <section class="card card--narrow card--conflict">
+            <h2 class="card__title">{{ 'What is saved now'|t }}</h2>
+            <dl class="facts">
+                <dt>{{ 'Title'|t }}</dt>
+                <dd>{{ theirs.title }}</dd>
+                <dt>{{ 'Assignee'|t }}</dt>
+                <dd>{{ ui.person(theirs.assignee_name) }}</dd>
+                <dt>{{ 'Priority'|t }}</dt>
+                <dd>{{ ui.priority_label(theirs.priority) }}</dd>
+                <dt>{{ 'Estimate'|t }}</dt>
+                <dd>{{ theirs.estimate_minutes ? theirs.estimate_minutes|duration : '—' }}</dd>
+                <dt>{{ 'Description'|t }}</dt>
+                <dd class="prose">{{ theirs.description ? theirs.description|nl2br : '—' }}</dd>
+            </dl>
+            <p class="hint">{{ 'Saving the form again replaces this with what you typed.'|t }}</p>
+        </section>
+    {% endif %}
+
     <section class="card card--narrow">
         <form method="post" action="{{ editing ? url('/tickets/' ~ ticket.id) : url('/tickets/create') }}">
             <input type="hidden" name="_token" value="{{ csrf_token }}">
+            {% if editing %}
+                {# The version this form was drawn from. A save over a different
+                   one is refused instead of undoing somebody else's. #}
+                <input type="hidden" name="version" value="{{ values.version|default(ticket.version) }}">
+            {% endif %}
 
-            <label for="title">Title</label>
-            <input id="title" class="field" type="text" name="title" value="{{ ticket.title|default('') }}"
+            <label for="title">{{ 'Title'|t }}</label>
+            <input id="title" class="field" type="text" name="title" value="{{ values.title|default('') }}"
                    maxlength="250" required autofocus>
 
-            <label for="project_id">Project</label>
+            <label for="project_id">{{ 'Project'|t }}</label>
             {% if editing %}
                 {# A ticket cannot move between projects: its number belongs to the
                    project it was created in, and moving it would either change the
                    name people know it by or take a number that is already used. #}
-                <input class="field" type="text"
-                       value="{{ ticket.project_code|default('') }} — {{ ticket.project_name|default('') }}" disabled>
-                <input type="hidden" name="project_id" value="{{ ticket.project_id }}">
+                <input class="field" type="text" value="{{ ticket.project_code }} — {{ ticket.project_name }}" disabled>
             {% else %}
                 <select id="project_id" class="field" name="project_id" required
                         data-options-url="{{ url('/projects/{id}/options') }}">
-                    <option value="">Pick a project</option>
+                    <option value="">{{ 'Pick a project'|t }}</option>
                     {% for project in projects %}
                         <option value="{{ project.id }}"{{ project_id == project.id ? ' selected' : '' }}>
                             {{ project.code }} — {{ project.name }}
@@ -39,70 +70,81 @@
                    chosen project — the one case where the choice needs a trip. #}
                 <p class="hint nojs-only">
                     <button class="button button--small" type="submit" formmethod="get"
-                            formaction="{{ url('/tickets/create') }}" formnovalidate name="reload" value="1">
+                            formaction="{{ url('/tickets/create') }}" formnovalidate>
                         {{ 'Load the project’s epics'|t }}
                     </button>
                 </p>
             {% endif %}
 
-            <label for="epic_id">Epic</label>
+            <label for="epic_id">{{ 'Epic'|t }}</label>
             <select id="epic_id" class="field" name="epic_id" data-options="epics">
-                <option value="">No epic</option>
+                <option value="">{{ 'No epic'|t }}</option>
                 {% for epic in epics %}
-                    <option value="{{ epic.id }}"{{ ticket.epic_id|default(0) == epic.id ? ' selected' : '' }}>{{ epic.title }}</option>
+                    <option value="{{ epic.id }}"{{ values.epic_id|default(0) == epic.id ? ' selected' : '' }}>{{ epic.title }}</option>
                 {% endfor %}
+                {# An epic marked done since is no longer offered for new tickets,
+                   but the ticket that is already in it stays there. #}
+                {% if editing and ticket.epic_id and ticket.epic_id not in epics|column('id') %}
+                    <option value="{{ ticket.epic_id }}"{{ values.epic_id|default(0) == ticket.epic_id ? ' selected' : '' }}>{{ ticket.epic_title }}</option>
+                {% endif %}
             </select>
 
-            <label for="description">Description</label>
-            <textarea id="description" class="field" name="description" rows="6">{{ ticket.description|default('') }}</textarea>
+            <label for="description">{{ 'Description'|t }}</label>
+            <textarea id="description" class="field" name="description" rows="6">{{ values.description|default('') }}</textarea>
 
             <div class="form__row">
                 <div>
-                    <label for="priority">Priority</label>
+                    <label for="priority">{{ 'Priority'|t }}</label>
                     <select id="priority" class="field" name="priority">
                         {% for value in priorities %}
-                            <option value="{{ value }}"{{ ticket.priority|default('normal') == value ? ' selected' : '' }}>
-                                {{ { low: 'Low', normal: 'Normal', high: 'High', urgent: 'Urgent' }[value] }}
+                            <option value="{{ value }}"{{ values.priority|default('normal') == value ? ' selected' : '' }}>
+                                {{ ui.priority_label(value) }}
                             </option>
                         {% endfor %}
                     </select>
                 </div>
 
                 <div>
-                    <label for="assignee_id">Assignee</label>
+                    <label for="assignee_id">{{ 'Assignee'|t }}</label>
                     <select id="assignee_id" class="field" name="assignee_id">
-                        <option value="">Unassigned</option>
+                        <option value="">{{ 'Unassigned'|t }}</option>
                         {% for person in people %}
-                            <option value="{{ person.id }}"{{ ticket.assignee_id|default(0) == person.id ? ' selected' : '' }}>
+                            <option value="{{ person.id }}"{{ values.assignee_id|default(0) == person.id ? ' selected' : '' }}>
                                 {{ person.name }}
                             </option>
                         {% endfor %}
+                        {# Somebody deactivated since stays assigned — and visibly so —
+                           rather than being dropped by an unrelated edit. #}
+                        {% if editing and ticket.assignee_id and ticket.assignee_id not in people|column('id') %}
+                            <option value="{{ ticket.assignee_id }}"{{ values.assignee_id|default(0) == ticket.assignee_id ? ' selected' : '' }}>
+                                {{ ticket.assignee_name }} ({{ 'deactivated'|t }})
+                            </option>
+                        {% endif %}
                     </select>
                 </div>
 
                 <div>
-                    <label for="estimate">Estimate</label>
+                    <label for="estimate">{{ 'Estimate'|t }}</label>
                     <input id="estimate" class="field" type="text" name="estimate"
-                           value="{{ ticket.estimate_text is defined ? ticket.estimate_text : (ticket.estimate_minutes|default(0) ? ticket.estimate_minutes|duration : '') }}"
-                           placeholder="3h 30m">
+                           value="{{ values.estimate_text|default('') }}" placeholder="3h 30m">
                 </div>
             </div>
-            <p class="hint">An estimate reads like <code>3h</code>, <code>90m</code>, <code>1h 30m</code> or <code>1:30</code>. A bare number is minutes.</p>
+            <p class="hint">{{ 'An estimate reads like 3h, 90m, 1h 30m or 1:30. A bare number is minutes.'|t }}</p>
 
             {% if not editing %}
-                <label for="status">Start in</label>
+                <label for="status">{{ 'Start in'|t }}</label>
                 <select id="status" class="field" name="status">
                     {% for value in statuses %}
-                        <option value="{{ value }}"{{ ticket.status|default('backlog') == value ? ' selected' : '' }}>
-                            {{ { backlog: 'Backlog', todo: 'To do', in_progress: 'In progress', review: 'Review', done: 'Done' }[value] }}
+                        <option value="{{ value }}"{{ values.status|default('backlog') == value ? ' selected' : '' }}>
+                            {{ ui.status_label(value) }}
                         </option>
                     {% endfor %}
                 </select>
             {% endif %}
 
             <div class="form__actions">
-                <button class="button button--primary" type="submit">{{ editing ? 'Save' : 'Create ticket' }}</button>
-                <a class="button" href="{{ editing ? url('/tickets/' ~ ticket.id) : url('/tickets') }}">Cancel</a>
+                <button class="button button--primary" type="submit">{{ editing ? 'Save'|t : 'Create ticket'|t }}</button>
+                <a class="button" href="{{ editing ? url('/tickets/' ~ ticket.id) : url('/tickets') }}">{{ 'Cancel'|t }}</a>
             </div>
         </form>
     </section>

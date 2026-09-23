@@ -5,9 +5,10 @@ namespace CantoTrack\Controller;
 use CantoTrack\Core\Auth;
 use CantoTrack\Core\Controller;
 use CantoTrack\Core\Format;
-use CantoTrack\Core\Session;
+use CantoTrack\Core\ValidationError;
 use CantoTrack\Model\TicketRepository;
 use CantoTrack\Model\WorklogRepository;
+use CantoTrack\Service\WorklogService;
 
 /**
  * Logging time against a ticket, and editing what was logged.
@@ -24,42 +25,25 @@ class WorklogController extends Controller
     {
         Auth::require();
 
-        $ticket = (new TicketRepository())->find($ticketId);
-
-        if ($ticket === null) {
+        if ((new TicketRepository())->find($ticketId) === null) {
             $this->notFound(__('There is no such ticket.'));
         }
 
-        $minutes = $this->minutesFromForm();
-        $date = $this->dateFromForm();
-
-        $error = match (true) {
-            $minutes === false => 'The time should read like "2h", "45m", "1h 30m" or "1:30".',
-            $minutes !== null && $minutes <= 0 => 'Log something longer than nothing.',
-            $minutes === null => 'How long did it take?',
-            // A day's worth in one entry is normal; a week's worth is a typo,
-            // and "480" meaning minutes rather than hours is how it happens.
-            $minutes > 24 * 60 => 'That is more than a day. Log it as several entries.',
-            $date === null => 'That date does not look like a date.',
-            $date > date('Y-m-d') => 'Time cannot be logged against a day that has not happened.',
-            default => null,
-        };
-
-        if ($error !== null) {
-            Session::flash($error, 'danger');
+        try {
+            $logged = (new WorklogService())->log(
+                $ticketId,
+                (int) Auth::id(),
+                $this->input('time'),
+                $this->input('work_date'),
+                $this->input('note')
+            );
+        } catch (ValidationError $e) {
+            $this->flash($e->getMessage(), 'danger');
             $this->redirect('/tickets/' . $ticketId);
         }
 
-        (new WorklogRepository())->create(
-            $ticketId,
-            (int) Auth::id(),
-            (string) $date,
-            (int) $minutes,
-            (string) ($_POST['note'] ?? '')
-        );
-
-        Session::flash(Format::duration((int) $minutes) . ' logged on ' . Format::day((string) $date) . '.');
-        $this->redirect('/tickets/' . $ticketId);
+        $this->flash($this->saidBack($logged['minutes'], $this->input('work_date') ?: date('Y-m-d'), $logged['rounded']));
+        $this->back('/tickets/' . $ticketId);
     }
 
     public function update(int $id): void
@@ -67,17 +51,22 @@ class WorklogController extends Controller
         Auth::require();
 
         $worklog = $this->mineOr403($id);
-        $minutes = $this->minutesFromForm();
-        $date = $this->dateFromForm();
 
-        if ($minutes === false || $minutes === null || $minutes <= 0 || $minutes > 24 * 60 || $date === null) {
-            Session::flash('That did not look like a time and a date.', 'danger');
-            $this->redirect('/tickets/' . $worklog['ticket_id']);
+        try {
+            $changed = (new WorklogService())->change(
+                $worklog,
+                $this->input('time'),
+                $this->input('work_date'),
+                $this->input('note')
+            );
+        } catch (ValidationError $e) {
+            $this->flash($e->getMessage(), 'danger');
+            $this->back('/tickets/' . $worklog['ticket_id']);
         }
 
-        (new WorklogRepository())->update($id, (string) $date, (int) $minutes, (string) ($_POST['note'] ?? ''));
-
-        Session::flash('Worklog updated.');
+        $this->flash($changed['rounded']
+            ? __('Worklog updated, and rounded up to {minimum}.', ['minimum' => Format::duration($changed['minutes'])])
+            : __('Worklog updated.'));
         $this->back('/tickets/' . $worklog['ticket_id']);
     }
 
@@ -86,9 +75,9 @@ class WorklogController extends Controller
         Auth::require();
 
         $worklog = $this->mineOr403($id);
-        (new WorklogRepository())->delete($id);
+        (new WorklogService())->remove($worklog);
 
-        Session::flash('Worklog deleted.', 'warning');
+        $this->flash(__('Worklog deleted.'), 'warning');
         $this->back('/tickets/' . $worklog['ticket_id']);
     }
 
@@ -104,38 +93,19 @@ class WorklogController extends Controller
             $this->notFound(__('There is no such worklog.'));
         }
 
-        if ((int) $worklog['user_id'] !== (int) Auth::id() && !Auth::isAdmin()) {
+        if (!WorklogService::canChange($worklog, (int) Auth::id(), Auth::isAdmin())) {
             $this->forbidden(__('Those are somebody else’s hours.'));
         }
 
         return $worklog;
     }
 
-    /** What was typed into the time box, in minutes. False when it is unreadable. */
-    private function minutesFromForm(): int|false|null
+    private function saidBack(int $minutes, string $date, bool $rounded): string
     {
-        $given = trim((string) ($_POST['time'] ?? ''));
+        $params = ['duration' => Format::duration($minutes), 'day' => Format::day($date)];
 
-        if ($given === '') {
-            return null;
-        }
-
-        return Format::parseDuration($given) ?? false;
-    }
-
-    /** The day, defaulting to today — which is what it is nine times in ten. */
-    private function dateFromForm(): ?string
-    {
-        $given = trim((string) ($_POST['work_date'] ?? ''));
-
-        if ($given === '') {
-            return date('Y-m-d');
-        }
-
-        $date = \DateTimeImmutable::createFromFormat('Y-m-d', $given);
-
-        // createFromFormat accepts "2026-02-31" and rolls it into March, so the
-        // result is compared back against what was typed.
-        return ($date !== false && $date->format('Y-m-d') === $given) ? $given : null;
+        return $rounded
+            ? __('{duration} logged on {day} — rounded up, because that is the smallest slice logged here.', $params)
+            : __('{duration} logged on {day}.', $params);
     }
 }

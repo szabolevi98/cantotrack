@@ -38,6 +38,28 @@ set_error_handler(static function (int $level, string $message, string $file, in
 });
 
 /*
+ * A fatal error — a parse error in a file loaded late, memory running out — is
+ * neither of the two handlers above: PHP simply stops. Without this it stopped
+ * silently, with an empty 500 and nothing in the log, which is the one kind of
+ * failure that most needs writing down.
+ */
+register_shutdown_function(static function (): void {
+    $error = error_get_last();
+
+    if ($error === null || !in_array($error['type'], [E_ERROR, E_PARSE, E_CORE_ERROR, E_COMPILE_ERROR], true)) {
+        return;
+    }
+
+    Logger::error('Fatal: ' . $error['message'], ['file' => $error['file'], 'line' => $error['line']]);
+
+    if (!headers_sent()) {
+        http_response_code(500);
+        header('Content-Type: text/plain; charset=utf-8');
+        echo 'Something went wrong. It has been written to the log.';
+    }
+});
+
+/*
  * One place every failure is answered from. An HttpError is a request that
  * asked for something that is not there or not theirs — expected, and not
  * logged. Anything else is a fault, and goes to the log with where it happened.

@@ -20,31 +20,37 @@ class TicketRepository
 
     public const PRIORITIES = ['low', 'normal', 'high', 'urgent'];
 
+    /** A ticket name as people type it: CT-14. */
+    public const KEY_PATTERN = '/^([A-Z][A-Z0-9]{1,9})-(\d+)$/';
+
     private PDO $db;
 
-    public function __construct()
+    public function __construct(?PDO $db = null)
     {
-        $this->db = DatabaseConnection::get();
+        $this->db = $db ?? DatabaseConnection::get();
     }
 
-    /** What every list needs beside the ticket's own columns. */
+    /**
+     * What every list needs beside the ticket's own columns.
+     *
+     * The hours are a correlated subquery rather than a join on a grouped
+     * derived table. The derived table summed the whole worklog table for every
+     * query — one ticket's page included — and only then kept the one row it
+     * needed; the subquery asks the ticket index for exactly that ticket's rows.
+     */
     private const SELECT = 'SELECT t.*,
                    p.code AS project_code,
                    p.name AS project_name,
+                   p.is_archived AS project_archived,
                    e.title AS epic_title,
                    a.name AS assignee_name,
                    r.name AS reporter_name,
-                   COALESCE(w.logged_minutes, 0) AS logged_minutes
+                   (SELECT COALESCE(SUM(w.minutes), 0) FROM worklogs w WHERE w.ticket_id = t.id) AS logged_minutes
             FROM tickets t
             JOIN projects p ON p.id = t.project_id
             LEFT JOIN epics e ON e.id = t.epic_id
             LEFT JOIN users a ON a.id = t.assignee_id
-            LEFT JOIN users r ON r.id = t.reporter_id
-            LEFT JOIN (
-                SELECT ticket_id, SUM(minutes) AS logged_minutes
-                FROM worklogs
-                GROUP BY ticket_id
-            ) w ON w.ticket_id = t.id';
+            LEFT JOIN users r ON r.id = t.reporter_id';
 
     public function find(int $id): ?array
     {
@@ -54,12 +60,57 @@ class TicketRepository
         return $statement->fetch() ?: null;
     }
 
+    /** A ticket by the name people know it by, "CT-14". */
+    public function findByKey(string $key): ?array
+    {
+        if (preg_match(self::KEY_PATTERN, strtoupper(trim($key)), $m) !== 1) {
+            return null;
+        }
+
+        $statement = $this->db->prepare(self::SELECT . ' WHERE p.code = :code AND t.number = :number');
+        $statement->execute(['code' => $m[1], 'number' => (int) $m[2]]);
+
+        return $statement->fetch() ?: null;
+    }
+
     /**
-     * A filtered list. Every filter is optional, and the ones that are given are
-     * built into the statement as placeholders — never as text, so a project
-     * name with a quote in it stays a project name.
+     * A filtered list, one page of it. Every filter is optional, and the ones
+     * that are given are built into the statement as placeholders — never as
+     * text, so a project name with a quote in it stays a project name.
      */
-    public function search(array $filters = [], int $limit = 200): array
+    public function search(array $filters = [], int $limit = 50, int $offset = 0): array
+    {
+        [$where, $parameters] = $this->conditions($filters);
+
+        $sql = self::SELECT
+            . ($where === [] ? '' : ' WHERE ' . implode(' AND ', $where))
+            // Unfinished work first, then by priority, then the newest — which
+            // is the order somebody scanning the list is looking for.
+            . ' ORDER BY t.status = \'done\', FIELD(t.priority, \'urgent\', \'high\', \'normal\', \'low\'), t.id DESC'
+            . ' LIMIT ' . max(1, min($limit, 500)) . ' OFFSET ' . max(0, $offset);
+
+        $statement = $this->db->prepare($sql);
+        $statement->execute($parameters);
+
+        return $statement->fetchAll();
+    }
+
+    /** How many tickets the same filters find, for the pages under a list. */
+    public function count(array $filters = []): int
+    {
+        [$where, $parameters] = $this->conditions($filters);
+
+        $statement = $this->db->prepare(
+            'SELECT COUNT(*) FROM tickets t JOIN projects p ON p.id = t.project_id'
+            . ($where === [] ? '' : ' WHERE ' . implode(' AND ', $where))
+        );
+        $statement->execute($parameters);
+
+        return (int) $statement->fetchColumn();
+    }
+
+    /** @return array{0: list<string>, 1: array<string, mixed>} */
+    private function conditions(array $filters): array
     {
         $where = [];
         $parameters = [];
@@ -91,37 +142,61 @@ class TicketRepository
         }
 
         if (!empty($filters['q'])) {
-            $where[] = '(t.title LIKE :q OR t.description LIKE :q2 OR CONCAT(p.code, \'-\', t.number) LIKE :q3)';
-            // The same value three times under three names: with real prepared
-            // statements a placeholder may appear only once in a statement.
-            $parameters['q'] = '%' . $filters['q'] . '%';
-            $parameters['q2'] = '%' . $filters['q'] . '%';
-            $parameters['q3'] = '%' . $filters['q'] . '%';
+            $q = trim((string) $filters['q']);
+
+            if (preg_match(self::KEY_PATTERN, strtoupper($q), $m) === 1) {
+                // A ticket's own name finds that ticket and nothing that merely
+                // mentions it.
+                $where[] = '(p.code = :key_code AND t.number = :key_number)';
+                $parameters['key_code'] = $m[1];
+                $parameters['key_number'] = (int) $m[2];
+            } else {
+                $like = '%' . addcslashes($q, '%_\\') . '%';
+                $where[] = '(t.title LIKE :q OR t.description LIKE :q2)';
+                // The same value twice under two names: with real prepared
+                // statements a placeholder may appear only once in a statement.
+                $parameters['q'] = $like;
+                $parameters['q2'] = $like;
+            }
         }
 
-        $sql = self::SELECT
-            . ($where === [] ? '' : ' WHERE ' . implode(' AND ', $where))
-            // Unfinished work first, then by priority, then the newest — which
-            // is the order somebody scanning the list is looking for.
-            . ' ORDER BY t.status = \'done\', FIELD(t.priority, \'urgent\', \'high\', \'normal\', \'low\'), t.id DESC'
-            . ' LIMIT ' . max(1, min($limit, 500));
-
-        $statement = $this->db->prepare($sql);
-        $statement->execute($parameters);
-
-        return $statement->fetchAll();
+        return [$where, $parameters];
     }
 
-    /** A project's tickets grouped into the board's columns. */
-    public function board(int $projectId): array
+    /**
+     * A project's tickets grouped into the board's columns.
+     *
+     * Every unfinished ticket, however many — a board that quietly stops at
+     * some number is a board that hides work. The done column is the one that
+     * only ever grows, so it shows the most recently finished and says how many
+     * more there are.
+     *
+     * @return array{columns: array<string, list<array>>, more_done: int}
+     */
+    public function board(int $projectId, int $doneShown = 20): array
     {
-        $board = array_fill_keys(self::STATUSES, []);
+        $columns = array_fill_keys(self::STATUSES, []);
 
-        foreach ($this->search(['project_id' => $projectId], 500) as $ticket) {
-            $board[$ticket['status']][] = $ticket;
+        $open = $this->db->prepare(
+            self::SELECT . ' WHERE t.project_id = :project AND t.status <> \'done\'
+             ORDER BY FIELD(t.priority, \'urgent\', \'high\', \'normal\', \'low\'), t.id DESC'
+        );
+        $open->execute(['project' => $projectId]);
+
+        foreach ($open->fetchAll() as $ticket) {
+            $columns[$ticket['status']][] = $ticket;
         }
 
-        return $board;
+        $done = $this->db->prepare(
+            self::SELECT . ' WHERE t.project_id = :project AND t.status = \'done\'
+             ORDER BY t.closed_at DESC, t.id DESC LIMIT ' . max(1, $doneShown)
+        );
+        $done->execute(['project' => $projectId]);
+        $columns['done'] = $done->fetchAll();
+
+        $total = $this->countsByStatus($projectId)['done'];
+
+        return ['columns' => $columns, 'more_done' => max(0, $total - count($columns['done']))];
     }
 
     /**
@@ -133,7 +208,7 @@ class TicketRepository
      */
     public function create(array $data): int
     {
-        $projects = new ProjectRepository();
+        $projects = new ProjectRepository($this->db);
 
         $this->db->beginTransaction();
 
@@ -143,11 +218,13 @@ class TicketRepository
             $statement = $this->db->prepare(
                 'INSERT INTO tickets
                     (project_id, number, epic_id, title, description, status, priority,
-                     assignee_id, reporter_id, estimate_minutes)
+                     assignee_id, reporter_id, estimate_minutes, closed_at)
                  VALUES
                     (:project_id, :number, :epic_id, :title, :description, :status, :priority,
-                     :assignee_id, :reporter_id, :estimate_minutes)'
+                     :assignee_id, :reporter_id, :estimate_minutes, :closed_at)'
             );
+
+            $status = in_array($data['status'] ?? '', self::STATUSES, true) ? $data['status'] : 'backlog';
 
             $statement->execute([
                 'project_id' => (int) $data['project_id'],
@@ -155,11 +232,13 @@ class TicketRepository
                 'epic_id' => $data['epic_id'] ?: null,
                 'title' => trim((string) $data['title']),
                 'description' => trim((string) ($data['description'] ?? '')) ?: null,
-                'status' => in_array($data['status'] ?? '', self::STATUSES, true) ? $data['status'] : 'backlog',
+                'status' => $status,
                 'priority' => in_array($data['priority'] ?? '', self::PRIORITIES, true) ? $data['priority'] : 'normal',
                 'assignee_id' => $data['assignee_id'] ?: null,
                 'reporter_id' => $data['reporter_id'] ?: null,
                 'estimate_minutes' => $data['estimate_minutes'] ?: null,
+                // A ticket created straight into done was finished now.
+                'closed_at' => $status === 'done' ? date('Y-m-d H:i:s') : null,
             ]);
 
             $id = (int) $this->db->lastInsertId();
@@ -173,7 +252,14 @@ class TicketRepository
         }
     }
 
-    public function update(int $id, array $data): void
+    /**
+     * Saves the edit form — but only over the version the form was drawn from.
+     *
+     * Returns false when somebody else saved in between: the version no longer
+     * matches, no row is touched, and the caller says so instead of quietly
+     * undoing the other person's work.
+     */
+    public function update(int $id, array $data, int $expectedVersion): bool
     {
         $statement = $this->db->prepare(
             'UPDATE tickets SET
@@ -182,8 +268,9 @@ class TicketRepository
                 description = :description,
                 priority = :priority,
                 assignee_id = :assignee_id,
-                estimate_minutes = :estimate_minutes
-             WHERE id = :id'
+                estimate_minutes = :estimate_minutes,
+                version = version + 1
+             WHERE id = :id AND version = :version'
         );
 
         $statement->execute([
@@ -194,7 +281,10 @@ class TicketRepository
             'assignee_id' => $data['assignee_id'] ?: null,
             'estimate_minutes' => $data['estimate_minutes'] ?: null,
             'id' => $id,
+            'version' => $expectedVersion,
         ]);
+
+        return $statement->rowCount() === 1;
     }
 
     /**
@@ -222,6 +312,14 @@ class TicketRepository
     {
         $statement = $this->db->prepare('DELETE FROM tickets WHERE id = :id');
         $statement->execute(['id' => $id]);
+    }
+
+    public function hasWorklogs(int $id): bool
+    {
+        $statement = $this->db->prepare('SELECT EXISTS (SELECT 1 FROM worklogs WHERE ticket_id = :id)');
+        $statement->execute(['id' => $id]);
+
+        return (bool) $statement->fetchColumn();
     }
 
     /** What one person has open, newest first — the dashboard's main list. */

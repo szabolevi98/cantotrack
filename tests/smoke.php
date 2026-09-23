@@ -27,6 +27,12 @@ $baseUrl = rtrim((string) Config::get('app.base_url'), '/');
 $email = null;
 $password = null;
 
+// The sign-in limit is checked only when asked for: it costs six failed
+// sign-ins from this machine, and the limit per connection is thirty in a
+// quarter of an hour — five runs in a row and the real sign-in is refused too.
+// A fresh CI database runs it every time.
+$checkThrottle = in_array('--throttle', $argv ?? [], true);
+
 foreach ($argv ?? [] as $argument) {
     if (str_starts_with($argument, '--url=')) {
         $baseUrl = rtrim(substr($argument, strlen('--url=')), '/');
@@ -259,6 +265,96 @@ if ($email === null || $password === null) {
 
     $list = request($baseUrl . '/tickets?q=' . $code . '-1', [], $jar);
     check('the ticket can be found by its name', str_contains($list['body'], 'Smoke test ticket'));
+    check('and the list says how many it found', str_contains($list['body'], 'Showing 1–1 of 1'));
+
+    // ---------------------------------------------------------------------
+    // What a ticket may not be made with. Each of these used to be written
+    // as sent — the first as a foreign-key error and a 500.
+    // ---------------------------------------------------------------------
+    $ghost = request($baseUrl . '/tickets/create', [
+        '_token' => $token,
+        'project_id' => $projectId,
+        'title' => 'Assigned to nobody who exists',
+        'assignee_id' => 999999,
+    ], $jar);
+    check('an assignee that does not exist is refused, not a 500',
+        $ghost['status'] === 422 && str_contains($ghost['body'], 'no such active account'),
+        'status ' . $ghost['status']);
+
+    $otherCode = 'U' . random_int(100, 999);
+    $other = request($baseUrl . '/projects/create', [
+        '_token' => $token,
+        'code' => $otherCode,
+        'name' => 'Second smoke test project',
+    ], $jar);
+    preg_match('#/projects/(\d+)#', $other['headers'], $m);
+    $otherId = (int) ($m[1] ?? 0);
+
+    $otherEpic = request($baseUrl . '/projects/' . $otherId . '/epics/create', [
+        '_token' => $token,
+        'title' => 'An epic of the other project',
+    ], $jar);
+    preg_match('#/epics/(\d+)#', $otherEpic['headers'], $m);
+    $otherEpicId = (int) ($m[1] ?? 0);
+
+    $foreign = request($baseUrl . '/tickets/create', [
+        '_token' => $token,
+        'project_id' => $projectId,
+        'title' => 'In the wrong epic',
+        'epic_id' => $otherEpicId,
+    ], $jar);
+    check('an epic from another project is refused',
+        $foreign['status'] === 422 && str_contains($foreign['body'], 'not in this project'),
+        'status ' . $foreign['status']);
+
+    request($baseUrl . '/projects/' . $otherId, [
+        '_token' => $token,
+        'name' => 'Second smoke test project',
+        'is_archived' => '1',
+    ], $jar);
+    $archived = request($baseUrl . '/tickets/create', [
+        '_token' => $token,
+        'project_id' => $otherId,
+        'title' => 'Into the archive',
+    ], $jar);
+    check('an archived project takes no new tickets',
+        $archived['status'] === 422 && str_contains($archived['body'], 'archived'),
+        'status ' . $archived['status']);
+
+    $otherGone = request($baseUrl . '/projects/' . $otherId . '/delete', ['_token' => $token], $jar);
+    check('a project without hours can still be deleted', $otherGone['status'] === 302
+        && request($baseUrl . '/projects/' . $otherId, [], $jar)['status'] === 404);
+
+    // Two people editing the same ticket: the second save, made over the
+    // version the first one replaced, is refused rather than undoing it.
+    $editForm = request($baseUrl . '/tickets/' . $ticketId . '/edit', [], $jar);
+    preg_match('/name="version" value="(\d+)"/', $editForm['body'], $m);
+    $version = $m[1] ?? '';
+    check('the edit form carries the version it was drawn from', $version !== '');
+
+    $first = request($baseUrl . '/tickets/' . $ticketId, [
+        '_token' => $token,
+        'version' => $version,
+        'title' => 'Smoke test ticket',
+        'description' => 'The first person’s edit.',
+        'priority' => 'high',
+        'epic_id' => $epicId,
+    ], $jar);
+    check('the first save goes through', $first['status'] === 302, 'status ' . $first['status']);
+
+    $second = request($baseUrl . '/tickets/' . $ticketId, [
+        '_token' => $token,
+        'version' => $version,
+        'title' => 'Smoke test ticket',
+        'description' => 'The second person’s edit, made over the old version.',
+        'priority' => 'low',
+        'epic_id' => $epicId,
+    ], $jar);
+    check('the second save over the same version is refused',
+        $second['status'] === 409 && str_contains($second['body'], 'The first person’s edit.'),
+        'status ' . $second['status']);
+    check('and the first person’s edit is still what is saved',
+        str_contains(request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'], 'The first person’s edit.'));
 
     // ---------------------------------------------------------------------
     // The hours
@@ -334,9 +430,54 @@ if ($email === null || $password === null) {
     check('and the ticket total drops with it',
         !str_contains(request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'], '2h 15m'));
 
-    // Tidy up after itself: the project takes the epic and the ticket with it.
+    // The smallest slice: five minutes is stored as the configured minimum,
+    // and the person is told so rather than finding out at the end of the month.
+    $tiny = request($baseUrl . '/tickets/' . $ticketId . '/log', [
+        '_token' => $token,
+        'time' => '5m',
+        'work_date' => date('Y-m-d'),
+    ], $jar);
+    $afterTiny = request($baseUrl . '/tickets/' . $ticketId, [], $jar);
+    check('a sliver of time is rounded up to the minimum, and says so',
+        $tiny['status'] === 302 && str_contains($afterTiny['body'], 'rounded up'));
+
+    // An entry can be corrected in place, which it could not be before: the
+    // route existed and no form pointed at it.
+    preg_match('#action="[^"]*/worklogs/(\d+)"#', $afterTiny['body'], $m);
+    $editId = (int) ($m[1] ?? 0);
+    check('an entry of yours offers a correction form', $editId > 0);
+
+    $corrected = request($baseUrl . '/worklogs/' . $editId, [
+        '_token' => $token,
+        'time' => '2h',
+        'work_date' => date('Y-m-d'),
+        'note' => 'Corrected by tests/smoke.php.',
+        'back' => '/tickets/' . $ticketId,
+    ], $jar);
+    $afterCorrection = request($baseUrl . '/tickets/' . $ticketId, [], $jar);
+    check('and the correction is saved',
+        $corrected['status'] === 302 && str_contains($afterCorrection['body'], 'Corrected by tests/smoke.php.'));
+
+    // Hours are not deleted along with what they were logged against: they
+    // are what gets reported and invoiced.
+    request($baseUrl . '/tickets/' . $ticketId . '/delete', ['_token' => $token], $jar);
+    check('a ticket with hours on it cannot be deleted',
+        request($baseUrl . '/tickets/' . $ticketId, [], $jar)['status'] === 200);
+
+    request($baseUrl . '/projects/' . $projectId . '/delete', ['_token' => $token], $jar);
+    check('nor can a project with hours in it',
+        request($baseUrl . '/projects/' . $projectId, [], $jar)['status'] === 200);
+
+    // Tidy up after itself: the hours first, one by one — the slow way,
+    // deliberately — and then the project takes the epic and the ticket.
+    $page = request($baseUrl . '/tickets/' . $ticketId, [], $jar);
+    preg_match_all('#/worklogs/(\d+)/delete#', $page['body'], $all);
+    foreach (array_unique($all[1]) as $id) {
+        request($baseUrl . '/worklogs/' . $id . '/delete', ['_token' => $token], $jar);
+    }
+
     $removed = request($baseUrl . '/projects/' . $projectId . '/delete', ['_token' => $token], $jar);
-    check('the project can be deleted again', $removed['status'] === 302);
+    check('once the hours are gone, the project can be deleted', $removed['status'] === 302);
     check('and its ticket is gone with it',
         request($baseUrl . '/tickets/' . $ticketId, [], $jar)['status'] === 404);
 
@@ -363,6 +504,82 @@ if ($email === null || $password === null) {
         str_contains($afterAdd['body'], 'Hand this over') && str_contains($afterAdd['body'], $colleague));
     check('but not again on the next look',
         !str_contains(request($baseUrl . '/people', [], $jar)['body'], 'Hand this over'));
+
+    // The colleague, in a browser of their own, replaces the password the
+    // administrator read out with one only they know.
+    preg_match('#<code class="handover">([^<]+)</code>#', $afterAdd['body'], $m);
+    $handedOver = html_entity_decode($m[1] ?? '', ENT_QUOTES);
+    $theirJar = tempnam(sys_get_temp_dir(), 'ct-smoke-');
+
+    $theirLogin = request($baseUrl . '/login', [], $theirJar);
+    preg_match('/name="_token" value="([^"]+)"/', $theirLogin['body'], $m);
+    $theirToken = $m[1] ?? '';
+    $theirIn = request($baseUrl . '/login', [
+        '_token' => $theirToken,
+        'email' => $colleague,
+        'password' => $handedOver,
+    ], $theirJar);
+    check('the colleague can sign in with the password they were handed', $theirIn['status'] === 302);
+
+    $theirProfile = request($baseUrl . '/profile', [], $theirJar);
+    preg_match('/name="_token" value="([^"]+)"/', $theirProfile['body'], $m);
+    $theirToken = $m[1] ?? $theirToken;
+    check('and has a profile page of their own',
+        $theirProfile['status'] === 200 && str_contains($theirProfile['body'], $colleague));
+
+    $wrongCurrent = request($baseUrl . '/profile/password', [
+        '_token' => $theirToken,
+        'current_password' => 'not it',
+        'new_password' => 'correct horse battery staple',
+        'new_password_again' => 'correct horse battery staple',
+    ], $theirJar);
+    check('changing the password asks for the current one',
+        $wrongCurrent['status'] === 422 && str_contains($wrongCurrent['body'], 'not your current password'));
+
+    $changed = request($baseUrl . '/profile/password', [
+        '_token' => $theirToken,
+        'current_password' => $handedOver,
+        'new_password' => 'correct horse battery staple',
+        'new_password_again' => 'correct horse battery staple',
+    ], $theirJar);
+    check('and with it, the password is changed', $changed['status'] === 302);
+
+    request($baseUrl . '/logout', ['_token' => $theirToken], $theirJar);
+    $theirLogin = request($baseUrl . '/login', [], $theirJar);
+    preg_match('/name="_token" value="([^"]+)"/', $theirLogin['body'], $m);
+    $oldAgain = request($baseUrl . '/login', [
+        '_token' => $m[1] ?? '',
+        'email' => $colleague,
+        'password' => $handedOver,
+    ], $theirJar);
+    $newOne = request($baseUrl . '/login', [
+        '_token' => $m[1] ?? '',
+        'email' => $colleague,
+        'password' => 'correct horse battery staple',
+    ], $theirJar);
+    check('after which the old one no longer works and the new one does',
+        $oldAgain['status'] === 401 && $newOne['status'] === 302,
+        'old ' . $oldAgain['status'] . ', new ' . $newOne['status']);
+    @unlink($theirJar);
+
+    // The limit in front of the login form, on an address nobody has — so a
+    // run of this cannot lock a real account out.
+    if ($checkThrottle) {
+        $nobody = 'nobody-' . random_int(10000, 99999) . '@example.test';
+        $throttleJar = tempnam(sys_get_temp_dir(), 'ct-smoke-');
+        $page = request($baseUrl . '/login', [], $throttleJar);
+        preg_match('/name="_token" value="([^"]+)"/', $page['body'], $m);
+
+        for ($i = 0; $i < 5; $i++) {
+            request($baseUrl . '/login', ['_token' => $m[1] ?? '', 'email' => $nobody, 'password' => 'guess ' . $i], $throttleJar);
+        }
+
+        $sixth = request($baseUrl . '/login', ['_token' => $m[1] ?? '', 'email' => $nobody, 'password' => 'guess 6'], $throttleJar);
+        check('the sixth failed sign-in in a row is refused before it is tried',
+            $sixth['status'] === 429 && str_contains($sixth['body'], 'Too many failed attempts'),
+            'status ' . $sixth['status']);
+        @unlink($throttleJar);
+    }
 
     $duplicate = request($baseUrl . '/people/create', [
         '_token' => $token,
@@ -433,8 +650,11 @@ if ($email === null || $password === null) {
     // By id rather than by name: an earlier run of this script leaves a
     // deactivated colleague behind with the same name, and a check that reads
     // names would be answered by somebody else's leftovers.
+    // Inside the assignee list only: the project list on the same form has
+    // ids of its own, and project 31 is not person 31.
+    preg_match('#<select id="assignee_id".*?</select>#s', request($baseUrl . '/tickets/create', [], $jar)['body'], $m);
     check('a deactivated person is off the assignee list',
-        !str_contains(request($baseUrl . '/tickets/create', [], $jar)['body'], 'value="' . $colleagueId . '"'));
+        isset($m[0]) && !str_contains($m[0], 'value="' . $colleagueId . '"'));
 
     // A GET must not sign anybody out: an <img src=".../logout"> on any page
     // on the internet would otherwise do it.

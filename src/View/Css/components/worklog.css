@@ -171,3 +171,38 @@
         gap: 10px;
     }
 }
+
+/* An entry's own correction form, opened in place under its row. The row
+   wraps so the open form takes the full width beneath the entry it edits. */
+.log {
+    flex-wrap: wrap;
+}
+
+.log__edit summary {
+    list-style: none;
+}
+
+.log__edit summary::-webkit-details-marker {
+    display: none;
+}
+
+.log__edit[open] {
+    flex-basis: 100%;
+    order: 10;
+    padding-top: 10px;
+}
+
+.log-form--edit {
+    padding: 12px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-sm);
+    background: var(--ct-bg);
+}
+
+.link-button--text {
+    font-size: 0.82rem;
+}
+
+.link-button--text:hover {
+    color: var(--ct-primary);
+}

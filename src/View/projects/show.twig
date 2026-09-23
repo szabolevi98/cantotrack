@@ -81,6 +81,15 @@
                     {% else %}
                         <p class="board__empty">—</p>
                     {% endfor %}
+
+                    {% if status == 'done' and more_done > 0 %}
+                        {# The done column only ever grows, so it shows the latest
+                           and says how many more there are rather than drawing
+                           two years of finished work on every visit. #}
+                        <a class="board__more" href="{{ url('/tickets?project=' ~ project.id ~ '&status=done') }}">
+                            {{ plural('and {count} more', 'and {count} more', more_done) }}
+                        </a>
+                    {% endif %}
                 </div>
             </section>
         {% endfor %}

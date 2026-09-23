@@ -7,23 +7,31 @@
     nobody reports and everybody notices.
 #}
 
-{% macro status(value) %}
-    {% set labels = {
+{% macro status_label(value) %}
+    {%- set labels = {
         backlog: 'Backlog',
         todo: 'To do',
         in_progress: 'In progress',
         review: 'Review',
         done: 'Done'
-    } %}
-    <span class="badge badge--{{ value|replace({'_': '-'}) }}">{{ labels[value]|default(value) }}</span>
+    } -%}
+    {{- (labels[value]|default(value))|t -}}
+{% endmacro %}
+
+{% macro status(value) %}
+    <span class="badge badge--{{ value|replace({'_': '-'}) }}">{{ _self.status_label(value) }}</span>
+{% endmacro %}
+
+{% macro priority_label(value) %}
+    {%- set labels = { low: 'Low', normal: 'Normal', high: 'High', urgent: 'Urgent' } -%}
+    {{- (labels[value]|default(value))|t -}}
 {% endmacro %}
 
 {% macro priority(value) %}
-    {% set labels = { low: 'Low', normal: 'Normal', high: 'High', urgent: 'Urgent' } %}
     {# Normal is the priority most tickets have; drawing a pill for it would put
        a label on every row that says nothing. #}
     {% if value != 'normal' %}
-        <span class="badge badge--priority badge--{{ value }}">{{ labels[value]|default(value) }}</span>
+        <span class="badge badge--priority badge--{{ value }}">{{ _self.priority_label(value) }}</span>
     {% endif %}
 {% endmacro %}
 
@@ -35,7 +43,26 @@
     {% if name %}
         <span class="person"><span class="person__mark">{{ name|initials }}</span>{{ name }}</span>
     {% else %}
-        <span class="muted">Unassigned</span>
+        <span class="muted">{{ 'Unassigned'|t }}</span>
+    {% endif %}
+{% endmacro %}
+
+{#
+    Page links under a list. `query` is the list's query string without the
+    page, so every link keeps the filters it was drawn under.
+#}
+{% macro pages(base, query, page, pages) %}
+    {% if pages > 1 %}
+        {% set joiner = query ? '?' ~ query ~ '&' : '?' %}
+        <nav class="pager" aria-label="{{ 'Pages'|t }}">
+            {% if page > 1 %}
+                <a class="button button--small" href="{{ url(base ~ joiner ~ 'page=' ~ (page - 1)) }}" rel="prev">← {{ 'Previous'|t }}</a>
+            {% endif %}
+            <span class="pager__where">{{ 'Page {page} of {pages}'|t({page: page, pages: pages}) }}</span>
+            {% if page < pages %}
+                <a class="button button--small" href="{{ url(base ~ joiner ~ 'page=' ~ (page + 1)) }}" rel="next">{{ 'Next'|t }} →</a>
+            {% endif %}
+        </nav>
     {% endif %}
 {% endmacro %}
 
@@ -49,11 +76,9 @@
         <input type="hidden" name="_token" value="{{ csrf_token }}">
         <input type="hidden" name="back" value="{{ back }}">
         <select class="field field--inline move__select" name="status" data-autosubmit
-                aria-label="Status of {{ ticket.project_code }}-{{ ticket.number }}">
+                aria-label="{{ 'Status of {key}'|t({key: ticket.project_code ~ '-' ~ ticket.number}) }}">
             {% for value in statuses %}
-                <option value="{{ value }}"{{ ticket.status == value ? ' selected' : '' }}>
-                    {{ { backlog: 'Backlog', todo: 'To do', in_progress: 'In progress', review: 'Review', done: 'Done' }[value] }}
-                </option>
+                <option value="{{ value }}"{{ ticket.status == value ? ' selected' : '' }}>{{ _self.status_label(value) }}</option>
             {% endfor %}
         </select>
         {# Without JavaScript the select changes nothing on its own, so the form
@@ -61,4 +86,70 @@
            keyboard has changed the select — see data-autosubmit in core.js. #}
         <button class="button button--small autosubmit__button" type="submit">{{ 'Move'|t }}</button>
     </form>
+{% endmacro %}
+
+{#
+    One entry of hours, on a ticket's page or on a timesheet — with the two
+    things its owner can do to it: correct it, or take it out.
+
+    The correction opens in place. Entries used to be deletable but not
+    editable (the route existed; no form ever pointed at it), so a typo in
+    the duration meant deleting the entry and typing it all again.
+
+    `context` is 'ticket' (the row names who and when) or 'timesheet' (it
+    names the ticket; the day is the section it sits in).
+#}
+{% macro log_entry(entry, back, context) %}
+    <li class="log">
+        <div class="log__what">
+            {% if context == 'timesheet' %}
+                <a class="ticket-key" href="{{ url('/tickets/' ~ entry.ticket_id) }}">{{ entry.project_code }}-{{ entry.ticket_number }}</a>
+                <a href="{{ url('/tickets/' ~ entry.ticket_id) }}">{{ entry.ticket_title }}</a>
+            {% else %}
+                <strong>{{ entry.user_name }}</strong>
+                <span class="muted">{{ entry.work_date|day }}</span>
+            {% endif %}
+            {% if entry.note %}<span class="log__note">{{ entry.note }}</span>{% endif %}
+        </div>
+
+        <span class="log__time">{{ entry.minutes|duration }}</span>
+
+        {% if entry.user_id == current_user.id or is_admin %}
+            <form class="log__delete" method="post" action="{{ url('/worklogs/' ~ entry.id ~ '/delete') }}"
+                  data-confirm="{{ 'Delete this {duration} entry?'|t({duration: entry.minutes|duration}) }}">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <input type="hidden" name="back" value="{{ back }}">
+                <button class="link-button" type="submit" title="{{ 'Delete this entry'|t }}"
+                        aria-label="{{ 'Delete this entry'|t }}">×</button>
+            </form>
+
+            <details class="log__edit">
+                <summary class="link-button link-button--text">{{ 'Edit'|t }}</summary>
+                <form class="log-form log-form--edit" method="post" action="{{ url('/worklogs/' ~ entry.id) }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="back" value="{{ back }}">
+
+                    <div>
+                        <label for="time-{{ entry.id }}">{{ 'How long'|t }}</label>
+                        <input id="time-{{ entry.id }}" class="field" type="text" name="time"
+                               value="{{ entry.minutes|duration }}" required>
+                    </div>
+
+                    <div>
+                        <label for="day-{{ entry.id }}">{{ 'Which day'|t }}</label>
+                        <input id="day-{{ entry.id }}" class="field" type="date" name="work_date"
+                               value="{{ entry.work_date }}" max="{{ 'now'|date('Y-m-d') }}">
+                    </div>
+
+                    <div class="log-form__note">
+                        <label for="note-{{ entry.id }}">{{ 'What you did'|t }}</label>
+                        <input id="note-{{ entry.id }}" class="field" type="text" name="note" maxlength="500"
+                               value="{{ entry.note }}">
+                    </div>
+
+                    <button class="button button--primary" type="submit">{{ 'Save'|t }}</button>
+                </form>
+            </details>
+        {% endif %}
+    </li>
 {% endmacro %}

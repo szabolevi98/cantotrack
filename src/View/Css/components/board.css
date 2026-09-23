@@ -111,3 +111,11 @@
     color: var(--ct-muted);
     font-size: 0.78rem;
 }
+
+/* "And 34 more": the done column shows the latest and links to the rest. */
+.board__more {
+    padding: 6px 0;
+    color: var(--ct-muted);
+    font-size: 0.82rem;
+    text-align: center;
+}

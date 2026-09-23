@@ -68,17 +68,36 @@ deploy with `git pull`.
   is rarely the day it is typed in. Durations are written the way people say
   them: `1h 30m`, `90m`, `1.5h`, `1:30` or `1d 2h`. The remaining estimate goes
   down as time is logged, and a timer turns a running stretch into an entry.
-- **The week**, day by day or as a grid of tickets by days that can be typed
-  straight into. Each day is measured against the person's own working week,
-  and a public holiday or a day away is not a short day — it says what it is.
+  **Log time** in the top bar (or `l`) logs on any ticket from any page, with
+  starred and recently worked-on tickets offered first.
+- **The week**, day by day, as a grid of tickets by days that can be typed
+  straight into, or as a calendar of the hours: entries sit where they started,
+  and dragging over an empty stretch logs it. Each day is measured against the
+  person's own working week, and a public holiday or a day away is not a short
+  day — it says what it is. Last week's tickets come back to the grid in one
+  click.
+- **One's own calendar**, read from its private iCal address (Google, Outlook
+  or anything else that publishes one): the week's meetings show up on the
+  calendar, and a click turns one into an entry.
+- **Work types** — development, design, a meeting — set by an administrator,
+  chosen per entry, and a way to split the reports.
+- **The team's week** on one page, every day of every person against their own
+  week, and **the missing hours**: who logged less than their working days over
+  a stretch, and by how much.
+- **Planning**: hours a day on a ticket or a project for a stretch of days, next
+  to what each person can work and what they have logged since.
 - **Handing a week in**: a handed-in week's hours stop changing until an
   administrator approves it or sends it back with a reason. A lock date closes
   everything before it — for the month that has been invoiced.
 - **Billable or not**, by project default or per entry, with clients on the
-  projects; **reports** by project, person, client, ticket or day, exported as
+  projects; **reports** by project, person, client, ticket, work type or day, exported as
   CSV (safe to open in Excel: formulas are neutralised) or as a real `.xlsx`.
 
 ![The timesheet: a week, day by day, measured against the person's own week](docs/timesheet.png)
+
+![The week as a calendar: entries where they started, meetings from one's own calendar beside them](docs/calendar.png)
+
+![Planning: the hours ahead, against what each person can work](docs/planning.png)
 
 ![Weeks handed in and waiting for approval](docs/approvals.png)
 

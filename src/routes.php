@@ -37,6 +37,7 @@ use CantoTrack\Controller\TimesheetController;
 use CantoTrack\Controller\TwoFactorController;
 use CantoTrack\Controller\WebhookController;
 use CantoTrack\Controller\WorklogController;
+use CantoTrack\Controller\WorkTypeController;
 
 // ---------------------------------------------------------------------------
 // Signing in and out
@@ -200,6 +201,10 @@ $router->post('/settings/lock', static fn() => (new SettingsController())->lock(
 $router->post('/settings/holidays', static fn() => (new SettingsController())->addHoliday());
 $router->post('/settings/holidays/national', static fn() => (new SettingsController())->addNational());
 $router->post('/settings/holidays/delete', static fn() => (new SettingsController())->removeHoliday());
+
+$router->get('/settings/work-types', static fn() => (new WorkTypeController())->index());
+$router->post('/settings/work-types', static fn() => (new WorkTypeController())->create());
+$router->post('/settings/work-types/{id}', static fn($id) => (new WorkTypeController())->update((int) $id));
 
 $router->get('/settings/webhooks', static fn() => (new WebhookController())->index());
 $router->post('/settings/webhooks', static fn() => (new WebhookController())->create());

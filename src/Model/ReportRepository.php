@@ -23,6 +23,7 @@ class ReportRepository
         'client' => ['c.id', "COALESCE(c.name, '')"],
         'ticket' => ['t.id', "CONCAT(p.code, '-', t.number, ' ', t.title)"],
         'day' => ['w.work_date', 'w.work_date'],
+        'type' => ['wt.id', "COALESCE(wt.name, '')"],
     ];
 
     private PDO $db;
@@ -96,7 +97,7 @@ class ReportRepository
         $statement = $this->db->prepare(
             'SELECT w.work_date, u.name AS person, p.code AS project_code, p.name AS project_name,
                     c.name AS client, CONCAT(p.code, \'-\', t.number) AS ticket_key, t.title AS ticket_title,
-                    w.minutes, w.billable, w.note
+                    w.minutes, w.billable, w.note, w.started_at, wt.name AS work_type
              ' . self::FROM . ' WHERE ' . $where . '
              ORDER BY w.work_date, u.name, w.id'
         );
@@ -109,7 +110,8 @@ class ReportRepository
              JOIN tickets t ON t.id = w.ticket_id
              JOIN projects p ON p.id = t.project_id
              LEFT JOIN clients c ON c.id = p.client_id
-             JOIN users u ON u.id = w.user_id';
+             JOIN users u ON u.id = w.user_id
+             LEFT JOIN work_types wt ON wt.id = w.work_type_id';
 
     /** @return array{0: string, 1: array<string, mixed>} */
     private function conditions(array $filters): array
@@ -123,7 +125,7 @@ class ReportRepository
         }
         $parameters = ['from' => $filters['from'], 'to' => $filters['to']];
 
-        foreach (['project_id' => 'p.id', 'client_id' => 'p.client_id', 'user_id' => 'w.user_id'] as $key => $column) {
+        foreach (['project_id' => 'p.id', 'client_id' => 'p.client_id', 'user_id' => 'w.user_id', 'work_type_id' => 'w.work_type_id'] as $key => $column) {
             if (!empty($filters[$key])) {
                 $where[] = $column . ' = :' . $key;
                 $parameters[$key] = (int) $filters[$key];

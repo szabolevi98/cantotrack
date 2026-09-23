@@ -222,7 +222,8 @@ class ApiController extends Controller
             isset($input['note']) ? (string) $input['note'] : null,
             (string) ($input['remaining'] ?? ''),
             isset($input['billable']) ? (bool) $input['billable'] : null,
-            (string) ($input['start'] ?? '')
+            (string) ($input['start'] ?? ''),
+            (string) ($input['work_type'] ?? '')
         );
 
         $this->json(['data' => $this->worklogData((array) (new WorklogRepository())->find($logged['id'])) + ['rounded' => $logged['rounded']]], 201);
@@ -399,6 +400,7 @@ class ApiController extends Controller
             'date' => $worklog['work_date'],
             'start' => $worklog['started_at'] === null ? null : substr((string) $worklog['started_at'], 0, 5),
             'minutes' => (int) $worklog['minutes'],
+            'work_type' => $worklog['work_type_name'] ?? null,
             'note' => $worklog['note'],
             'billable' => (int) ($worklog['billable'] ?? 1) === 1,
             'created_at' => $worklog['created_at'] ?? null,

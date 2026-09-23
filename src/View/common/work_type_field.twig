@@ -1,0 +1,16 @@
+{#
+    The work type of an entry, where the administrators have made any: `id`
+    for the field, `current` for the one it has.
+#}
+{%- set types = work_types() -%}
+{%- if types is not empty %}
+    <div>
+        <label for="{{ id }}">{{ 'Work type'|t }}</label>
+        <select id="{{ id }}" class="field" name="work_type">
+            <option value="">{{ 'None'|t }}</option>
+            {% for type in types %}
+                <option value="{{ type.id }}"{{ current|default(null) == type.id ? ' selected' : '' }}>{{ type.name }}</option>
+            {% endfor %}
+        </select>
+    </div>
+{%- endif %}

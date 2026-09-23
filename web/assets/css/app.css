@@ -2544,6 +2544,7 @@ a.label:hover {
 .bi-translate::before { content: "\f658"; }
 .bi-check2::before { content: "\f272"; }
 .bi-stopwatch::before { content: "\f597"; }
+.bi-tags::before { content: "\f5b2"; }
 
 /*
  * The bar along the top of the content: the light/dark switch, the keyboard
@@ -3486,6 +3487,28 @@ kbd {
     border-radius: 4px;
     margin-left: 6px;
     vertical-align: -2px;
+}
+
+/* The kind of work, on an entry. */
+.tag--type {
+    background: var(--ct-violet-soft);
+    color: var(--ct-violet);
+}
+
+.calendar__type {
+    color: var(--ct-violet);
+    font-size: 0.7rem;
+}
+
+.work-type-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.work-type-row .field--inline {
+    width: 16rem;
 }
 
 /* The reports page: quick links to the last months, and each row's share. */

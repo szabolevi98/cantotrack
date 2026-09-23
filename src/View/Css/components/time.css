@@ -299,3 +299,25 @@
     margin-left: 6px;
     vertical-align: -2px;
 }
+
+/* The kind of work, on an entry. */
+.tag--type {
+    background: var(--ct-violet-soft);
+    color: var(--ct-violet);
+}
+
+.calendar__type {
+    color: var(--ct-violet);
+    font-size: 0.7rem;
+}
+
+.work-type-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+}
+
+.work-type-row .field--inline {
+    width: 16rem;
+}

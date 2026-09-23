@@ -378,6 +378,7 @@ $entries = [
     [$julia, 'copy', -5, 240, null],
     [$julia, 'timesheet', -3, 90, 'Reviewed the week view.'],
     // This week
+    [$me, 'approval', 0, 30, 'Meeting: planning the sprint.'],
     [$me, 'timesheet', 0, 165, 'Holidays and days away expect nothing.'],
     [$me, 'approval', 0, 120, 'Handing a week in.'],
     [$me, 'approval', 1, 210, 'Approvals page, and the lock date.'],
@@ -394,6 +395,29 @@ $entries = [
     [$julia, 'copy', 0, 360, 'Pages five to eight.'],
     [$julia, 'copy', 2, 240, null],
 ];
+
+// The kinds of work, and which one each ticket's hours mostly are.
+$types = new CantoTrack\Model\WorkTypeRepository();
+$typeIds = [];
+foreach (['Development', 'Design', 'Content', 'Review', 'Meeting'] as $name) {
+    $existing = $types->resolve($name);
+    $typeIds[$name] = $existing === null ? $types->create($name) : (int) $existing['id'];
+}
+$kindOf = static function (string $ticket, ?string $note) use ($typeIds): int {
+    if ($note !== null && preg_match('/^Review|reviewed/i', $note) === 1) {
+        return $typeIds['Review'];
+    }
+
+    if ($note !== null && str_starts_with($note, 'Meeting')) {
+        return $typeIds['Meeting'];
+    }
+
+    return match ($ticket) {
+        'copy', 'photos' => $typeIds['Content'],
+        'contrast', 'dark', 'mobile', 'keyboard', 'templates' => $typeIds['Design'],
+        default => $typeIds['Development'],
+    };
+};
 
 $logged = 0;
 
@@ -418,7 +442,7 @@ foreach ($entries as [$userId, $ticket, $offset, $minutes, $note]) {
     }
     $clock[$userId . $date] = $at + $minutes + 15;
     $start = ($logged / 15) % 5 === 3 || $at + $minutes > 22 * 60 ? null : sprintf('%02d:%02d:00', intdiv($at, 60), $at % 60);
-    $worklogs->create($made[$ticket], $userId, $date, $minutes, $note, (int) ($row['project_billable'] ?? 1) === 1, $start);
+    $worklogs->create($made[$ticket], $userId, $date, $minutes, $note, (int) ($row['project_billable'] ?? 1) === 1, $start, $kindOf($ticket, $note));
     $logged += $minutes;
 }
 

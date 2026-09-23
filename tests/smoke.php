@@ -832,6 +832,9 @@ if ($email === null || $password === null) {
     @unlink($sheetFile);
     check('and as a spreadsheet', $xlsx['status'] === 200 && str_contains($sheet, $code . '-1'));
 
+    check('the work types answer', str_contains(request($baseUrl . '/settings/work-types', [], $jar)['body'], 'Add a work type'));
+    check('and the reports add up by them', request($baseUrl . '/reports?group=type', [], $jar)['status'] === 200);
+
     $teamWeek = request($baseUrl . '/timesheet/team', [], $jar);
     check('the team’s week answers, a row a person', $teamWeek['status'] === 200 && str_contains($teamWeek['body'], 'team-week__cell'));
 

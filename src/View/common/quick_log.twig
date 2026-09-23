@@ -36,8 +36,13 @@
             </div>
         </div>
 
-        <label for="quick-note">{{ 'What you did'|t }}</label>
-        <input id="quick-note" class="field" type="text" name="note" maxlength="500" placeholder="{{ 'Optional'|t }}">
+        <div class="form__row">
+            <div>
+                <label for="quick-note">{{ 'What you did'|t }}</label>
+                <input id="quick-note" class="field" type="text" name="note" maxlength="500" placeholder="{{ 'Optional'|t }}">
+            </div>
+            {% include 'common/work_type_field.twig' with {id: 'quick-type'} %}
+        </div>
 
         <div class="form__row">
             <div>

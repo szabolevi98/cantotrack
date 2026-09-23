@@ -206,6 +206,7 @@
                                 <span class="calendar__when">{{ '%02d:%02d'|format(block.start // 60, block.start % 60) }}–{{ '%02d:%02d'|format(block.end // 60, block.end % 60) }} · {{ entry.minutes|duration }}</span>
                                 <strong>{{ entry.project_code }}-{{ entry.ticket_number }}</strong>
                                 <span class="calendar__title">{{ entry.ticket_title }}</span>
+                                {% if entry.work_type_name|default(null) %}<span class="calendar__type">{{ entry.work_type_name }}</span>{% endif %}
                             </a>
                         {% endfor %}
                     </div>

@@ -43,6 +43,7 @@ class ReportController extends Controller
                 'project' => $filters['project_id'],
                 'client' => $filters['client_id'],
                 'person' => $filters['user_id'],
+                'type' => $filters['work_type_id'],
                 'billable' => $filters['billable'],
             ])),
             'months' => $this->months(),
@@ -64,7 +65,7 @@ class ReportController extends Controller
 
         $headers = [
             __('Date'), __('Person'), __('Project'), __('Client'), __('Ticket'), __('Title'),
-            __('Minutes'), __('Hours'), __('Billable'), __('Note'),
+            __('Minutes'), __('Hours'), __('Billable'), __('Work type'), __('Started at'), __('Note'),
         ];
 
         if ($format === 'xlsx') {
@@ -78,6 +79,8 @@ class ReportController extends Controller
                 (int) $r['minutes'],
                 round((int) $r['minutes'] / 60, 2),
                 (int) $r['billable'] === 1 ? __('yes') : __('no'),
+                (string) ($r['work_type'] ?? ''),
+                $r['started_at'] === null ? '' : substr((string) $r['started_at'], 0, 5),
                 (string) ($r['note'] ?? ''),
             ], $rows));
 
@@ -116,6 +119,8 @@ class ReportController extends Controller
                 (int) $r['minutes'],
                 Format::hours((int) $r['minutes']),
                 (int) $r['billable'] === 1 ? 'yes' : 'no',
+                self::neutral((string) ($r['work_type'] ?? '')),
+                $r['started_at'] === null ? '' : substr((string) $r['started_at'], 0, 5),
                 self::neutral((string) ($r['note'] ?? '')),
             ], ',', '"', '');
         }
@@ -149,6 +154,7 @@ class ReportController extends Controller
             'project_id' => $this->idQuery('project'),
             'client_id' => $this->idQuery('client'),
             'user_id' => $this->idQuery('person'),
+            'work_type_id' => $this->idQuery('type'),
             'billable' => in_array($_GET['billable'] ?? '', ['yes', 'no'], true) ? $_GET['billable'] : null,
         ];
     }

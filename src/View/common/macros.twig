@@ -128,6 +128,7 @@
                 <strong>{{ entry.user_name }}</strong>
                 <span class="muted">{{ entry.work_date|day }}</span>
             {% endif %}
+            {% if entry.work_type_name|default(null) %}<span class="tag tag--type">{{ entry.work_type_name }}</span>{% endif %}
             {% if entry.note %}<span class="log__note">{{ entry.note }}</span>{% endif %}
             {% if entry.billable is defined and not entry.billable and entry.project_billable|default(1) %}<span class="tag" title="{{ 'Not billed'|t }}">{{ 'not billed'|t }}</span>{% endif %}
         </div>
@@ -160,6 +161,8 @@
                         <input id="day-{{ entry.id }}" class="field" type="date" name="work_date"
                                value="{{ entry.work_date }}" max="{{ 'now'|date('Y-m-d') }}">
                     </div>
+
+                    {% include 'common/work_type_field.twig' with {id: 'type-' ~ entry.id, current: entry.work_type_id|default(null)} %}
 
                     <div>
                         <label for="start-{{ entry.id }}">{{ 'Started at'|t }}</label>

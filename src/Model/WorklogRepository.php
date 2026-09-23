@@ -31,11 +31,13 @@ class WorklogRepository
                    p.code AS project_code,
                    p.name AS project_name,
                    p.billable_default AS project_billable,
-                   u.name AS user_name
+                   u.name AS user_name,
+                   wt.name AS work_type_name
             FROM worklogs w
             JOIN tickets t ON t.id = w.ticket_id
             JOIN projects p ON p.id = t.project_id
-            JOIN users u ON u.id = w.user_id';
+            JOIN users u ON u.id = w.user_id
+            LEFT JOIN work_types wt ON wt.id = w.work_type_id';
 
     public function find(int $id): ?array
     {
@@ -130,11 +132,11 @@ class WorklogRepository
         return (int) $statement->fetchColumn();
     }
 
-    public function create(int $ticketId, int $userId, string $workDate, int $minutes, ?string $note, bool $billable = true, ?string $startedAt = null): int
+    public function create(int $ticketId, int $userId, string $workDate, int $minutes, ?string $note, bool $billable = true, ?string $startedAt = null, ?int $workTypeId = null): int
     {
         $statement = $this->db->prepare(
-            'INSERT INTO worklogs (ticket_id, user_id, work_date, started_at, minutes, billable, note)
-             VALUES (:ticket, :user, :work_date, :started_at, :minutes, :billable, :note)'
+            'INSERT INTO worklogs (ticket_id, user_id, work_date, started_at, minutes, billable, work_type_id, note)
+             VALUES (:ticket, :user, :work_date, :started_at, :minutes, :billable, :work_type, :note)'
         );
 
         $statement->execute([
@@ -144,6 +146,7 @@ class WorklogRepository
             'started_at' => $startedAt,
             'minutes' => $minutes,
             'billable' => $billable ? 1 : 0,
+            'work_type' => $workTypeId,
             'note' => trim((string) $note) ?: null,
         ]);
 
@@ -154,6 +157,12 @@ class WorklogRepository
     {
         $this->db->prepare('UPDATE worklogs SET billable = :billable WHERE id = :id')
             ->execute(['billable' => $billable ? 1 : 0, 'id' => $id]);
+    }
+
+    public function setWorkType(int $id, ?int $workTypeId): void
+    {
+        $this->db->prepare('UPDATE worklogs SET work_type_id = :type WHERE id = :id')
+            ->execute(['type' => $workTypeId, 'id' => $id]);
     }
 
     /** Sets, moves or clears when an entry started. */

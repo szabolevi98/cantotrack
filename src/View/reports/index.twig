@@ -46,6 +46,16 @@
             {% endfor %}
         </select>
 
+        {% set types = work_types() %}
+        {% if types is not empty %}
+            <select class="field field--inline" name="type" aria-label="{{ 'Work type'|t }}">
+                <option value="">{{ 'Every kind of work'|t }}</option>
+                {% for type in types %}
+                    <option value="{{ type.id }}"{{ filters.work_type_id == type.id ? ' selected' : '' }}>{{ type.name }}</option>
+                {% endfor %}
+            </select>
+        {% endif %}
+
         <select class="field field--inline" name="billable" aria-label="{{ 'Billable'|t }}">
             <option value="">{{ 'Billed and not'|t }}</option>
             <option value="yes"{{ filters.billable == 'yes' ? ' selected' : '' }}>{{ 'Billable only'|t }}</option>
@@ -53,7 +63,7 @@
         </select>
 
         <select class="field field--inline" name="group" aria-label="{{ 'Add up by'|t }}">
-            {% for value, label in {project: 'By project', person: 'By person', client: 'By client', ticket: 'By ticket', day: 'By day'} %}
+            {% for value, label in {project: 'By project', person: 'By person', client: 'By client', ticket: 'By ticket', day: 'By day', type: 'By work type'} %}
                 <option value="{{ value }}"{{ group == value ? ' selected' : '' }}>{{ label|t }}</option>
             {% endfor %}
         </select>
@@ -87,7 +97,7 @@
             <table class="table">
                 <thead>
                 <tr>
-                    <th>{{ {project: 'Project', person: 'Person', client: 'Client', ticket: 'Ticket', day: 'Day'}[group]|t }}</th>
+                    <th>{{ {project: 'Project', person: 'Person', client: 'Client', ticket: 'Ticket', day: 'Day', type: 'Work type'}[group]|t }}</th>
                     <th class="table__number">{{ 'Entries'|t }}</th>
                     <th class="table__number">{{ 'Billable'|t }}</th>
                     <th class="table__number">{{ 'Logged'|t }}</th>

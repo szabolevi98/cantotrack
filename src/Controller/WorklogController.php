@@ -38,7 +38,8 @@ class WorklogController extends Controller
                 $this->input('note'),
                 $this->input('remaining'),
                 $this->billable(),
-                $this->input('started_at')
+                $this->input('started_at'),
+                $this->input('work_type')
             );
         } catch (ValidationError $e) {
             $this->flash($e->getMessage(), 'danger');
@@ -74,7 +75,8 @@ class WorklogController extends Controller
                 $this->input('note'),
                 $this->input('remaining'),
                 $this->billable(),
-                $this->input('started_at')
+                $this->input('started_at'),
+                $this->input('work_type')
             );
         } catch (ValidationError $e) {
             $this->flash($ticket['project_code'] . '-' . $ticket['number'] . ': ' . $e->getMessage(), 'danger');
@@ -130,7 +132,8 @@ class WorklogController extends Controller
                 $this->input('work_date'),
                 $this->input('note'),
                 $this->billable(),
-                isset($_POST['started_at']) ? $this->input('started_at') : null
+                isset($_POST['started_at']) ? $this->input('started_at') : null,
+                isset($_POST['work_type']) ? $this->input('work_type') : null
             );
         } catch (ValidationError $e) {
             $this->flash($e->getMessage(), 'danger');

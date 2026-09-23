@@ -27,11 +27,13 @@ class WorklogService
     private TicketRepository $tickets;
     private Activity $activity;
     private Calendar $calendar;
+    private \CantoTrack\Model\WorkTypeRepository $workTypes;
 
     public function __construct(?PDO $db = null)
     {
         $db ??= DatabaseConnection::get();
 
+        $this->workTypes = new \CantoTrack\Model\WorkTypeRepository($db);
         $this->worklogs = new WorklogRepository($db);
         $this->tickets = new TicketRepository($db);
         $this->activity = new Activity($db);
@@ -53,7 +55,8 @@ class WorklogService
         ?string $note,
         string $remaining = '',
         ?bool $billable = null,
-        string $start = ''
+        string $start = '',
+        string $workType = ''
     ): array {
         $ticket = $this->tickets->find($ticketId);
 
@@ -69,7 +72,7 @@ class WorklogService
         // Unless the entry says, it is what its project's hours usually are.
         $billable ??= (int) ($ticket['project_billable'] ?? 1) === 1;
 
-        $id = $this->worklogs->create($ticketId, $userId, $day, $minutes, $this->note($note), $billable, $this->start($start, $minutes));
+        $id = $this->worklogs->create($ticketId, $userId, $day, $minutes, $this->note($note), $billable, $this->start($start, $minutes), $this->workType($workType));
 
         if ($left !== false) {
             $this->tickets->setRemaining($ticketId, $left);
@@ -113,7 +116,7 @@ class WorklogService
      * @return array{minutes: int, rounded: bool}
      * @throws ValidationError
      */
-    public function change(array $worklog, string $time, string $date, ?string $note, ?bool $billable = null, ?string $start = null): array
+    public function change(array $worklog, string $time, string $date, ?string $note, ?bool $billable = null, ?string $start = null, ?string $workType = null): array
     {
         [$minutes, $rounded] = $this->minutes($time);
         $day = $this->day($date);
@@ -130,11 +133,36 @@ class WorklogService
             $this->worklogs->setStart((int) $worklog['id'], $this->start($start, $minutes));
         }
 
+        if ($workType !== null) {
+            $this->worklogs->setWorkType((int) $worklog['id'], $this->workType($workType));
+        }
+
         if ($billable !== null) {
             $this->worklogs->setBillable((int) $worklog['id'], $billable);
         }
 
         return ['minutes' => $minutes, 'rounded' => $rounded];
+    }
+
+    /**
+     * The kind of work, by its id or its name — one of the active ones — or
+     * null for none.
+     *
+     * @throws ValidationError
+     */
+    public function workType(string $given): ?int
+    {
+        if (trim($given) === '') {
+            return null;
+        }
+
+        $type = $this->workTypes->resolve($given);
+
+        if ($type === null) {
+            throw new ValidationError(__('That is not one of the work types.'));
+        }
+
+        return (int) $type['id'];
     }
 
     /**

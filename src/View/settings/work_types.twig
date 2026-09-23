@@ -1,0 +1,45 @@
+{% extends 'layout.twig' %}
+
+{% block title %}{{ 'Work types'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Work types'|t }}{% endblock %}
+{% block subheading %}<p class="content__sub">{{ 'What kind of work an hour was. Entries can say one, and the reports add the hours up by them.'|t }}</p>{% endblock %}
+
+{% block content %}
+    <section class="card card--flush">
+        {% if types is empty %}
+            <p class="card__empty">{{ 'No work types yet. Until there is one, the forms do not ask.'|t }}</p>
+        {% else %}
+            <table class="table">
+                <thead><tr><th>{{ 'Name'|t }}</th><th class="table__number">{{ 'Logged'|t }}</th><th>{{ 'Offered'|t }}</th><th></th></tr></thead>
+                <tbody>
+                {% for type in types %}
+                    <tr class="{{ type.is_active ? '' : 'row--muted' }}">
+                        <td colspan="4">
+                            <form class="work-type-row" method="post" action="{{ url('/settings/work-types/' ~ type.id) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                <input class="field field--inline" type="text" name="name" value="{{ type.name }}" maxlength="60" required aria-label="{{ 'Name'|t }}">
+                                <span class="table__number muted">{{ type.minutes > 0 ? type.minutes|duration : '—' }}</span>
+                                <label class="check check--inline">
+                                    <input type="checkbox" name="is_active" value="1"{{ type.is_active ? ' checked' : '' }}>
+                                    {{ 'Offered on entries'|t }}
+                                </label>
+                                <button class="button button--small" type="submit">{{ 'Save'|t }}</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </section>
+
+    <section class="card card--narrow">
+        <h2 class="card__title">{{ 'Add a work type'|t }}</h2>
+        <form class="form__row form__row--inline" method="post" action="{{ url('/settings/work-types') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <input class="field" type="text" name="name" maxlength="60" required placeholder="{{ 'Development'|t }}" aria-label="{{ 'Name'|t }}">
+            <button class="button button--primary" type="submit">{{ 'Add'|t }}</button>
+        </form>
+        <p class="hint">{{ 'A type no longer needed is taken off the forms rather than deleted: the hours that had it go on saying so.'|t }}</p>
+    </section>
+{% endblock %}

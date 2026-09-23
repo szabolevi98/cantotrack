@@ -55,4 +55,43 @@ final class WorklogServiceTest extends DatabaseTestCase
         self::assertFalse(WorklogService::canChange($entry, $this->me + 1, false));
         self::assertTrue(WorklogService::canChange($entry, $this->me + 1, true));
     }
+
+    public function testAnEntrySaysWhenItStartedAndWhatKindOfWorkItWas(): void
+    {
+        $types = new \CantoTrack\Model\WorkTypeRepository($this->db);
+        $meeting = $types->create('Meeting');
+        $service = new WorklogService($this->db);
+
+        $logged = $service->log($this->ticket, $this->me, '45m', '', null, '', null, '9:30', 'Meeting');
+        $entry = (new WorklogRepository($this->db))->find($logged['id']);
+
+        self::assertNotNull($entry);
+        self::assertSame('09:30:00', $entry['started_at']);
+        self::assertSame($meeting, (int) $entry['work_type_id']);
+        self::assertSame('Meeting', $entry['work_type_name']);
+
+        // A retired type is not offered, and not taken.
+        $types->update($meeting, 'Meeting', false);
+        $this->expectException(ValidationError::class);
+        $service->log($this->ticket, $this->me, '15m', '', null, '', null, '', 'Meeting');
+    }
+
+    public function testAnEntryCannotRunPastMidnight(): void
+    {
+        $this->expectException(ValidationError::class);
+        (new WorklogService($this->db))->log($this->ticket, $this->me, '2h', '', null, '', null, '23:00');
+    }
+
+    public function testTheReportsAddTheHoursUpByWorkType(): void
+    {
+        $types = new \CantoTrack\Model\WorkTypeRepository($this->db);
+        $types->create('Development');
+        $service = new WorklogService($this->db);
+        $service->log($this->ticket, $this->me, '1h', '', null, '', null, '', 'Development');
+        $service->log($this->ticket, $this->me, '30m', '', null);
+
+        $summary = (new \CantoTrack\Model\ReportRepository($this->db))->summary(['from' => date('Y-m-d'), 'to' => date('Y-m-d')], 'type');
+
+        self::assertEqualsCanonicalizing(['Development' => 60, '' => 30], array_column($summary, 'minutes', 'label'));
+    }
 }

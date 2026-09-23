@@ -259,6 +259,8 @@
                         <input id="started_at" class="field" type="time" name="started_at" step="300">
                     </div>
 
+                    {% include 'common/work_type_field.twig' with {id: 'work_type'} %}
+
                     <div class="log-form__note">
                         <label for="note">{{ 'What you did'|t }}</label>
                         <input id="note" class="field" type="text" name="note" maxlength="500"

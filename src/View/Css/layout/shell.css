@@ -54,6 +54,15 @@
     flex: 1;
     flex-direction: column;
     gap: 2px;
+    /* Without this a flex child will not shrink below its content, and on a
+       short screen the navigation ran under the account box instead of
+       scrolling inside the sidebar. */
+    min-height: 0;
+}
+
+/* …and its items keep their height while it does. */
+.sidebar__nav > * {
+    flex-shrink: 0;
 }
 
 .sidebar__section {

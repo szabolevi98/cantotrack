@@ -40,6 +40,18 @@
     {% endif %}
 {% endmacro %}
 
+{#
+    Where a ticket stands among its own: on a subtask, the ticket it is a step
+    of; on a ticket broken into subtasks, how many of them are done.
+#}
+{% macro family(ticket) %}
+    {%- if ticket.parent_id|default(null) -%}
+        <a class="family" href="{{ url('/tickets/' ~ ticket.parent_id) }}" title="{{ 'A subtask of {key}: {title}'|t({key: ticket.project_code ~ '-' ~ ticket.parent_number, title: ticket.parent_title}) }}">↳ {{ ticket.project_code }}-{{ ticket.parent_number }}</a>
+    {%- elseif ticket.subtask_count|default(0) > 0 -%}
+        <span class="family{{ ticket.subtasks_done == ticket.subtask_count ? ' family--done' : '' }}" title="{{ '{done} of {count} subtasks done'|t({done: ticket.subtasks_done, count: ticket.subtask_count}) }}">☑ {{ ticket.subtasks_done }}/{{ ticket.subtask_count }}</span>
+    {%- endif -%}
+{% endmacro %}
+
 {% macro ticket_key(ticket) %}
     <a class="ticket-key" href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.project_code }}-{{ ticket.number }}</a>
 {% endmacro %}
@@ -249,7 +261,7 @@
 {% macro event_line(event) %}
     {%- set who = event.user_name ?: 'Somebody'|t -%}
     {%- set fields = {
-        title: 'title', type: 'type', priority: 'priority', assignee: 'assignee', epic: 'epic',
+        title: 'title', type: 'type', priority: 'priority', assignee: 'assignee', epic: 'epic', parent: 'parent',
         estimate: 'estimate', due: 'due date', points: 'story points', labels: 'labels', description: 'description'
     } -%}
     {%- set field = (fields[event.field]|default(event.field))|t -%}

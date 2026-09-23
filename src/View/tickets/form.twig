@@ -88,6 +88,12 @@
                 </p>
             {% endif %}
 
+            <label for="parent">{{ 'A subtask of'|t }}</label>
+            <input id="parent" class="field field--code" type="text" name="parent" value="{{ values.parent|default('') }}"
+                   placeholder="{{ 'CT-14, or empty for a ticket of its own'|t }}" pattern="[A-Za-z][A-Za-z0-9]{1,9}-[0-9]+"
+                   aria-describedby="parent-hint">
+            <p class="hint" id="parent-hint">{{ 'A subtask is in its parent’s epic and sprint.'|t }}</p>
+
             <label for="epic_id">{{ 'Epic'|t }}</label>
             <select id="epic_id" class="field" name="epic_id" data-options="epics">
                 <option value="">{{ 'No epic'|t }}</option>

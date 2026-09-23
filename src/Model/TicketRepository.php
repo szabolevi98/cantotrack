@@ -56,6 +56,14 @@ class TicketRepository
                      WHERE tl.ticket_id = t.id) AS label_names,
                    sp.name AS sprint_name,
                    sp.state AS sprint_state,
+                   pt.number AS parent_number,
+                   pt.title AS parent_title,
+                   (SELECT COUNT(*) FROM tickets c WHERE c.parent_id = t.id) AS subtask_count,
+                   (SELECT COUNT(*) FROM tickets c JOIN statuses cs ON cs.id = c.status_id
+                     WHERE c.parent_id = t.id AND cs.category = \'done\') AS subtasks_done,
+                   (SELECT COALESCE(SUM(w.minutes), 0) FROM worklogs w JOIN tickets c ON c.id = w.ticket_id
+                     WHERE c.parent_id = t.id) AS subtask_minutes,
+                   (SELECT SUM(c.estimate_minutes) FROM tickets c WHERE c.parent_id = t.id) AS subtask_estimate,
                    (SELECT COUNT(*) FROM ticket_links bl
                       JOIN tickets bt ON bt.id = bl.source_id
                       JOIN statuses bs ON bs.id = bt.status_id
@@ -64,6 +72,7 @@ class TicketRepository
             JOIN projects p ON p.id = t.project_id
             JOIN statuses s ON s.id = t.status_id
             LEFT JOIN sprints sp ON sp.id = t.sprint_id
+            LEFT JOIN tickets pt ON pt.id = t.parent_id
             LEFT JOIN epics e ON e.id = t.epic_id
             LEFT JOIN users a ON a.id = t.assignee_id
             LEFT JOIN users r ON r.id = t.reporter_id';
@@ -148,6 +157,16 @@ class TicketRepository
         if (!empty($filters['epic_id'])) {
             $where[] = 't.epic_id = :epic_id';
             $parameters['epic_id'] = (int) $filters['epic_id'];
+        }
+
+        if (!empty($filters['parent_id'])) {
+            $where[] = 't.parent_id = :parent_id';
+            $parameters['parent_id'] = (int) $filters['parent_id'];
+        }
+
+        // Only the tickets themselves, without the steps they are broken into.
+        if (!empty($filters['top_level'])) {
+            $where[] = 't.parent_id IS NULL';
         }
 
         // A status is either one column (an id) or a category, which is what
@@ -375,10 +394,10 @@ class TicketRepository
 
             $statement = $this->db->prepare(
                 'INSERT INTO tickets
-                    (project_id, number, type, epic_id, title, description, status_id, priority,
+                    (project_id, number, type, epic_id, parent_id, title, description, status_id, priority,
                      assignee_id, reporter_id, estimate_minutes, due_on, story_points, `rank`, closed_at)
                  VALUES
-                    (:project_id, :number, :type, :epic_id, :title, :description, :status_id, :priority,
+                    (:project_id, :number, :type, :epic_id, :parent_id, :title, :description, :status_id, :priority,
                      :assignee_id, :reporter_id, :estimate_minutes, :due_on, :story_points, :rank, :closed_at)'
             );
 
@@ -390,6 +409,7 @@ class TicketRepository
                 'due_on' => ($data['due_on'] ?? null) ?: null,
                 'story_points' => $data['story_points'] ?? null,
                 'epic_id' => $data['epic_id'] ?: null,
+                'parent_id' => ($data['parent_id'] ?? null) ?: null,
                 'title' => trim((string) $data['title']),
                 'description' => trim((string) ($data['description'] ?? '')) ?: null,
                 'status_id' => (int) $data['status_id'],
@@ -425,6 +445,7 @@ class TicketRepository
             'UPDATE tickets SET
                 type = :type,
                 epic_id = :epic_id,
+                parent_id = :parent_id,
                 title = :title,
                 description = :description,
                 priority = :priority,
@@ -441,6 +462,7 @@ class TicketRepository
             'due_on' => ($data['due_on'] ?? null) ?: null,
             'story_points' => $data['story_points'] ?? null,
             'epic_id' => $data['epic_id'] ?: null,
+            'parent_id' => ($data['parent_id'] ?? null) ?: null,
             'title' => trim((string) $data['title']),
             'description' => trim((string) ($data['description'] ?? '')) ?: null,
             'priority' => in_array($data['priority'] ?? '', self::PRIORITIES, true) ? $data['priority'] : 'normal',
@@ -498,6 +520,36 @@ class TicketRepository
         }
 
         return max(0, (int) $ticket['estimate_minutes'] - (int) $ticket['logged_minutes']);
+    }
+
+    /**
+     * A ticket's subtasks, in the order they were made — the order the steps
+     * were thought of, which is usually the order they are done in.
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function subtasks(int $parentId): array
+    {
+        $statement = $this->db->prepare(self::SELECT . ' WHERE t.parent_id = :parent' . Access::sql('t.project_id') . ' ORDER BY t.number');
+        $statement->execute(['parent' => $parentId]);
+
+        return array_values($statement->fetchAll());
+    }
+
+    /** @return list<int> the ids of a ticket's subtasks, whoever may see them */
+    public function subtaskIds(int $parentId): array
+    {
+        $statement = $this->db->prepare('SELECT id FROM tickets WHERE parent_id = :parent');
+        $statement->execute(['parent' => $parentId]);
+
+        return array_values(array_map('intval', $statement->fetchAll(PDO::FETCH_COLUMN)));
+    }
+
+    /** A parent's epic, handed on to its subtasks: they are part of the same work. */
+    public function setSubtasksEpic(int $parentId, ?int $epicId): void
+    {
+        $this->db->prepare('UPDATE tickets SET epic_id = :epic WHERE parent_id = :parent')
+            ->execute(['epic' => $epicId, 'parent' => $parentId]);
     }
 
     public function hasWorklogs(int $id): bool
@@ -603,7 +655,8 @@ class TicketRepository
     /**
      * A project's planning view: every ticket that is not finished, and every
      * ticket of a sprint that is still open, keyed by sprint (0 for the
-     * backlog) and in rank order — the order the board uses too.
+     * backlog) and in rank order — the order the board uses too. Subtasks
+     * are not planned on their own: they go wherever their parent goes.
      *
      * @return array<int, list<array>>
      */
@@ -611,6 +664,7 @@ class TicketRepository
     {
         $statement = $this->db->prepare(
             self::SELECT . ' WHERE t.project_id = :project' . Access::sql('t.project_id') . '
+               AND t.parent_id IS NULL
                AND (s.category <> \'done\' OR (t.sprint_id IS NOT NULL AND sp.state <> \'closed\'))
              ORDER BY t.`rank`, t.id'
         );

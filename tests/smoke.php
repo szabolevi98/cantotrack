@@ -777,6 +777,22 @@ if ($email === null || $password === null) {
         str_contains(request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'], 'has not happened')
     );
 
+    // Broken into steps: a subtask added from the ticket's page shows there,
+    // and on its own page says whose step it is.
+    $subtaskAdded = request($baseUrl . '/tickets/' . $ticketId . '/subtasks', [
+        '_token' => $token, 'title' => 'A step made by tests/smoke.php',
+    ], $jar);
+    $parentPage = request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'];
+    check(
+        'a ticket can be broken into subtasks',
+        $subtaskAdded['status'] === 302 && str_contains($parentPage, 'A step made by tests/smoke.php')
+        && str_contains($parentPage, 'subtasks__item')
+    );
+    check(
+        'and a ticket with subtasks is not deleted from under them',
+        str_contains($parentPage, 'This ticket has subtasks.') || !str_contains($parentPage, '/tickets/' . $ticketId . '/delete')
+    );
+
     $timesheet = request($baseUrl . '/timesheet?view=days', [], $jar);
     check('the timesheet answers', $timesheet['status'] === 200, 'status ' . $timesheet['status']);
     check(

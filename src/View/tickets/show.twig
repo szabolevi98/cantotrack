@@ -16,6 +16,9 @@
         {% if ticket.epic_title %}
             · <a href="{{ url('/epics/' ~ ticket.epic_id) }}">{{ ticket.epic_title }}</a>
         {% endif %}
+        {% if ticket.parent_id %}
+            · {{ 'a subtask of'|t }} <a href="{{ url('/tickets/' ~ ticket.parent_id) }}"><span class="ticket-key">{{ ticket.project_code }}-{{ ticket.parent_number }}</span> {{ ticket.parent_title }}</a>
+        {% endif %}
     </p>
 {% endblock %}
 
@@ -57,6 +60,62 @@
                     <p class="card__body muted">{{ 'Nothing written down yet.'|t }}</p>
                 {% endif %}
             </section>
+
+            {#
+                The steps the ticket is broken into, each a ticket of its own:
+                how many are done, and a line to add the next. A subtask has
+                none of its own — one level deep.
+            #}
+            {% if not ticket.parent_id %}
+                <section class="card" id="subtasks">
+                    <header class="subtasks__head">
+                        <h2 class="card__title">{{ 'Subtasks'|t }}</h2>
+                        {% if subtasks is not empty %}
+                            {% set done_count = subtasks|filter(s => s.status_category == 'done')|length %}
+                            <span class="muted">{{ '{done} of {count} done'|t({done: done_count, count: subtasks|length}) }}</span>
+                            <span class="bar subtasks__bar"><span class="bar__fill" style="width: {{ (done_count / subtasks|length * 100)|round }}%"></span></span>
+                        {% endif %}
+                    </header>
+                    {% if subtasks is not empty %}
+                        <ul class="subtasks">
+                            {% for sub in subtasks %}
+                                <li class="subtasks__item{{ sub.status_category == 'done' ? ' subtasks__item--done' : '' }}">
+                                    {{ ui.type_icon(sub.type) }}
+                                    <a class="ticket-key" href="{{ url('/tickets/' ~ sub.id) }}">{{ sub.project_code }}-{{ sub.number }}</a>
+                                    <a class="subtasks__title" href="{{ url('/tickets/' ~ sub.id) }}">{{ sub.title }}</a>
+                                    <span class="subtasks__meta">
+                                        {% if sub.logged_minutes > 0 or sub.estimate_minutes %}
+                                            <span class="muted">{{ sub.logged_minutes|duration }}{% if sub.estimate_minutes %} / {{ sub.estimate_minutes|duration }}{% endif %}</span>
+                                        {% endif %}
+                                        {{ ui.person(sub.assignee_name, sub.assignee_id) }}
+                                        {% if can_work %}
+                                            {{ ui.move(sub, statuses, '/tickets/' ~ ticket.id ~ '#subtasks') }}
+                                        {% else %}
+                                            {{ ui.status(sub.status_name, sub.status_colour) }}
+                                        {% endif %}
+                                    </span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% else %}
+                        <p class="card__body muted">{{ 'Break it into steps: each gets its own person, column and hours, and the ticket adds them up.'|t }}</p>
+                    {% endif %}
+                    {% if can_work and not finished %}
+                        <form class="subtasks__add" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/subtasks') }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                            <input class="field field--inline subtasks__input" type="text" name="title" required maxlength="250"
+                                   placeholder="{{ 'The next step'|t }}" aria-label="{{ 'Title of the subtask'|t }}">
+                            <select class="field field--inline" name="assignee_id" aria-label="{{ 'Assignee'|t }}">
+                                <option value="">{{ 'Nobody yet'|t }}</option>
+                                {% for person in people %}
+                                    <option value="{{ person.id }}"{{ person.id == current_user.id ? ' selected' : '' }}>{{ person.name }}</option>
+                                {% endfor %}
+                            </select>
+                            <button class="button button--small" type="submit">{{ 'Add a subtask'|t }}</button>
+                        </form>
+                    {% endif %}
+                </section>
+            {% endif %}
 
             {#
                 The files. Pictures as previews, anything else as a line with
@@ -382,6 +441,7 @@
                     <dt>{{ 'Estimate'|t }}</dt>
                     <dd>{{ ticket.estimate_minutes ? ticket.estimate_minutes|duration : '—' }}</dd>
 
+
                     <dt>{{ 'Logged'|t }}</dt>
                     <dd>
                         {{ ticket.logged_minutes > 0 ? ticket.logged_minutes|duration : '—' }}
@@ -394,6 +454,16 @@
                             <span class="badge badge--urgent">{{ 'over by {duration}'|t({duration: (ticket.logged_minutes - ticket.estimate_minutes)|duration}) }}</span>
                         {% endif %}
                     </dd>
+
+                    {# A parent's own hours, and the whole of it with its
+                       subtasks' — what the work cost, which is what gets asked. #}
+                    {% if ticket.subtask_count > 0 %}
+                        <dt>{{ 'With subtasks'|t }}</dt>
+                        <dd>
+                            {{ (ticket.logged_minutes + ticket.subtask_minutes)|duration }}
+                            {% if ticket.subtask_estimate %}<span class="muted">/ {{ ((ticket.estimate_minutes ?: 0) + ticket.subtask_estimate)|duration }}</span>{% endif %}
+                        </dd>
+                    {% endif %}
 
                     <dt>{{ 'Left'|t }}</dt>
                     <dd>
@@ -418,7 +488,9 @@
             {% if is_admin %}
                 <section class="card">
                     <h2 class="card__title">{{ 'Delete'|t }}</h2>
-                    {% if worklogs is empty %}
+                    {% if subtasks is not empty %}
+                        <p class="card__body">{{ 'This ticket has subtasks. Delete them first, or make them tickets of their own.'|t }}</p>
+                    {% elseif worklogs is empty %}
                         <form method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/delete') }}"
                               data-confirm="{{ 'Delete {key}?'|t({key: key}) }}">
                             <input type="hidden" name="_token" value="{{ csrf_token }}">

@@ -16,7 +16,11 @@ class SprintRepository
         $this->db = $db ?? DatabaseConnection::get();
     }
 
-    /** Every sprint of a project, with what it holds now: open ones first, then the closed, newest first. */
+    /**
+     * Every sprint of a project, with what it holds now: open ones first, then
+     * the closed, newest first. Counted in tickets, not in their subtasks —
+     * those are steps of a ticket's work, and done when the ticket is.
+     */
     public function forProject(int $projectId): array
     {
         $statement = $this->db->prepare(
@@ -26,7 +30,7 @@ class SprintRepository
                     SUM(s.category = \'done\') AS done_count,
                     COALESCE(SUM(CASE WHEN s.category = \'done\' THEN t.story_points END), 0) AS done_points
              FROM sprints sp
-             LEFT JOIN tickets t ON t.sprint_id = sp.id
+             LEFT JOIN tickets t ON t.sprint_id = sp.id AND t.parent_id IS NULL
              LEFT JOIN statuses s ON s.id = t.status_id
              WHERE sp.project_id = :project
              GROUP BY sp.id
@@ -110,13 +114,13 @@ class SprintRepository
         $this->db->prepare('DELETE FROM sprints WHERE id = :id')->execute(['id' => $id]);
     }
 
-    /** The tickets in a sprint, with whether each is finished. */
+    /** The tickets in a sprint — without their subtasks — with whether each is finished. */
     public function tickets(int $sprintId): array
     {
         $statement = $this->db->prepare(
             'SELECT t.id, t.story_points, t.closed_at, s.category
              FROM tickets t JOIN statuses s ON s.id = t.status_id
-             WHERE t.sprint_id = :sprint'
+             WHERE t.sprint_id = :sprint AND t.parent_id IS NULL'
         );
         $statement->execute(['sprint' => $sprintId]);
 
@@ -138,7 +142,7 @@ class SprintRepository
         $statement = $this->db->prepare(
             'SELECT DISTINCT t.id, t.story_points, NULL AS closed_at, \'todo\' AS category
              FROM ticket_events e JOIN tickets t ON t.id = e.ticket_id
-             WHERE t.project_id = :project AND e.kind = \'sprint\' AND e.old_value = :name
+             WHERE t.project_id = :project AND t.parent_id IS NULL AND e.kind = \'sprint\' AND e.old_value = :name
                AND e.created_at >= :closed - INTERVAL 1 MINUTE
                AND (t.sprint_id IS NULL OR t.sprint_id <> :sprint)'
         );

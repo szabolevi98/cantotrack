@@ -66,6 +66,7 @@ $router->get('/', static fn() => (new DashboardController())->index());
 $router->get('/notifications', static fn() => (new NotificationController())->index());
 $router->post('/notifications/read', static fn() => (new NotificationController())->readAll());
 $router->get('/notifications/{id}', static fn($id) => (new NotificationController())->open((int) $id));
+$router->post('/tickets/{id}/subtasks', static fn($id) => (new TicketController())->addSubtask((int) $id));
 $router->post('/tickets/{id}/favourite', static fn($id) => (new TicketController())->favourite((int) $id));
 $router->post('/tickets/{id}/watch', static fn($id) => (new NotificationController())->toggleWatch((int) $id));
 

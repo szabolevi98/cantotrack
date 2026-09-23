@@ -109,7 +109,12 @@ class SprintService
 
         $this->sprints->close((int) $sprint['id'], self::points($done), count($done));
 
+        // An unfinished ticket goes on with all of its subtasks, the finished
+        // steps too: they are the part of it that was done.
         $openIds = array_map(static fn(array $t): int => (int) $t['id'], $open);
+        foreach ($openIds as $id) {
+            $openIds = array_merge($openIds, $this->tickets->subtaskIds($id));
+        }
         $this->sprints->assign($openIds, $next === null ? null : (int) $next['id']);
 
         foreach ($openIds as $id) {
@@ -133,6 +138,15 @@ class SprintService
 
         if ($sprintId !== null && ($sprint === null || $sprint['state'] === 'closed')) {
             throw new ValidationError(__('That sprint is closed, or does not exist.'));
+        }
+
+        // A ticket's subtasks go where it goes: they are steps of its work.
+        foreach ($ticketIds as $id) {
+            foreach ($this->tickets->subtaskIds((int) $id) as $subtask) {
+                if (!in_array($subtask, $ticketIds, true)) {
+                    $ticketIds[] = $subtask;
+                }
+            }
         }
 
         foreach ($ticketIds as $id) {

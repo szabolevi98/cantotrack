@@ -317,6 +317,23 @@ $make('checkout', $eszter, [
     'status' => 'done', 'priority' => 'high', 'assignee_id' => $mark, 'estimate' => '2h', 'labels' => 'shop',
 ]);
 
+// Two tickets broken into their steps, made last so the numbers above stay
+// the ones the descriptions and the comments mention.
+foreach ([
+    ['approval', 'approval-hand', 'The hand-in button, and what it asks first', 'done', $me, '2h'],
+    ['approval', 'approval-queue', 'The approvals page for the administrators', 'in_progress', $me, '4h'],
+    ['approval', 'approval-back', 'Tell the person why a week was sent back', 'todo', $julia, '1h'],
+    ['templates', 'templates-landing', 'Landing page template', 'done', $mark, '1d'],
+    ['templates', 'templates-product', 'Product page template', 'review', $mark, '1d'],
+    ['templates', 'templates-article', 'Article template', 'in_progress', $mark, '4h'],
+] as [$parentName, $name, $title, $status, $who, $estimate]) {
+    $parentTicket = (array) $tickets->find($made[$parentName]);
+    $make($name, $me, [
+        'project_id' => (int) $parentTicket['project_id'], 'parent_id' => $made[$parentName], 'type' => 'task',
+        'title' => $title, 'status' => $status, 'assignee_id' => $who, 'estimate' => $estimate,
+    ]);
+}
+
 // ---------------------------------------------------------------------------
 // Links, comments
 // ---------------------------------------------------------------------------
@@ -369,8 +386,8 @@ $entries = [
     [$anna, 'contrast', -6, 180, 'Measured every pair in the palette.'],
     [$anna, 'dark', -5, 240, 'The dark palette, measured again.'],
     [$anna, 'keyboard', -4, 210, 'Tab order through the board.'],
-    [$mark, 'templates', -7, 420, 'Landing template.'],
-    [$mark, 'templates', -6, 390, 'Product template.'],
+    [$mark, 'templates-landing', -7, 420, 'Landing template.'],
+    [$mark, 'templates-product', -6, 390, 'Product template.'],
     [$mark, 'checkout', -5, 150, 'Found the double shipping.'],
     [$mark, 'mobile', -4, 240, 'Board columns on a 375px screen.'],
     [$mark, 'shop', -3, 360, 'Subscription rules, on paper first.'],
@@ -380,8 +397,8 @@ $entries = [
     // This week
     [$me, 'approval', 0, 30, 'Meeting: planning the sprint.'],
     [$me, 'timesheet', 0, 165, 'Holidays and days away expect nothing.'],
-    [$me, 'approval', 0, 120, 'Handing a week in.'],
-    [$me, 'approval', 1, 210, 'Approvals page, and the lock date.'],
+    [$me, 'approval-hand', 0, 120, 'Handing a week in.'],
+    [$me, 'approval-queue', 1, 210, 'Approvals page, and the lock date.'],
     [$me, 'api', 1, 90, 'Sketched the endpoints.'],
     [$me, 'approval', 2, 240, 'Sending a week back with a reason.'],
     [$me, 'rounding', 3, 60, null],
@@ -389,7 +406,7 @@ $entries = [
     [$anna, 'keyboard', 1, 180, 'Shortcuts dialog.'],
     [$anna, 'photos', 2, 300, 'At the roastery.'],
     [$mark, 'mobile', 0, 150, 'overflow-wrap on the titles.'],
-    [$mark, 'templates', 0, 270, 'Article template.'],
+    [$mark, 'templates-article', 0, 270, 'Article template.'],
     [$mark, 'rounding', 1, 180, 'Minutes in the table, decimals in the export.'],
     [$mark, 'shop', 2, 330, 'Subscriptions: pausing.'],
     [$julia, 'copy', 0, 360, 'Pages five to eight.'],

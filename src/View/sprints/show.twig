@@ -78,7 +78,7 @@
                     {% for ticket in tickets %}
                         <tr>
                             <td class="table__key">{{ ui.type_icon(ticket.type) }} {{ ui.ticket_key(ticket) }}</td>
-                            <td><a href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a></td>
+                            <td><a href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a>{{ ui.family(ticket) }}</td>
                             <td>{{ ui.status(ticket.status_name, ticket.status_colour) }}</td>
                             <td>{{ ui.person(ticket.assignee_name, ticket.assignee_id) }}</td>
                             <td class="table__number">{{ ticket.story_points ?? '—' }}</td>

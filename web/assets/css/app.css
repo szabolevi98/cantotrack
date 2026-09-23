@@ -2531,6 +2531,102 @@ a.label:hover {
     }
 }
 
+/* ---------------------------------------------------------------------------
+ * Subtasks: the steps a ticket is broken into, on its page, and the small
+ * mark beside a ticket anywhere else that says where it stands among them.
+ * ------------------------------------------------------------------------- */
+.subtasks__head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.subtasks__head .card__title {
+    margin: 0;
+}
+
+.subtasks__bar {
+    flex: 0 0 120px;
+}
+
+.subtasks {
+    margin: 0 0 12px;
+    padding: 0;
+    list-style: none;
+}
+
+.subtasks__item {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 10px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--ct-border);
+    font-size: 0.9rem;
+}
+
+.subtasks__title {
+    flex: 1 1 200px;
+    min-width: 0;
+    color: var(--ct-text);
+}
+
+.subtasks__item--done .subtasks__title {
+    color: var(--ct-muted);
+    text-decoration: line-through;
+}
+
+.subtasks__meta {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 0.82rem;
+}
+
+.subtasks__meta .move {
+    margin: 0;
+}
+
+.subtasks__add {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    align-items: center;
+}
+
+.subtasks__input {
+    flex: 1 1 240px;
+}
+
+.family {
+    display: inline-block;
+    margin-left: 6px;
+    padding: 0 6px;
+    border-radius: 999px;
+    background: var(--ct-badge-slate-bg);
+    color: var(--ct-badge-slate-text);
+    font-size: 0.72rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    vertical-align: 1px;
+}
+
+a.family:hover {
+    text-decoration: none;
+    filter: brightness(0.96);
+}
+
+.family--done {
+    background: var(--ct-success-soft);
+    color: var(--ct-success);
+}
+
+.ticket-card__tags .family {
+    margin-left: 0;
+}
+
 /*!
  * Bootstrap Icons v1.11.3 (https://icons.getbootstrap.com/)
  * Copyright 2019-2024 The Bootstrap Authors

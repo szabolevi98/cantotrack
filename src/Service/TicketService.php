@@ -10,6 +10,7 @@ use CantoTrack\Model\AttachmentRepository;
 use CantoTrack\Model\EpicRepository;
 use CantoTrack\Model\LabelRepository;
 use CantoTrack\Model\ProjectRepository;
+use CantoTrack\Model\SprintRepository;
 use CantoTrack\Model\StatusRepository;
 use CantoTrack\Model\TicketRepository;
 use CantoTrack\Model\UserRepository;
@@ -70,11 +71,14 @@ class TicketService
         $projectId = (int) $project['id'];
         $status = $this->status($projectId, $input['status'] ?? '');
         $labels = LabelRepository::parse($input['labels'] ?? '');
+        $parent = $this->parent($input, $projectId, null);
 
         $id = $this->tickets->create([
             'project_id' => $projectId,
             'type' => $this->type($input['type'] ?? 'task'),
-            'epic_id' => $this->epic($input['epic_id'] ?? null, $projectId, null),
+            // A subtask is part of its parent's work, and so of its epic.
+            'epic_id' => $parent !== null ? $parent['epic_id'] : $this->epic($input['epic_id'] ?? null, $projectId, null),
+            'parent_id' => $parent !== null ? (int) $parent['id'] : null,
             'title' => $this->title($input['title'] ?? ''),
             'description' => (string) ($input['description'] ?? ''),
             'status_id' => (int) $status['id'],
@@ -93,9 +97,31 @@ class TicketService
             $this->labels->sync($id, $labels);
         }
 
+        // And of its parent's sprint: a step of the work is planned with it.
+        if ($parent !== null && $parent['sprint_id'] !== null) {
+            (new SprintRepository($this->db))->assign([$id], (int) $parent['sprint_id']);
+        }
+
         $this->activity->happened((array) $this->tickets->find($id), $reporterId, 'created');
 
         return $id;
+    }
+
+    /**
+     * A subtask of a ticket, from the ticket's own page: a title and, if
+     * given, whose it is — the rest comes from the parent.
+     *
+     * @throws ValidationError
+     */
+    public function addSubtask(array $parent, string $title, mixed $assigneeId, int $reporterId): int
+    {
+        return $this->create([
+            'project_id' => (int) $parent['project_id'],
+            'parent_id' => (int) $parent['id'],
+            'title' => $title,
+            'assignee_id' => $assigneeId,
+            'type' => $parent['type'] === 'bug' ? 'bug' : 'task',
+        ], $reporterId);
     }
 
     /**
@@ -119,10 +145,16 @@ class TicketService
 
         $has = static fn(string $key): bool => array_key_exists($key, $input);
         $projectId = (int) $ticket['project_id'];
+        $parent = $has('parent') || $has('parent_id')
+            ? $this->parent($input, $projectId, $ticket)
+            : ($ticket['parent_id'] === null ? null : $this->tickets->find((int) $ticket['parent_id']));
 
         $data = [
             'type' => $has('type') ? $this->type($input['type']) : $ticket['type'],
-            'epic_id' => $has('epic_id') ? $this->epic($input['epic_id'], $projectId, $ticket['epic_id']) : $ticket['epic_id'],
+            'epic_id' => $parent !== null
+                ? $parent['epic_id']
+                : ($has('epic_id') ? $this->epic($input['epic_id'], $projectId, $ticket['epic_id']) : $ticket['epic_id']),
+            'parent_id' => $parent === null ? null : (int) $parent['id'],
             'title' => $has('title') ? $this->title($input['title']) : $ticket['title'],
             'description' => $has('description') ? (string) $input['description'] : (string) $ticket['description'],
             'priority' => $has('priority') ? $this->priority($input['priority']) : $ticket['priority'],
@@ -152,7 +184,62 @@ class TicketService
             $this->labels->sync($id, $newLabels);
         }
 
+        // A parent's epic is its subtasks' too; a ticket that has just become
+        // a subtask goes into its parent's sprint.
+        if ((int) $data['epic_id'] !== (int) $ticket['epic_id']) {
+            $this->tickets->setSubtasksEpic($id, $data['epic_id'] === null ? null : (int) $data['epic_id']);
+        }
+
+        if ($parent !== null && (int) $parent['id'] !== (int) $ticket['parent_id'] && $parent['sprint_id'] !== null
+            && (int) $parent['sprint_id'] !== (int) $ticket['sprint_id']) {
+            (new SprintService($this->db))->assign([$id], (int) $parent['sprint_id'], $actorId);
+        }
+
         $this->recordChanges($ticket, (array) $this->tickets->find($id), $oldLabels, $newLabels, $actorId);
+    }
+
+    /**
+     * The ticket a ticket is a subtask of — by its key ("CT-14", from a form
+     * or the API) or its id — or null for none.
+     *
+     * One level only: the parent cannot itself be a subtask, a ticket that
+     * has subtasks cannot become one, and both are in the same project.
+     *
+     * @param array<string, mixed> $input
+     * @param array<string, mixed>|null $ticket the ticket being changed, if it exists already
+     * @throws ValidationError
+     */
+    private function parent(array $input, int $projectId, ?array $ticket): ?array
+    {
+        $given = trim((string) ($input['parent'] ?? $input['parent_id'] ?? ''));
+
+        if ($given === '' || $given === '0') {
+            return null;
+        }
+
+        $parent = ctype_digit($given) ? $this->tickets->find((int) $given) : $this->tickets->findByKey($given);
+
+        if ($parent === null) {
+            throw new ValidationError(__('There is no ticket called {key}.', ['key' => strtoupper($given)]));
+        }
+
+        if ($ticket !== null && (int) $parent['id'] === (int) $ticket['id']) {
+            throw new ValidationError(__('A ticket cannot be its own subtask.'));
+        }
+
+        if ((int) $parent['project_id'] !== $projectId) {
+            throw new ValidationError(__('A subtask is in the same project as its parent.'));
+        }
+
+        if ($parent['parent_id'] !== null) {
+            throw new ValidationError(__('{key} is a subtask itself; subtasks go one level deep.', ['key' => $parent['project_code'] . '-' . $parent['number']]));
+        }
+
+        if ($ticket !== null && (int) ($ticket['subtask_count'] ?? 0) > 0) {
+            throw new ValidationError(__('This ticket has subtasks of its own, so it cannot become one.'));
+        }
+
+        return $parent;
     }
 
     /** @throws ValidationError */
@@ -237,6 +324,7 @@ class TicketService
             'priority' => static fn(array $t): string => ucfirst((string) $t['priority']),
             'assignee' => static fn(array $t): string => (string) ($t['assignee_name'] ?? ''),
             'epic' => static fn(array $t): string => (string) ($t['epic_title'] ?? ''),
+            'parent' => static fn(array $t): string => $t['parent_id'] === null ? '' : $t['project_code'] . '-' . $t['parent_number'],
             'estimate' => static fn(array $t): string => $t['estimate_minutes'] ? Format::duration((int) $t['estimate_minutes']) : '',
             'due' => static fn(array $t): string => (string) ($t['due_on'] ?? ''),
             'points' => static fn(array $t): string => $t['story_points'] === null ? '' : (string) $t['story_points'],
@@ -274,6 +362,12 @@ class TicketService
      */
     public function delete(int $id): void
     {
+        // Its subtasks would be left behind as tickets of their own, which
+        // is a decision for a person, one by one, not a side effect.
+        if ($this->tickets->subtaskIds($id) !== []) {
+            throw new ValidationError(__('This ticket has subtasks. Delete them first, or make them tickets of their own.'));
+        }
+
         if ($this->tickets->hasWorklogs($id)) {
             throw new ValidationError(
                 __('This ticket has hours logged against it, so it cannot be deleted. Move it to done instead — or delete the hours first if they really are a mistake.')

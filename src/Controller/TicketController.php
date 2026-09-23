@@ -136,6 +136,7 @@ class TicketController extends Controller
             'people' => (new UserRepository())->active(),
             'statuses' => (new StatusRepository())->forProject((int) $ticket['project_id']),
             'worklogs' => (new WorklogRepository())->forTicket($id),
+            'subtasks' => (new TicketRepository())->subtasks($id),
             'timeline' => $this->timeline($id, $showing),
             'showing' => $showing,
             'today' => date('Y-m-d'),
@@ -194,6 +195,7 @@ class TicketController extends Controller
 
         $this->renderForm(null, $projectId, [
             'epic_id' => $this->idQuery('epic'),
+            'parent' => trim((string) ($_GET['parent'] ?? '')),
         ]);
     }
 
@@ -219,6 +221,7 @@ class TicketController extends Controller
 
         $ticket = $this->ticketOr404($id);
         $ticket['labels'] = implode(', ', (new LabelRepository())->forTicket($id));
+        $ticket['parent'] = $ticket['parent_id'] === null ? '' : $ticket['project_code'] . '-' . $ticket['parent_number'];
 
         $this->renderForm($ticket, (int) $ticket['project_id'], $ticket);
     }
@@ -249,6 +252,22 @@ class TicketController extends Controller
 
         $this->flash(__('Ticket saved.'));
         $this->redirect('/tickets/' . $id);
+    }
+
+    /** A subtask added from its parent's page: a title, and whose it is. */
+    public function addSubtask(int $id): void
+    {
+        Auth::requireMember();
+
+        $parent = $this->ticketOr404($id);
+
+        try {
+            (new TicketService())->addSubtask($parent, $this->input('title'), $this->idInput('assignee_id'), (int) Auth::id());
+        } catch (ValidationError $e) {
+            $this->flash($e->getMessage(), 'danger');
+        }
+
+        $this->redirect('/tickets/' . $id . '#subtasks');
     }
 
     /** The one-click move along the board, from the ticket page or the board. */
@@ -456,6 +475,7 @@ class TicketController extends Controller
         return [
             'type' => $this->input('type', 'task'),
             'epic_id' => $this->idInput('epic_id'),
+            'parent' => $this->input('parent'),
             'title' => $this->input('title'),
             'description' => $this->input('description'),
             'status' => $this->input('status'),

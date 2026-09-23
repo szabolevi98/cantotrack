@@ -42,6 +42,7 @@ class TicketImport
         'due' => 'due_on', 'duedate' => 'due_on', 'dueon' => 'due_on', 'hatarido' => 'due_on',
         'storypoints' => 'story_points', 'points' => 'story_points', 'sztoripont' => 'story_points', 'pont' => 'story_points',
         'epic' => 'epic', 'epicname' => 'epic',
+        'parent' => 'parent', 'parentkey' => 'parent', 'parentissue' => 'parent', 'szulo' => 'parent', 'szuloticket' => 'parent',
     ];
 
     /** Words for the types and priorities, in the languages people write them in. */
@@ -214,6 +215,19 @@ class TicketImport
                     $problems[] = __('The project has no epic “{value}”.', ['value' => $value['epic']]);
                 } else {
                     $input['epic_id'] = $epic;
+                }
+            }
+
+            // A subtask of a ticket that is already here, by its key.
+            if (($value['parent'] ?? '') !== '') {
+                $parent = (new TicketRepository($this->db))->findByKey($value['parent']);
+
+                if ($parent === null || (int) $parent['project_id'] !== $projectId) {
+                    $problems[] = __('The project has no ticket {key} to be a subtask of.', ['key' => strtoupper(trim($value['parent']))]);
+                } elseif ($parent['parent_id'] !== null) {
+                    $problems[] = __('{key} is a subtask itself; subtasks go one level deep.', ['key' => strtoupper(trim($value['parent']))]);
+                } else {
+                    $input['parent_id'] = (int) $parent['id'];
                 }
             }
 

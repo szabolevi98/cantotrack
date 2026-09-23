@@ -22,7 +22,10 @@ class EpicRepository
         $this->db = $db ?? DatabaseConnection::get();
     }
 
-    /** The epics of a project, each with how many tickets it holds and how many are done. */
+    /**
+     * The epics of a project, each with how many tickets it holds and how many
+     * are done — the tickets themselves, not the steps they are broken into.
+     */
     public function forProject(int $projectId): array
     {
         $statement = $this->db->prepare(
@@ -30,7 +33,7 @@ class EpicRepository
                     COUNT(t.id) AS ticket_count,
                     SUM(s.category = \'done\') AS done_count
              FROM epics e
-             LEFT JOIN tickets t ON t.epic_id = e.id
+             LEFT JOIN tickets t ON t.epic_id = e.id AND t.parent_id IS NULL
              LEFT JOIN statuses s ON s.id = t.status_id
              WHERE e.project_id = :project
              GROUP BY e.id

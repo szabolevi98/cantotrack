@@ -22,7 +22,7 @@
     {% import 'common/macros.twig' as ui %}
     <li class="plan__ticket">
         <span class="plan__key">{{ ui.type_icon(ticket.type) }} {{ ui.ticket_key(ticket) }}</span>
-        <a class="plan__title" href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a>
+        <a class="plan__title" href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a>{{ ui.family(ticket) }}
         <span class="plan__meta">
             {% if ticket.blocked_by > 0 %}<span class="badge badge--red" title="{{ 'Blocked by an unfinished ticket'|t }}">{{ 'Blocked'|t }}</span>{% endif %}
             {{ ui.priority(ticket.priority) }}

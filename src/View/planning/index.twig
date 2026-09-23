@@ -5,9 +5,9 @@
 {% block subheading %}<p class="content__sub">{{ monday|day }} — {{ sunday|day }}</p>{% endblock %}
 
 {% block actions %}
-    <a class="button" href="{{ url('/planning?week=' ~ previous_week) }}">← {{ 'Previous'|t }}</a>
-    <a class="button" href="{{ url('/planning') }}">{{ 'This week'|t }}</a>
-    <a class="button" href="{{ url('/planning?week=' ~ next_week) }}">{{ 'Next'|t }} →</a>
+    {% include 'common/week_picker.twig' with {
+        path: '/planning', monday: monday, previous: previous_week, next: next_week,
+    } only %}
 {% endblock %}
 
 {% block content %}

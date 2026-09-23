@@ -10,11 +10,10 @@
 
 {% block actions %}
     <a class="button" href="{{ url('/timesheet') }}">{{ 'Your week'|t }}</a>
-    <a class="button" href="{{ url('/timesheet/team?week=' ~ previous_week ~ (project ? '&project=' ~ project.id : '')) }}">← {{ 'Previous'|t }}</a>
-    <a class="button" href="{{ url('/timesheet/team' ~ (project ? '?project=' ~ project.id : '')) }}">{{ 'This week'|t }}</a>
-    {% if has_next %}
-        <a class="button" href="{{ url('/timesheet/team?week=' ~ next_week ~ (project ? '&project=' ~ project.id : '')) }}">{{ 'Next'|t }} →</a>
-    {% endif %}
+    {% include 'common/week_picker.twig' with {
+        path: '/timesheet/team', keep: {project: project ? project.id : null}, monday: monday,
+        previous: previous_week, next: has_next ? next_week : null, past_only: true,
+    } only %}
 {% endblock %}
 
 {% block content %}

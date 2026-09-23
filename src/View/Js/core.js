@@ -126,6 +126,28 @@
     });
 
     /*
+     * data-week-date — the week picker's date field: a day picked from its
+     * calendar is its week shown at once. A date typed in changes with every
+     * digit (the day 2 on the way to 23, the year 0202 on the way to 2025),
+     * so typing only brings up the button beside it, and Enter sends it —
+     * the same as a select changed from the keyboard, below.
+     */
+    document.addEventListener('change', function (event) {
+        var field = event.target;
+
+        if (!field.matches || !field.matches('input[data-week-date]') || !field.value) {
+            return;
+        }
+
+        if (keyboardInput) {
+            field.form.classList.add('is-pending');
+            return;
+        }
+
+        send(field);
+    });
+
+    /*
      * data-autosubmit — a select that sends its form when it changes.
      *
      * With a mouse or a finger that is immediate: somebody opened the list and

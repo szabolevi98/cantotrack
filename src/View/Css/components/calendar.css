@@ -126,8 +126,65 @@
     background-color: color-mix(in srgb, var(--ct-bg) 60%, transparent);
 }
 
-[data-calendar] .calendar__day:not(.calendar__day--future) {
+[data-calendar] .calendar__day:not(.calendar__day--future, .calendar__day--closed) {
     cursor: crosshair;
+}
+
+/* A day that takes no changes: handed in, approved, or locked. */
+.calendar__day--closed {
+    background-color: color-mix(in srgb, var(--ct-bg) 60%, transparent);
+}
+
+/* Entries that can be moved: taken by the hand, stretched by the edge. */
+[data-calendar] [data-entry] {
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+[data-calendar] .calendar__day--closed [data-entry] {
+    cursor: pointer;
+}
+
+.calendar--dragging,
+.calendar--dragging * {
+    cursor: grabbing !important;
+}
+
+.calendar__resize {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 7px;
+    cursor: ns-resize;
+    touch-action: none;
+}
+
+.calendar__resize::after {
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    width: 18px;
+    height: 3px;
+    border-radius: 2px;
+    background: currentColor;
+    content: "";
+    opacity: 0;
+    transform: translateX(-50%);
+}
+
+.calendar__block:hover .calendar__resize::after {
+    opacity: 0.35;
+}
+
+/* The entry where it was, while its copy is dragged about. */
+[data-entry].is-dragging {
+    opacity: 0.35;
+}
+
+.calendar__ghost.is-saving {
+    opacity: 0.6;
 }
 
 .calendar__block,

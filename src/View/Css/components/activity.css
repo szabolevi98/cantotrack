@@ -221,7 +221,9 @@ a.label:hover {
 }
 
 .segmented__item {
-    padding: 3px 12px;
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
     border-radius: 999px;
     color: var(--ct-muted);
     font-size: 0.82rem;

@@ -3,15 +3,20 @@
     what it was. A dialog so the page stays where it was; a plain form under
     it, so a typed key works without the script. The script adds the
     suggestions under the ticket field.
+
+    The week's calendar opens the same dialog on an entry, to change it: the
+    ticket is then only shown, the form goes to the entry, and it can be
+    deleted from here.
 #}
 <dialog class="quick-log" id="quick-log" aria-labelledby="quick-log-title">
     <form method="post" action="{{ url('/log') }}" class="quick-log__form" data-quick-log
-          data-suggest-url="{{ url('/log/suggest') }}" autocomplete="off">
+          data-suggest-url="{{ url('/log/suggest') }}" data-log-url="{{ url('/log') }}"
+          data-entry-url="{{ url('/worklogs/{id}') }}" autocomplete="off">
         <input type="hidden" name="_token" value="{{ csrf_token }}">
         <input type="hidden" name="back" value="{{ current_path }}{{ current_query ? '?' ~ current_query : '' }}">
 
         <header class="quick-log__head">
-            <h2 id="quick-log-title">{{ 'Log time'|t }}</h2>
+            <h2 id="quick-log-title" data-create="{{ 'Log time'|t }}" data-change="{{ 'Change the entry'|t }}">{{ 'Log time'|t }}</h2>
             <button class="link-button" type="button" data-quick-log-close aria-label="{{ 'Close'|t }}">×</button>
         </header>
 
@@ -45,7 +50,7 @@
         </div>
 
         <div class="form__row">
-            <div>
+            <div data-quick-log-remaining>
                 <label for="quick-remaining">{{ 'Left afterwards'|t }}</label>
                 <input id="quick-remaining" class="field" type="text" name="remaining" placeholder="{{ 'Optional'|t }}">
             </div>
@@ -60,8 +65,12 @@
         </div>
 
         <div class="form__actions">
-            <button class="button button--primary" type="submit">{{ 'Log it'|t }}</button>
+            <button class="button button--primary" type="submit" data-quick-log-submit
+                    data-create="{{ 'Log it'|t }}" data-change="{{ 'Save'|t }}">{{ 'Log it'|t }}</button>
             <button class="button" type="button" data-quick-log-close>{{ 'Cancel'|t }}</button>
+            <a class="button" href="#" data-quick-log-ticket hidden>{{ 'Open the ticket'|t }}</a>
+            <button class="button button--danger quick-log__delete" type="submit" formnovalidate hidden
+                    data-quick-log-delete data-confirm="{{ 'Delete this entry?'|t }}">{{ 'Delete'|t }}</button>
         </div>
     </form>
 </dialog>

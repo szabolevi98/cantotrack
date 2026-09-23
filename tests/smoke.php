@@ -777,7 +777,7 @@ if ($email === null || $password === null) {
         str_contains(request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'], 'has not happened')
     );
 
-    $timesheet = request($baseUrl . '/timesheet', [], $jar);
+    $timesheet = request($baseUrl . '/timesheet?view=days', [], $jar);
     check('the timesheet answers', $timesheet['status'] === 200, 'status ' . $timesheet['status']);
     check(
         'and this week shows the ticket the time went on',
@@ -875,6 +875,32 @@ if ($email === null || $password === null) {
         && str_contains(request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'], 'Logged from the top bar by tests/smoke.php.')
     );
 
+    // Dragged on the calendar: the entry without a start, given one and a
+    // new length, keeps its note — and a stretch past midnight is refused.
+    $note = 'Logged from the top bar by tests/smoke.php.';
+    $entryOf = static fn(string $page): string => preg_match('#<a class="calendar__chip[^>]*data-entry="(\d+)"[^>]*data-note="' . preg_quote($note, '#') . '"#', $page, $m)
+        || preg_match('#<a class="calendar__block[^>]*data-entry="(\d+)"[^>]*data-note="' . preg_quote($note, '#') . '"#', $page, $m) ? $m[1] : '';
+    $dragged = $entryOf(request($baseUrl . '/timesheet', [], $jar)['body']);
+    check('the calendar offers an entry to drag', $dragged !== '');
+
+    $placed = request($baseUrl . '/worklogs/' . $dragged . '/place', [
+        '_token' => $token, 'work_date' => date('Y-m-d'), 'started_at' => '06:00', 'time' => '45m',
+    ], $jar, ['Accept: application/json']);
+    $calendarAfter = request($baseUrl . '/timesheet', [], $jar)['body'];
+    check(
+        'and a drop moves it, note and all',
+        $placed['status'] === 200 && (json_decode($placed['body'], true)['ok'] ?? false) === true
+        && (bool) preg_match('#class="calendar__block[^>]*data-entry="' . $dragged . '"[^>]*data-minutes="45" data-start="06:00"[^>]*data-note="' . preg_quote($note, '#') . '"#', $calendarAfter)
+    );
+
+    $pastMidnight = request($baseUrl . '/worklogs/' . $dragged . '/place', [
+        '_token' => $token, 'work_date' => date('Y-m-d'), 'started_at' => '23:45', 'time' => '45m',
+    ], $jar, ['Accept: application/json']);
+    check(
+        'but not past midnight',
+        $pastMidnight['status'] === 422 && (json_decode($pastMidnight['body'], true)['ok'] ?? true) === false
+    );
+
     // The calendar: a holiday far enough ahead that it cannot touch anybody's
     // real week, added and taken off again. Handing a week in is left to the
     // integration tests — it would close this account's hours for the rest
@@ -888,7 +914,7 @@ if ($email === null || $password === null) {
     check('and taken off again', !str_contains(request($baseUrl . '/settings?year=2099', [], $jar)['body'], 'Smoke test holiday'));
     check(
         'and a week that holds one says so',
-        str_contains(request($baseUrl . '/timesheet', [], $jar)['body'], 'Days away')
+        str_contains(request($baseUrl . '/timesheet?view=days', [], $jar)['body'], 'Days away')
     );
 
     // Again, now that the pages above have shown and used up its message.

@@ -236,6 +236,11 @@ button {
     color: inherit;
 }
 
+/* Hidden means hidden, whatever display a class gives the element. */
+[hidden] {
+    display: none !important;
+}
+
 /*
  * The frame: a fixed sidebar and a content column that scrolls beside it.
  *
@@ -370,6 +375,9 @@ button {
 
 .content__actions {
     display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
     gap: 8px;
 }
 
@@ -940,6 +948,33 @@ summary.link-button::-webkit-details-marker {
 
 .row--problem td {
     background: var(--ct-danger-soft);
+}
+
+/* Which week: a step either way around a date field, and this week. */
+.week-picker {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.week-picker__step {
+    min-width: 40px;
+    justify-content: center;
+    padding-right: 10px;
+    padding-left: 10px;
+}
+
+.week-picker__step.is-disabled {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.week-picker__date {
+    width: auto;
+    min-width: 150px;
+    margin: 0;
+    padding-top: 8px;
+    padding-bottom: 8px;
 }
 
 /*
@@ -1997,7 +2032,9 @@ a.label:hover {
 }
 
 .segmented__item {
-    padding: 3px 12px;
+    display: inline-flex;
+    align-items: center;
+    padding: 5px 12px;
     border-radius: 999px;
     color: var(--ct-muted);
     font-size: 0.82rem;
@@ -2919,6 +2956,16 @@ a.label:hover {
     }
 }
 
+/* Changing an entry: its delete is set apart at the far end. */
+.quick-log__delete {
+    margin-left: auto;
+}
+
+.quick-log__form input[readonly] {
+    background: var(--ct-bg);
+    color: var(--ct-muted);
+}
+
 /*
  * Finding things: the search box and the saved filters in the sidebar, the
  * keyboard shortcuts, and the bar that changes many tickets at once.
@@ -3757,8 +3804,65 @@ kbd {
     background-color: color-mix(in srgb, var(--ct-bg) 60%, transparent);
 }
 
-[data-calendar] .calendar__day:not(.calendar__day--future) {
+[data-calendar] .calendar__day:not(.calendar__day--future, .calendar__day--closed) {
     cursor: crosshair;
+}
+
+/* A day that takes no changes: handed in, approved, or locked. */
+.calendar__day--closed {
+    background-color: color-mix(in srgb, var(--ct-bg) 60%, transparent);
+}
+
+/* Entries that can be moved: taken by the hand, stretched by the edge. */
+[data-calendar] [data-entry] {
+    cursor: grab;
+    user-select: none;
+    -webkit-user-select: none;
+}
+
+[data-calendar] .calendar__day--closed [data-entry] {
+    cursor: pointer;
+}
+
+.calendar--dragging,
+.calendar--dragging * {
+    cursor: grabbing !important;
+}
+
+.calendar__resize {
+    position: absolute;
+    right: 0;
+    bottom: 0;
+    left: 0;
+    height: 7px;
+    cursor: ns-resize;
+    touch-action: none;
+}
+
+.calendar__resize::after {
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    width: 18px;
+    height: 3px;
+    border-radius: 2px;
+    background: currentColor;
+    content: "";
+    opacity: 0;
+    transform: translateX(-50%);
+}
+
+.calendar__block:hover .calendar__resize::after {
+    opacity: 0.35;
+}
+
+/* The entry where it was, while its copy is dragged about. */
+[data-entry].is-dragging {
+    opacity: 0.35;
+}
+
+.calendar__ghost.is-saving {
+    opacity: 0.6;
 }
 
 .calendar__block,

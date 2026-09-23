@@ -1,5 +1,6 @@
 {% extends 'layout.twig' %}
 {% import 'common/macros.twig' as ui %}
+{% import _self as here %}
 
 {% set week_query = 'week=' ~ monday ~ '&user=' ~ person.id %}
 
@@ -11,16 +12,15 @@
 
 {% block actions %}
     <nav class="segmented" aria-label="{{ 'Show the week as'|t }}">
-        <a class="segmented__item{{ view == 'days' ? ' is-active' : '' }}" href="{{ url('/timesheet?' ~ week_query) }}">{{ 'Days'|t }}</a>
+        <a class="segmented__item{{ view == 'days' ? ' is-active' : '' }}" href="{{ url('/timesheet?view=days&' ~ week_query) }}">{{ 'Days'|t }}</a>
         <a class="segmented__item{{ view == 'grid' ? ' is-active' : '' }}" href="{{ url('/timesheet?view=grid&' ~ week_query) }}">{{ 'Grid'|t }}</a>
         <a class="segmented__item{{ view == 'calendar' ? ' is-active' : '' }}" href="{{ url('/timesheet?view=calendar&' ~ week_query) }}">{{ 'Calendar'|t }}</a>
     </nav>
     <a class="button" href="{{ url('/timesheet/team?week=' ~ monday) }}">{{ 'The team'|t }}</a>
-    <a class="button" href="{{ url('/timesheet?view=' ~ view ~ '&week=' ~ previous_week ~ '&user=' ~ person.id) }}">← {{ 'Previous'|t }}</a>
-    <a class="button" href="{{ url('/timesheet?view=' ~ view ~ '&user=' ~ person.id) }}">{{ 'This week'|t }}</a>
-    {% if has_next %}
-        <a class="button" href="{{ url('/timesheet?view=' ~ view ~ '&week=' ~ next_week ~ '&user=' ~ person.id) }}">{{ 'Next'|t }} →</a>
-    {% endif %}
+    {% include 'common/week_picker.twig' with {
+        path: '/timesheet', keep: {view: view, user: person.id}, monday: monday,
+        previous: previous_week, next: has_next ? next_week : null, past_only: true,
+    } only %}
 {% endblock %}
 
 {% block content %}
@@ -53,7 +53,7 @@
         <p class="flash flash--warning">{{ 'Hours up to {day} are closed.'|t({day: locked_until|day}) }}</p>
     {% endif %}
 
-    <div class="stats">
+    <div class="stats" data-week-stats>
         <div class="stat">
             <div class="stat__label">{{ 'Logged this week'|t }}</div>
             <div class="stat__value">{{ total|duration }}</div>
@@ -164,13 +164,19 @@
 
             On one's own week, dragging over a day's empty hours opens "Log
             time" with that day, that start and that length filled in; a click
-            is an hour from where it was clicked.
+            is an hour from where it was clicked. An entry is dragged to
+            another hour or day, stretched by its bottom edge, and opened for
+            changing with a click; one without a start is dragged into the
+            hours. A closed day — handed in, approved, locked — takes none of it.
         #}
         {% set from = calendar.from %}
         {% set to = calendar.to %}
+        {% set week_closed = week_state and week_state.state in ['submitted', 'approved'] %}
+        {% set editable = is_mine and can_work %}
         <section class="card card--flush">
             <div class="calendar" style="--hours: {{ (to - from) / 60 }}"
-                 {% if is_mine and can_work %}data-calendar data-from="{{ from }}"{% endif %}>
+                 {% if editable %}data-calendar data-from="{{ from }}" data-to="{{ to }}"
+                 data-place-url="{{ url('/worklogs/{id}/place') }}" data-failed="{{ 'The change did not go through.'|t }}"{% endif %}>
                 <div class="calendar__corner"></div>
                 {% for date, day in days %}
                     <div class="calendar__head{{ day.expected == 0 ? ' calendar__head--off' : '' }}{{ date == today ? ' calendar__head--today' : '' }}">
@@ -185,7 +191,8 @@
                 {% for date, day in calendar.days %}
                     <div class="calendar__loose">
                         {% for entry in day.loose %}
-                            <a class="calendar__chip" href="{{ url('/tickets/' ~ entry.ticket_id) }}" title="{{ entry.ticket_title }}{{ entry.note ? ' — ' ~ entry.note : '' }}">
+                            <a class="calendar__chip" href="{{ url('/tickets/' ~ entry.ticket_id) }}" title="{{ entry.ticket_title }}{{ entry.note ? ' — ' ~ entry.note : '' }}"
+                               {% if editable %}{{ here.entry_data(entry, date) }}{% endif %}>
                                 <strong>{{ entry.project_code }}-{{ entry.ticket_number }}</strong> {{ entry.minutes|duration }}
                             </a>
                         {% endfor %}
@@ -199,8 +206,9 @@
                 </div>
                 {% for date, day in calendar.days %}
                     {% set info = days[date] %}
-                    <div class="calendar__day{{ info.expected == 0 ? ' calendar__day--off' : '' }}{{ date > today ? ' calendar__day--future' : '' }}"
-                         data-date="{{ date }}"{{ date > today ? ' data-future' : '' }}>
+                    {% set closed = week_closed or (locked_until and date <= locked_until) %}
+                    <div class="calendar__day{{ info.expected == 0 ? ' calendar__day--off' : '' }}{{ date > today ? ' calendar__day--future' : '' }}{{ closed ? ' calendar__day--closed' : '' }}"
+                         data-date="{{ date }}"{{ date > today ? ' data-future' : '' }}{{ closed ? ' data-closed' : '' }}>
                         {# The meetings from one's own calendar, in a lane of their
                            own: a click logs one. #}
                         {% for meeting in day.meetings %}
@@ -219,11 +227,13 @@
                             <a class="calendar__block{{ entry.billable is defined and not entry.billable and entry.project_billable|default(1) ? ' calendar__block--unbilled' : '' }}"
                                href="{{ url('/tickets/' ~ entry.ticket_id) }}"
                                style="top: calc({{ block.start - from }} * var(--ppm)); height: calc({{ block.end - block.start }} * var(--ppm)); left: calc({{ block.lane }} * 100% / {{ block.lanes }}); width: calc(100% / {{ block.lanes }} - 4px);"
-                               title="{{ entry.project_code }}-{{ entry.ticket_number }} {{ entry.ticket_title }}{{ entry.note ? ' — ' ~ entry.note : '' }}">
+                               title="{{ entry.project_code }}-{{ entry.ticket_number }} {{ entry.ticket_title }}{{ entry.note ? ' — ' ~ entry.note : '' }}"
+                               {% if editable %}{{ here.entry_data(entry, date) }}{% endif %}>
                                 <span class="calendar__when">{{ '%02d:%02d'|format(block.start // 60, block.start % 60) }}–{{ '%02d:%02d'|format(block.end // 60, block.end % 60) }} · {{ entry.minutes|duration }}</span>
                                 <strong>{{ entry.project_code }}-{{ entry.ticket_number }}</strong>
                                 <span class="calendar__title">{{ entry.ticket_title }}</span>
                                 {% if entry.work_type_name|default(null) %}<span class="calendar__type">{{ entry.work_type_name }}</span>{% endif %}
+                                {% if editable and not closed %}<span class="calendar__resize" aria-hidden="true"></span>{% endif %}
                             </a>
                         {% endfor %}
                     </div>
@@ -231,7 +241,7 @@
             </div>
         </section>
         {% if is_mine and can_work %}
-            <p class="hint">{{ 'Drag over a day’s hours to log that stretch; a click logs an hour from there. Entries get their place from their start, which the ticket’s form, “Log time” and the clock all fill in.'|t }}</p>
+            <p class="hint">{{ 'Drag over a day’s hours to log that stretch; a click logs an hour from there. Drag an entry to another hour or day, or its bottom edge to change how long it was; a click opens it to change. One without a start is dragged from above the hours onto them.'|t }}</p>
         {% endif %}
     {% else %}
         <div class="split">
@@ -268,7 +278,7 @@
                         {% else %}
                             <ul class="logs">
                                 {% for entry in day.entries %}
-                                    {{ ui.log_entry(entry, '/timesheet?' ~ week_query, 'timesheet') }}
+                                    {{ ui.log_entry(entry, '/timesheet?view=days&' ~ week_query, 'timesheet') }}
                                 {% endfor %}
                             </ul>
                         {% endif %}
@@ -301,7 +311,7 @@
                                     {% if can_change %}
                                         <form method="post" action="{{ url('/absences/' ~ away.id ~ '/delete') }}">
                                             <input type="hidden" name="_token" value="{{ csrf_token }}">
-                                            <input type="hidden" name="back" value="/timesheet?{{ week_query }}">
+                                            <input type="hidden" name="back" value="/timesheet?view=days&{{ week_query }}">
                                             <button class="link-button" type="submit" aria-label="{{ 'Remove'|t }}">×</button>
                                         </form>
                                     {% endif %}
@@ -315,7 +325,7 @@
                             <form method="post" action="{{ url('/absences') }}">
                                 <input type="hidden" name="_token" value="{{ csrf_token }}">
                                 <input type="hidden" name="user" value="{{ person.id }}">
-                                <input type="hidden" name="back" value="/timesheet?{{ week_query }}">
+                                <input type="hidden" name="back" value="/timesheet?view=days&{{ week_query }}">
                                 <div class="form__row">
                                     <div>
                                         <label for="starts_on">{{ 'From'|t }}</label>
@@ -379,3 +389,13 @@
         </div>
     {% endif %}
 {% endblock %}
+
+{#
+    An entry, as the calendar's script reads it: what it moves, stretches and
+    opens for changing.
+#}
+{% macro entry_data(entry, date) -%}
+    draggable="false" data-entry="{{ entry.id }}" data-key="{{ entry.project_code }}-{{ entry.ticket_number }}"
+    data-date="{{ date }}" data-minutes="{{ entry.minutes }}" data-start="{{ entry.started_at ? entry.started_at|slice(0, 5) : '' }}"
+    data-note="{{ entry.note }}" data-work-type="{{ entry.work_type_id }}" data-billable="{{ entry.billable ? 1 : 0 }}"
+{%- endmacro %}

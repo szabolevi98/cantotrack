@@ -366,3 +366,13 @@
         display: none;
     }
 }
+
+/* Changing an entry: its delete is set apart at the far end. */
+.quick-log__delete {
+    margin-left: auto;
+}
+
+.quick-log__form input[readonly] {
+    background: var(--ct-bg);
+    color: var(--ct-muted);
+}

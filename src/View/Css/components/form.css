@@ -231,3 +231,30 @@ summary.link-button::-webkit-details-marker {
 .row--problem td {
     background: var(--ct-danger-soft);
 }
+
+/* Which week: a step either way around a date field, and this week. */
+.week-picker {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.week-picker__step {
+    min-width: 40px;
+    justify-content: center;
+    padding-right: 10px;
+    padding-left: 10px;
+}
+
+.week-picker__step.is-disabled {
+    opacity: 0.4;
+    pointer-events: none;
+}
+
+.week-picker__date {
+    width: auto;
+    min-width: 150px;
+    margin: 0;
+    padding-top: 8px;
+    padding-bottom: 8px;
+}

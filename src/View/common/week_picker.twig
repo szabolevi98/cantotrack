@@ -1,0 +1,27 @@
+{#
+    Which week: a step back, the week of any day picked from the date field —
+    a year back is one pick, not fifty-two clicks — a step on, and this week.
+
+    `path` is the page, `keep` what else its address carries (the view, the
+    person, the project), `next` the Monday after or null where the weeks
+    ahead are not shown, `past_only` when no day after today can be picked.
+#}
+{%- set keep = keep|default({})|filter(v => v is not null and v != '') -%}
+<form class="week-picker" method="get" action="{{ url(path) }}">
+    {% for name, value in keep %}
+        <input type="hidden" name="{{ name }}" value="{{ value }}">
+    {% endfor %}
+    <a class="button week-picker__step" href="{{ url(path ~ '?' ~ keep|merge({week: previous})|url_encode) }}"
+       title="{{ 'The week before'|t }}" aria-label="{{ 'The week before'|t }}">←</a>
+    <input class="field week-picker__date" type="date" name="week" value="{{ monday }}" required
+           {% if past_only|default(false) %}max="{{ 'now'|date('Y-m-d') }}"{% endif %}
+           aria-label="{{ 'The week of'|t }}" title="{{ 'Pick any day: its week is shown'|t }}" data-week-date>
+    <button class="button autosubmit__button" type="submit">{{ 'Show'|t }}</button>
+    {% if next %}
+        <a class="button week-picker__step" href="{{ url(path ~ '?' ~ keep|merge({week: next})|url_encode) }}"
+           title="{{ 'The week after'|t }}" aria-label="{{ 'The week after'|t }}">→</a>
+    {% else %}
+        <span class="button week-picker__step is-disabled" aria-hidden="true">→</span>
+    {% endif %}
+    <a class="button" href="{{ url(path ~ (keep ? '?' ~ keep|url_encode : '')) }}">{{ 'This week'|t }}</a>
+</form>

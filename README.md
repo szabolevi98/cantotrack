@@ -70,9 +70,11 @@ deploy with `git pull`.
   down as time is logged, and a timer turns a running stretch into an entry.
   **Log time** in the top bar (or `l`) logs on any ticket from any page, with
   starred and recently worked-on tickets offered first.
-- **The week**, day by day, as a grid of tickets by days that can be typed
-  straight into, or as a calendar of the hours: entries sit where they started,
-  and dragging over an empty stretch logs it. Each day is measured against the
+- **The week** as a calendar of the hours, day by day, or as a grid of tickets
+  by days that can be typed straight into. On the calendar entries sit where
+  they started and are dragged to another hour or day, stretched by their edge,
+  or opened with a click; dragging over an empty stretch logs it. Any week is a
+  pick of a date away. Each day is measured against the
   person's own working week, and a public holiday or a day away is not a short
   day — it says what it is. Last week's tickets come back to the grid in one
   click.

@@ -83,7 +83,9 @@ class TimesheetController extends Controller
 
         $expected = Config::int('work.hours_per_day', 8) * 60;
         $expectedWeek = array_sum(array_column($days, 'expected'));
-        $view = in_array($_GET['view'] ?? '', ['grid', 'calendar'], true) ? (string) $_GET['view'] : 'days';
+        // The calendar unless the days or the grid are asked for: the week
+        // the way one remembers it, hour by hour.
+        $view = in_array($_GET['view'] ?? '', ['days', 'grid'], true) ? (string) $_GET['view'] : 'calendar';
         $mine = $userId === (int) Auth::id();
 
         $this->render('timesheet/index.twig', [

@@ -170,6 +170,7 @@ $router->post('/tickets/{id}/log', static fn($id) => (new WorklogController())->
 $router->post('/log', static fn() => (new WorklogController())->quick());
 $router->get('/log/suggest', static fn() => (new WorklogController())->suggest());
 $router->post('/worklogs/{id}', static fn($id) => (new WorklogController())->update((int) $id));
+$router->post('/worklogs/{id}/place', static fn($id) => (new WorklogController())->place((int) $id));
 $router->post('/worklogs/{id}/delete', static fn($id) => (new WorklogController())->delete((int) $id));
 
 $router->get('/timesheet', static fn() => (new TimesheetController())->index());

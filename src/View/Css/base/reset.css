@@ -71,3 +71,8 @@ button {
     font: inherit;
     color: inherit;
 }
+
+/* Hidden means hidden, whatever display a class gives the element. */
+[hidden] {
+    display: none !important;
+}

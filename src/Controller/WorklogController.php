@@ -147,6 +147,33 @@ class WorklogController extends Controller
         $this->back('/tickets/' . $worklog['ticket_id']);
     }
 
+    /**
+     * An entry moved or stretched on the week's calendar: its day, its start
+     * and its length, and nothing else — the note, the billing and the work
+     * type stay as they were. Answers in JSON, for the script that dragged it.
+     */
+    public function place(int $id): void
+    {
+        Auth::requireMember();
+
+        $worklog = $this->mineOr403($id);
+
+        try {
+            $changed = (new WorklogService())->change(
+                $worklog,
+                $this->input('time', $worklog['minutes'] . 'm'),
+                $this->input('work_date', (string) $worklog['work_date']),
+                (string) ($worklog['note'] ?? ''),
+                null,
+                $this->input('started_at')
+            );
+        } catch (ValidationError $e) {
+            $this->json(['ok' => false, 'error' => $e->getMessage()], 422);
+        }
+
+        $this->json(['ok' => true, 'minutes' => $changed['minutes']]);
+    }
+
     public function delete(int $id): void
     {
         Auth::requireMember();

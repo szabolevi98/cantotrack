@@ -3,19 +3,31 @@
 /**
  * The migration runner.
  *
- * Creates the database if it is not there, then runs the .sql files under
- * database/core in name order. Every step is written to be repeatable, so this
- * can be run at any time:
+ * Creates the database if it is not there, then runs every file under
+ * database/migrations that has not run yet, in name order, and writes down that
+ * it did. A file runs once per database and never again:
  *
  *   php database/migrate.php
- *
- * Against another database — which is what a deployment does:
- *
+ *   php database/migrate.php --status          (what has run, what is waiting)
  *   php database/migrate.php --config=config/live.ini
  *
- * Without the option the config file would have to be edited back and forth,
- * and whoever forgets to edit it back has a local application pointing at the
- * live database.
+ * The first three files are the schema as it was before this runner kept a
+ * record, and they are written to be repeatable (CREATE TABLE IF NOT EXISTS), so
+ * an installation made before the record existed simply has them written down
+ * on its next run. Everything after them is an ALTER or a new table, and those
+ * are only safe to run once — which is why there is a record at all.
+ *
+ * A migration is never edited after it has run anywhere. A change to the schema
+ * is a new file. The runner keeps each file's checksum and says so when one no
+ * longer matches, because an edited migration is one that two installations
+ * have run in two different versions of.
+ *
+ * MySQL cannot roll a schema change back — CREATE and ALTER commit on their
+ * own — so a file that fails halfway stays halfway. The runner stops at the
+ * first failure and names the statement, and the file is not written down, so
+ * after the cause is fixed the rest of it runs again. Every statement in a
+ * migration should therefore be one that can be run twice (IF NOT EXISTS, IF
+ * EXISTS) wherever MariaDB allows it.
  */
 
 require dirname(__DIR__) . '/vendor/autoload.php';
@@ -24,6 +36,7 @@ use CantoTrack\Core\Config;
 
 $root = dirname(__DIR__);
 $configPath = $root . '/config/config.ini';
+$statusOnly = in_array('--status', $argv ?? [], true);
 
 foreach ($argv ?? [] as $argument) {
     if (str_starts_with($argument, '--config=')) {
@@ -67,24 +80,117 @@ $server->exec(sprintf(
 ));
 
 $server->exec('USE `' . str_replace('`', '', $database) . '`');
+$server->exec(sprintf('SET NAMES %s COLLATE %s', $charset, $collation));
 
-$files = glob($root . '/database/core/*.sql') ?: [];
+$server->exec(
+    'CREATE TABLE IF NOT EXISTS schema_migrations (
+        name VARCHAR(190) NOT NULL,
+        checksum CHAR(64) NOT NULL,
+        ran_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (name)
+    ) ENGINE = InnoDB DEFAULT CHARSET = utf8mb4 COLLATE = utf8mb4_unicode_ci'
+);
+
+$ran = [];
+foreach ($server->query('SELECT name, checksum FROM schema_migrations') as $row) {
+    $ran[$row['name']] = $row['checksum'];
+}
+
+$files = glob($root . '/database/migrations/*.sql') ?: [];
 sort($files, SORT_NATURAL);
 
-foreach ($files as $file) {
-    $sql = trim((string) file_get_contents($file));
+$pending = 0;
 
-    if ($sql === '') {
+foreach ($files as $file) {
+    $name = basename($file);
+    $sql = (string) file_get_contents($file);
+    $checksum = hash('sha256', str_replace("\r\n", "\n", $sql));
+
+    if (isset($ran[$name])) {
+        if (!hash_equals($ran[$name], $checksum)) {
+            fwrite(STDERR, sprintf(
+                "  warning: %s was edited after it ran here. It is not run again —%s"
+                . "  a change to the schema belongs in a new migration.%s",
+                $name,
+                PHP_EOL,
+                PHP_EOL
+            ));
+        }
+
+        if ($statusOnly) {
+            printf("  ran      %s%s", $name, PHP_EOL);
+        }
+
         continue;
     }
 
-    try {
-        $server->exec($sql);
-        printf("  ran %s%s", basename($file), PHP_EOL);
-    } catch (PDOException $e) {
-        fwrite(STDERR, sprintf('Failed in %s: %s%s', basename($file), $e->getMessage(), PHP_EOL));
-        exit(1);
+    $pending++;
+
+    if ($statusOnly) {
+        printf("  waiting  %s%s", $name, PHP_EOL);
+        continue;
     }
+
+    foreach (migrationStatements($sql) as $number => $statement) {
+        try {
+            $server->exec($statement);
+        } catch (PDOException $e) {
+            fwrite(STDERR, sprintf(
+                "Failed in %s, statement %d: %s%s%s%s",
+                $name,
+                $number + 1,
+                $e->getMessage(),
+                PHP_EOL,
+                preg_replace('/\s+/', ' ', substr($statement, 0, 300)),
+                PHP_EOL
+            ));
+            exit(1);
+        }
+    }
+
+    $server->prepare('INSERT INTO schema_migrations (name, checksum) VALUES (:name, :checksum)')
+        ->execute(['name' => $name, 'checksum' => $checksum]);
+
+    printf("  ran %s%s", $name, PHP_EOL);
 }
 
-printf('Database %s is up to date (%d file%s).%s', $database, count($files), count($files) === 1 ? '' : 's', PHP_EOL);
+if ($statusOnly) {
+    printf('%d waiting.%s', $pending, PHP_EOL);
+    exit(0);
+}
+
+printf(
+    'Database %s is up to date (%d migration%s, %d new).%s',
+    $database,
+    count($files),
+    count($files) === 1 ? '' : 's',
+    $pending,
+    PHP_EOL
+);
+
+/**
+ * A migration file split into its statements.
+ *
+ * One statement at a time rather than the whole file in one exec(): with
+ * several statements in one call, MySQL reports an error only for the first,
+ * and a failure in the fourth would pass without a word — leaving a schema that
+ * is half one version and half another, and a record saying it is the new one.
+ *
+ * Comment lines go first, because a comment may end in a semicolon of its own.
+ * A statement ends at a semicolon at the end of a line; that is a convention
+ * these files keep rather than a parser, and it is enough for DDL.
+ *
+ * @return list<string>
+ */
+function migrationStatements(string $sql): array
+{
+    $lines = preg_split('/\R/', $sql) ?: [];
+    $kept = array_filter($lines, static fn(string $line): bool => !preg_match('/^\s*--/', $line));
+
+    $statements = preg_split('/;\s*$/m', implode("\n", $kept)) ?: [];
+
+    return array_values(array_filter(
+        array_map('trim', $statements),
+        static fn(string $statement): bool => $statement !== ''
+    ));
+}

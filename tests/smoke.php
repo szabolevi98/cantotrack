@@ -146,6 +146,42 @@ function upload(string $url, string $token, array $files, string $cookieJar, boo
     return ['status' => $status, 'headers' => substr($response, 0, $headerSize), 'body' => substr($response, $headerSize)];
 }
 
+/**
+ * One API request: JSON in, JSON out, the token as a bearer token.
+ *
+ * @return array{status: int, headers: string, body: string, json: mixed}
+ */
+function api(string $url, string $apiToken, string $method = 'GET', ?array $body = null): array
+{
+    $handle = curl_init($url);
+    $headers = ['Accept: application/json'];
+
+    if ($apiToken !== '') {
+        $headers[] = 'Authorization: Bearer ' . $apiToken;
+    }
+
+    if ($body !== null) {
+        $headers[] = 'Content-Type: application/json';
+        curl_setopt($handle, CURLOPT_POSTFIELDS, json_encode($body));
+    }
+
+    curl_setopt_array($handle, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HEADER => true,
+        CURLOPT_CUSTOMREQUEST => $method,
+        CURLOPT_TIMEOUT => 15,
+        CURLOPT_HTTPHEADER => $headers,
+    ]);
+
+    $response = (string) curl_exec($handle);
+    $status = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
+    $headerSize = (int) curl_getinfo($handle, CURLINFO_HEADER_SIZE);
+    curl_close($handle);
+    $text = substr($response, $headerSize);
+
+    return ['status' => $status, 'headers' => substr($response, 0, $headerSize), 'body' => $text, 'json' => json_decode($text, true)];
+}
+
 printf('Checking %s%s%s', $baseUrl, PHP_EOL, PHP_EOL);
 
 // The login page, and the token every form on it has to carry.
@@ -890,6 +926,74 @@ if ($email === null || $password === null) {
         'nor can a project with hours in it',
         request($baseUrl . '/projects/' . $projectId, [], $jar)['status'] === 200
     );
+
+    // ---------------------------------------------------------------------
+    // The API: a token made on the profile, and the same rules through it.
+    // ---------------------------------------------------------------------
+    $noToken = api($baseUrl . '/api/v1/me', '');
+    check(
+        'the API refuses a request without a token, in JSON',
+        $noToken['status'] === 401 && ($noToken['json']['error']['status'] ?? 0) === 401
+        && !str_contains($noToken['headers'], 'Set-Cookie')
+    );
+    check('and one with a made-up token', in_array(api($baseUrl . '/api/v1/me', 'ct_' . str_repeat('0', 40))['status'], [401, 429], true));
+
+    request($baseUrl . '/profile/tokens', ['_token' => $token, 'name' => 'Smoke test'], $jar);
+    $tokensPage = request($baseUrl . '/profile/tokens', [], $jar)['body'];
+    preg_match('/value="(ct_[0-9a-f]{40})"/', $tokensPage, $m);
+    $apiToken = $m[1] ?? '';
+    check('a token can be made on the profile, and is shown once', $apiToken !== '');
+    check('and not again', !str_contains(request($baseUrl . '/profile/tokens', [], $jar)['body'], $apiToken));
+
+    $me = api($baseUrl . '/api/v1/me', $apiToken);
+    check('with it, the API knows who is asking', $me['status'] === 200 && ($me['json']['data']['email'] ?? '') === $email);
+
+    $listed = api($baseUrl . '/api/v1/tickets?project=' . $code, $apiToken);
+    check(
+        'lists the project\'s tickets, a page at a time',
+        $listed['status'] === 200 && ($listed['json']['meta']['total'] ?? 0) >= 1
+        && in_array($code . '-1', array_column($listed['json']['data'] ?? [], 'key'), true)
+    );
+
+    $made = api($baseUrl . '/api/v1/tickets', $apiToken, 'POST', [
+        'project' => $code,
+        'title' => 'Made through the API',
+        'type' => 'bug',
+        'labels' => ['api'],
+        'estimate' => '2h',
+    ]);
+    $apiKey = (string) ($made['json']['data']['key'] ?? '');
+    check('makes a ticket', $made['status'] === 201 && $apiKey !== '' && ($made['json']['data']['labels'] ?? []) === ['api']);
+    check('and refuses one without a title', api($baseUrl . '/api/v1/tickets', $apiToken, 'POST', ['project' => $code])['status'] === 422);
+
+    $version = (int) ($made['json']['data']['version'] ?? 0);
+    $patched = api($baseUrl . '/api/v1/tickets/' . $apiKey, $apiToken, 'PATCH', ['priority' => 'high', 'status' => 'in_progress', 'version' => $version]);
+    check(
+        'changes only what it is sent',
+        $patched['status'] === 200 && ($patched['json']['data']['priority'] ?? '') === 'high'
+        && ($patched['json']['data']['status']['category'] ?? '') === 'in_progress'
+        && ($patched['json']['data']['title'] ?? '') === 'Made through the API'
+    );
+    check(
+        'and answers 409 to an edit made against an old version',
+        api($baseUrl . '/api/v1/tickets/' . $apiKey, $apiToken, 'PATCH', ['title' => 'Stale', 'version' => $version])['status'] === 409
+    );
+
+    $commented = api($baseUrl . '/api/v1/tickets/' . $apiKey . '/comments', $apiToken, 'POST', ['body' => 'Said through the API']);
+    check('takes a comment', $commented['status'] === 201 && ($commented['json']['data']['body'] ?? '') === 'Said through the API');
+
+    $apiLog = api($baseUrl . '/api/v1/tickets/' . $apiKey . '/worklogs', $apiToken, 'POST', ['time' => '45m', 'note' => 'Through the API']);
+    $apiLogId = (int) ($apiLog['json']['data']['id'] ?? 0);
+    check('logs time', $apiLog['status'] === 201 && ($apiLog['json']['data']['minutes'] ?? 0) === 45);
+
+    $week = api($baseUrl . '/api/v1/worklogs', $apiToken);
+    check('lists one\'s own hours', $week['status'] === 200 && in_array($apiLogId, array_column($week['json']['data'] ?? [], 'id'), true));
+    check('and deletes an entry', api($baseUrl . '/api/v1/worklogs/' . $apiLogId, $apiToken, 'DELETE')['status'] === 204);
+    check('answers an unknown ticket with a JSON 404', ($missingTicket = api($baseUrl . '/api/v1/tickets/' . $code . '-99999', $apiToken))['status'] === 404 && isset($missingTicket['json']['error']));
+
+    preg_match('#/profile/tokens/(\d+)/delete#', request($baseUrl . '/profile/tokens', [], $jar)['body'], $m);
+    request($baseUrl . '/profile/tokens/' . ($m[1] ?? 0) . '/delete', ['_token' => $token], $jar);
+    check('and a revoked token is refused from then on', in_array(api($baseUrl . '/api/v1/me', $apiToken)['status'], [401, 429], true));
 
     // Tidy up after itself: the hours first, one by one — the slow way,
     // deliberately — and then the project takes the epic and the ticket.

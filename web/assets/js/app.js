@@ -39,6 +39,16 @@
     });
 
     /*
+     * data-select-on-focus — a value to be copied (a new token) is selected
+     * whole the moment it is clicked into.
+     */
+    document.addEventListener('focusin', function (event) {
+        if (event.target.matches && event.target.matches('[data-select-on-focus]')) {
+            event.target.select();
+        }
+    });
+
+    /*
      * data-autosubmit — a select that sends its form when it changes.
      *
      * With a mouse or a finger that is immediate: somebody opened the list and

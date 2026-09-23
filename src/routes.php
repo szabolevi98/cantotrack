@@ -10,6 +10,8 @@
  * @var \CantoTrack\Core\Router $router
  */
 
+use CantoTrack\Controller\ApiController;
+use CantoTrack\Controller\ApiTokenController;
 use CantoTrack\Controller\AttachmentController;
 use CantoTrack\Controller\CommentController;
 use CantoTrack\Controller\DashboardController;
@@ -61,6 +63,9 @@ $router->post('/filters/{id}/delete', static fn($id) => (new SearchController())
 $router->get('/profile', static fn() => (new ProfileController())->show());
 $router->post('/profile', static fn() => (new ProfileController())->update());
 $router->post('/profile/password', static fn() => (new ProfileController())->changePassword());
+$router->get('/profile/tokens', static fn() => (new ApiTokenController())->index());
+$router->post('/profile/tokens', static fn() => (new ApiTokenController())->create());
+$router->post('/profile/tokens/{id}/delete', static fn($id) => (new ApiTokenController())->revoke((int) $id));
 
 // ---------------------------------------------------------------------------
 // Projects and the epics inside them
@@ -163,3 +168,20 @@ $router->post('/settings/lock', static fn() => (new SettingsController())->lock(
 $router->post('/settings/holidays', static fn() => (new SettingsController())->addHoliday());
 $router->post('/settings/holidays/national', static fn() => (new SettingsController())->addNational());
 $router->post('/settings/holidays/delete', static fn() => (new SettingsController())->removeHoliday());
+
+// ---------------------------------------------------------------------------
+// The API, version 1 — JSON, with a personal access token as a bearer token
+// ---------------------------------------------------------------------------
+$router->get('/api/v1/me', static fn() => (new ApiController())->me());
+$router->get('/api/v1/users', static fn() => (new ApiController())->users());
+$router->get('/api/v1/projects', static fn() => (new ApiController())->projects());
+$router->get('/api/v1/projects/{code}', static fn($code) => (new ApiController())->project((string) $code));
+$router->get('/api/v1/tickets', static fn() => (new ApiController())->tickets());
+$router->post('/api/v1/tickets', static fn() => (new ApiController())->createTicket());
+$router->get('/api/v1/tickets/{key}', static fn($key) => (new ApiController())->ticket((string) $key));
+$router->patch('/api/v1/tickets/{key}', static fn($key) => (new ApiController())->updateTicket((string) $key));
+$router->get('/api/v1/tickets/{key}/comments', static fn($key) => (new ApiController())->comments((string) $key));
+$router->post('/api/v1/tickets/{key}/comments', static fn($key) => (new ApiController())->addComment((string) $key));
+$router->post('/api/v1/tickets/{key}/worklogs', static fn($key) => (new ApiController())->logWork((string) $key));
+$router->get('/api/v1/worklogs', static fn() => (new ApiController())->worklogs());
+$router->delete('/api/v1/worklogs/{id}', static fn($id) => (new ApiController())->deleteWorklog((int) $id));

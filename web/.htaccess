@@ -1,5 +1,10 @@
 RewriteEngine On
 
+# The API's bearer token. Under FastCGI, Apache keeps the Authorization header
+# to itself unless it is handed on like this.
+RewriteCond %{HTTP:Authorization} .
+RewriteRule ^ - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+
 # A real file or folder is served as it is; everything else goes to the front
 # controller.
 RewriteCond %{REQUEST_FILENAME} -f [OR]

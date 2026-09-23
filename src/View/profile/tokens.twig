@@ -1,0 +1,79 @@
+{% extends 'layout.twig' %}
+
+{% block title %}{{ 'Access tokens'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Access tokens'|t }}{% endblock %}
+{% block subheading %}<p class="content__sub">{{ 'For scripts and other programs that use the API. A token acts as you, with your rights.'|t }}</p>{% endblock %}
+
+{% block content %}
+    {% if new_token %}
+        <section class="card card--narrow new-secret" role="status">
+            <h2 class="card__title">{{ 'Your new token'|t }}</h2>
+            <p class="card__body">{{ 'Copy it now and keep it somewhere safe. It is not stored in readable form, so this page cannot show it again.'|t }}</p>
+            <input class="field field--code" type="text" value="{{ new_token }}" readonly aria-label="{{ 'Token'|t }}" data-select-on-focus>
+            <pre class="code-sample"><code>curl -H "Authorization: Bearer {{ new_token }}" {{ api_base }}/me</code></pre>
+        </section>
+    {% endif %}
+
+    <section class="card card--flush">
+        <header class="card__head"><h2 class="card__title">{{ 'Your tokens'|t }}</h2></header>
+        {% if tokens is empty %}
+            <p class="card__empty">{{ 'No tokens yet.'|t }}</p>
+        {% else %}
+            <table class="table">
+                <thead><tr>
+                    <th>{{ 'Name'|t }}</th><th>{{ 'Starts with'|t }}</th><th>{{ 'Made'|t }}</th>
+                    <th>{{ 'Last used'|t }}</th><th>{{ 'Expires'|t }}</th><th></th>
+                </tr></thead>
+                <tbody>
+                {% for token in tokens %}
+                    {% set expired = token.expires_on and token.expires_on < 'now'|date('Y-m-d') %}
+                    <tr>
+                        <td>{{ token.name }}{% if expired %} <span class="badge badge--muted">{{ 'Expired'|t }}</span>{% endif %}</td>
+                        <td><code>{{ token.prefix }}…</code></td>
+                        <td>{{ token.created_at|day }}</td>
+                        <td>{{ token.last_used_at ? token.last_used_at|day : 'Never'|t }}</td>
+                        <td>{{ token.expires_on ? token.expires_on|day : 'Never'|t }}</td>
+                        <td class="table__number">
+                            <form method="post" action="{{ url('/profile/tokens/' ~ token.id ~ '/delete') }}"
+                                  data-confirm="{{ 'Revoke “{name}”? Whatever uses it stops working.'|t({name: token.name}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                <button class="button button--small button--danger" type="submit">{{ 'Revoke'|t }}</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </section>
+
+    <section class="card card--narrow">
+        <h2 class="card__title">{{ 'Make a token'|t }}</h2>
+        <form method="post" action="{{ url('/profile/tokens') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <div class="form__row">
+                <div>
+                    <label for="token_name">{{ 'What it is for'|t }}</label>
+                    <input id="token_name" class="field" type="text" name="name" maxlength="80" required placeholder="{{ 'Deploy script'|t }}">
+                </div>
+                <div>
+                    <label for="expires_on">{{ 'Expires'|t }}</label>
+                    <input id="expires_on" class="field" type="date" name="expires_on" min="{{ 'tomorrow'|date('Y-m-d') }}">
+                </div>
+            </div>
+            <p class="hint">{{ 'Leave the date empty for a token that lasts until it is revoked.'|t }}</p>
+            <div class="form__actions">
+                <button class="button button--primary" type="submit">{{ 'Make the token'|t }}</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="card card--narrow">
+        <h2 class="card__title">{{ 'Using it'|t }}</h2>
+        <p class="card__body">{{ 'Send the token in the Authorization header. Everything is under {base}; the README lists the endpoints.'|t({base: api_base}) }}</p>
+        <pre class="code-sample"><code>curl -H "Authorization: Bearer ct_…" "{{ api_base }}/tickets?assignee=me&amp;open=1"
+
+curl -X POST -H "Authorization: Bearer ct_…" -H "Content-Type: application/json" \
+     -d '{"time": "1h 30m", "note": "Review"}' {{ api_base }}/tickets/CT-12/worklogs</code></pre>
+    </section>
+{% endblock %}

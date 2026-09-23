@@ -761,6 +761,27 @@ summary.link-button::-webkit-details-marker {
     display: none;
 }
 
+/* Something to be copied exactly: a token, a secret, a command. */
+.field--code {
+    font-family: var(--ct-mono);
+    font-size: 0.875rem;
+}
+
+.code-sample {
+    overflow-x: auto;
+    margin: 12px 0 0;
+    padding: 12px 14px;
+    border: 1px solid var(--ct-border);
+    border-radius: 8px;
+    background: var(--ct-bg);
+    font-size: 0.8125rem;
+    line-height: 1.5;
+}
+
+.new-secret {
+    border-color: var(--ct-primary-border);
+}
+
 /*
  * The small coloured labels: a ticket's status, its priority, an archived
  * project. Dark text on a tint rather than white on a solid colour — at this

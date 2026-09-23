@@ -9,12 +9,14 @@
  */
 
 use CantoTrack\Core\Config;
+use CantoTrack\Core\ConflictError;
 use CantoTrack\Core\Csrf;
 use CantoTrack\Core\ErrorPage;
 use CantoTrack\Core\HttpError;
 use CantoTrack\Core\Logger;
 use CantoTrack\Core\Router;
 use CantoTrack\Core\Session;
+use CantoTrack\Core\ValidationError;
 use CantoTrack\Service\Notifier;
 
 require dirname(__DIR__) . '/vendor/autoload.php';
@@ -72,6 +74,21 @@ set_exception_handler(static function (\Throwable $e): void {
         return;
     }
 
+    // The forms catch these where they happen and say them beside the field;
+    // the API lets them through to here, where they are what they are: a
+    // request that did not make sense, and one that lost a race.
+    if ($e instanceof ValidationError) {
+        ErrorPage::render(422, $e->getMessage());
+
+        return;
+    }
+
+    if ($e instanceof ConflictError) {
+        ErrorPage::render(409, $e->getMessage());
+
+        return;
+    }
+
     Logger::error('Uncaught: ' . $e->getMessage(), [
         'file' => $e->getFile(),
         'line' => $e->getLine(),
@@ -100,7 +117,14 @@ header(
 header('X-Content-Type-Options: nosniff');
 header('Referrer-Policy: same-origin');
 
-Session::start();
+$path = Router::normalise($_SERVER['REQUEST_URI'] ?? '/');
+$exempt = str_starts_with($path, '/api/') || str_starts_with($path, '/integrations/');
+
+// The API and the integrations get no session: they prove who they are on
+// every request, and a cookie handed to a script is one more thing to leak.
+if (!$exempt) {
+    Session::start();
+}
 
 // Whoever has to hear about a change is told by the Notifier, which listens
 // to every change the services make.
@@ -116,9 +140,6 @@ Notifier::register();
  * exceptions: they carry no session cookie at all, and prove who they are with
  * a token or a signature of their own, which is checked where they arrive.
  */
-$path = Router::normalise($_SERVER['REQUEST_URI'] ?? '/');
-$exempt = str_starts_with($path, '/api/') || str_starts_with($path, '/integrations/');
-
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && !$exempt) {
     // A post bigger than post_max_size reaches PHP empty — no fields, so no
     // token either — and would be answered "your session expired". Said as

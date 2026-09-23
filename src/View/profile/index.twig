@@ -91,4 +91,10 @@
             </div>
         </form>
     </section>
+
+    <section class="card card--narrow">
+        <h2 class="card__title">{{ 'Access tokens'|t }}</h2>
+        <p class="card__body">{{ 'For scripts and other programs that use the API on your behalf.'|t }}</p>
+        <a class="button" href="{{ url('/profile/tokens') }}">{{ 'Manage tokens'|t }}</a>
+    </section>
 {% endblock %}

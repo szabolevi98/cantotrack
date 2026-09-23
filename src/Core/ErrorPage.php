@@ -13,6 +13,7 @@ class ErrorPage
 {
     private const TITLES = [
         400 => 'That request did not make sense',
+        401 => 'Sign in first',
         403 => 'Not yours to open',
         404 => 'Nothing here',
         405 => 'Not like that',

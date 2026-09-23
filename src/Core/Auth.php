@@ -72,6 +72,20 @@ class Auth
         (new UserRepository())->touchLastLogin((int) $user['id']);
     }
 
+    /**
+     * Acts as a person for this one request, without a session: an API
+     * request proves who it is with a token each time, and leaves nothing
+     * behind that a browser could pick up.
+     */
+    public static function actAs(array $user): void
+    {
+        self::$user = $user;
+
+        if (!empty($user['locale'])) {
+            I18n::setLocale((string) $user['locale']);
+        }
+    }
+
     public static function logout(): void
     {
         self::$user = null;

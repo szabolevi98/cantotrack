@@ -1010,28 +1010,36 @@ summary.link-button::-webkit-details-marker {
 }
 
 /*
- * The board: one column per status, each holding cards.
+ * The board: one column per status, each holding cards — and, split into
+ * swimlanes, one row of those columns per person or per epic.
  *
- * The columns scroll sideways rather than shrinking below a width where a card
- * stops being readable. Five columns on a laptop screen is already tight, and a
- * board whose cards wrap to three lines each is one nobody scans.
+ * Every row is the same grid (the heads, and each lane under them), so the
+ * columns line up down the page however many lanes there are. The grid scrolls
+ * sideways rather than shrinking below a width where a card stops being
+ * readable: a board whose cards wrap to three lines each is one nobody scans.
  */
 .board {
-    display: grid;
-    grid-auto-columns: minmax(230px, 1fr);
-    grid-auto-flow: column;
-    gap: 14px;
     overflow-x: auto;
     padding-bottom: 8px;
 }
 
-.board__column {
-    display: flex;
-    flex-direction: column;
-    min-width: 0;
-    border: 1px solid var(--ct-border);
-    border-radius: var(--ct-radius);
-    background: rgba(255, 255, 255, 0.55);
+.board__row {
+    display: grid;
+    grid-template-columns: repeat(var(--columns, 5), minmax(230px, 1fr));
+    gap: 14px;
+    min-width: calc(var(--columns, 5) * 244px);
+}
+
+.board__row + .board__row,
+.board__lane-title + .board__row {
+    margin-top: 0;
+}
+
+.board__row--heads {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    margin-bottom: 10px;
 }
 
 .board__head {
@@ -1039,8 +1047,10 @@ summary.link-button::-webkit-details-marker {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
-    padding: 12px 14px;
-    border-bottom: 1px solid var(--ct-border);
+    padding: 10px 14px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius);
+    background: var(--ct-surface);
 }
 
 .board__count {
@@ -1049,18 +1059,51 @@ summary.link-button::-webkit-details-marker {
     font-variant-numeric: tabular-nums;
 }
 
-.board__cards {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: 10px;
-    padding: 12px;
+/* A column over its limit says so in its header; it does not refuse work. */
+.board__head--over {
+    border-color: rgba(193, 74, 95, 0.4);
 }
 
-.board__empty {
-    margin: 0;
-    padding: 10px 0;
-    color: var(--ct-border);
+.board__head--over .board__count {
+    color: var(--ct-danger);
+    font-weight: 700;
+}
+
+/* A swimlane's name, across the whole board above its row. */
+.board__lane-title {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin: 18px 0 8px;
+    padding-bottom: 6px;
+    border-bottom: 1px solid var(--ct-border);
+    color: var(--ct-text);
+    font-size: 0.92rem;
+}
+
+.board__column {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+    min-height: 70px;
+    padding: 10px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius);
+    background: rgba(255, 255, 255, 0.55);
+    transition: background 0.1s ease, border-color 0.1s ease;
+}
+
+/* Where a dragged card would land. */
+.board__column.is-target {
+    border-color: var(--ct-primary);
+    background: var(--ct-primary-soft);
+}
+
+.board__more {
+    padding: 6px 0;
+    color: var(--ct-muted);
+    font-size: 0.82rem;
     text-align: center;
 }
 
@@ -1075,11 +1118,33 @@ summary.link-button::-webkit-details-marker {
     box-shadow: var(--ct-shadow);
 }
 
+.js .ticket-card[draggable="true"] {
+    cursor: grab;
+}
+
+.ticket-card.is-dragging {
+    opacity: 0.45;
+}
+
+/* The gap a dragged card will fall into. */
+.ticket-card--placeholder {
+    min-height: 44px;
+    border: 2px dashed var(--ct-primary-border);
+    background: transparent;
+    box-shadow: none;
+}
+
 .ticket-card__top {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
+}
+
+.ticket-card__key {
+    display: inline-flex;
+    gap: 5px;
+    align-items: center;
 }
 
 .ticket-card__title {
@@ -1098,12 +1163,29 @@ summary.link-button::-webkit-details-marker {
     font-size: 0.74rem;
 }
 
+.ticket-card__tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    align-items: center;
+}
+
+.ticket-card__tags .label {
+    margin: 0;
+}
+
 .ticket-card__foot {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 8px;
     font-size: 0.82rem;
+}
+
+.ticket-card__meta {
+    display: inline-flex;
+    gap: 8px;
+    align-items: center;
 }
 
 /*
@@ -1123,45 +1205,22 @@ summary.link-button::-webkit-details-marker {
     font-size: 0.78rem;
 }
 
-/* "And 34 more": the done column shows the latest and links to the rest. */
-.board__more {
-    padding: 6px 0;
-    color: var(--ct-muted);
-    font-size: 0.82rem;
-    text-align: center;
+/* The epics above the board fold away, since the board is what the page is for. */
+.epics-card > summary {
+    cursor: pointer;
+    list-style: none;
 }
 
-/* A column over its limit says so in its header; it does not refuse work. */
-.board__column--over .board__count {
-    color: var(--ct-danger);
-    font-weight: 700;
+.epics-card > summary::-webkit-details-marker {
+    display: none;
 }
 
-.board__column--over .board__head {
-    border-bottom-color: rgba(193, 74, 95, 0.35);
+.epics-card[open] > summary {
+    margin-bottom: 12px;
 }
 
-.ticket-card__key {
-    display: inline-flex;
-    gap: 5px;
-    align-items: center;
-}
-
-.ticket-card__tags {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px;
-    align-items: center;
-}
-
-.ticket-card__tags .label {
-    margin: 0;
-}
-
-.ticket-card__meta {
-    display: inline-flex;
-    gap: 8px;
-    align-items: center;
+.board-filters .field--inline {
+    max-width: 200px;
 }
 
 /*

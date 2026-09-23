@@ -7,9 +7,11 @@ use CantoTrack\Core\Controller;
 use CantoTrack\Core\I18n;
 use CantoTrack\Model\AttachmentRepository;
 use CantoTrack\Model\EpicRepository;
+use CantoTrack\Model\LabelRepository;
 use CantoTrack\Model\ProjectRepository;
 use CantoTrack\Model\StatusRepository;
 use CantoTrack\Model\TicketRepository;
+use CantoTrack\Model\UserRepository;
 use CantoTrack\Service\AttachmentService;
 
 /**
@@ -41,15 +43,98 @@ class ProjectController extends Controller
 
         $project = $this->projectOr404($id);
         $statuses = (new StatusRepository())->forProject($id);
-        $board = (new TicketRepository())->board($id, $statuses);
+        $epics = (new EpicRepository())->forProject($id);
+
+        // The board's own filters, in the address like the list's, so a
+        // narrowed board can be bookmarked and shared.
+        $who = (string) ($_GET['who'] ?? '');
+        $epic = (string) ($_GET['epic'] ?? '');
+        $filters = [
+            'assignee_id' => $who === 'me' ? Auth::id() : (ctype_digit($who) ? (int) $who : null),
+            'unassigned' => $who === 'none',
+            'epic_id' => ctype_digit($epic) ? (int) $epic : null,
+            'no_epic' => $epic === 'none',
+            'type' => $_GET['type'] ?? null,
+            'label' => trim((string) ($_GET['label'] ?? '')) ?: null,
+            'q' => trim((string) ($_GET['q'] ?? '')) ?: null,
+        ];
+        $lanesBy = in_array($_GET['lanes'] ?? '', ['epic', 'assignee'], true) ? $_GET['lanes'] : 'none';
+
+        $board = (new TicketRepository())->board($id, $statuses, $filters);
 
         $this->render('projects/show.twig', [
             'project' => $project,
             'board' => $board['columns'],
             'more' => $board['more'],
             'statuses' => $statuses,
-            'epics' => (new EpicRepository())->forProject($id),
+            'epics' => $epics,
+            'lanes' => $this->lanes($board['columns'], $lanesBy, $epics),
+            'lanes_by' => $lanesBy,
+            'who' => $who,
+            'epic' => $epic,
+            'filters' => $filters,
+            'narrowed' => array_filter($filters) !== [],
+            'people' => (new UserRepository())->active(),
+            'labels' => (new LabelRepository())->all(),
+            'types' => TicketRepository::TYPES,
         ]);
+    }
+
+    /**
+     * The swimlanes: one row across the board per epic or per person, in the
+     * order the project's epics and the team's names come in, and only the
+     * ones that have a card on the board. "No epic" and "Unassigned" come
+     * last — they are where things are waiting to be given somewhere.
+     *
+     * Without lanes, the board is a single lane holding everything.
+     *
+     * @param array<int, array> $columns
+     * @return list<array{key: string, title: string, field: ?string, value: ?int, columns: array<int, array>}>
+     */
+    private function lanes(array $columns, string $by, array $epics): array
+    {
+        if ($by === 'none') {
+            return [['key' => 'all', 'title' => '', 'field' => null, 'value' => null, 'columns' => $columns]];
+        }
+
+        $field = $by === 'epic' ? 'epic_id' : 'assignee_id';
+        $names = [];
+
+        if ($by === 'epic') {
+            foreach ($epics as $epic) {
+                $names[(int) $epic['id']] = (string) $epic['title'];
+            }
+        }
+
+        $lanes = [];
+        foreach ($columns as $statusId => $tickets) {
+            foreach ($tickets as $ticket) {
+                $value = $ticket[$field] === null ? 0 : (int) $ticket[$field];
+
+                if (!isset($lanes[$value])) {
+                    $title = $value === 0
+                        ? ($by === 'epic' ? __('No epic') : __('Unassigned'))
+                        : ($by === 'epic' ? ($names[$value] ?? (string) $ticket['epic_title']) : (string) $ticket['assignee_name']);
+
+                    $lanes[$value] = [
+                        'key' => $by . '-' . $value,
+                        'title' => $title,
+                        'field' => $field,
+                        'value' => $value === 0 ? null : $value,
+                        'columns' => array_fill_keys(array_keys($columns), []),
+                    ];
+                }
+
+                $lanes[$value]['columns'][$statusId][] = $ticket;
+            }
+        }
+
+        uasort($lanes, static function (array $a, array $b): int {
+            // The ones without an epic or a person last; the rest by name.
+            return [$a['value'] === null, mb_strtolower($a['title'])] <=> [$b['value'] === null, mb_strtolower($b['title'])];
+        });
+
+        return array_values($lanes);
     }
 
     /**

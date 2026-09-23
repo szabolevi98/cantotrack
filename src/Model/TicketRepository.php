@@ -154,6 +154,14 @@ class TicketRepository
             $parameters['assignee_id'] = (int) $filters['assignee_id'];
         }
 
+        if (!empty($filters['unassigned'])) {
+            $where[] = 't.assignee_id IS NULL';
+        }
+
+        if (!empty($filters['no_epic'])) {
+            $where[] = 't.epic_id IS NULL';
+        }
+
         if (!empty($filters['type']) && in_array($filters['type'], self::TYPES, true)) {
             $where[] = 't.type = :type';
             $parameters['type'] = $filters['type'];
@@ -209,20 +217,29 @@ class TicketRepository
      * only ever grows, so it shows the most recently finished and says how
      * many more there are.
      *
+     * The open columns are in the order people arranged them (the rank); a
+     * done column shows the most recently finished first.
+     *
+     * The filters narrow what is drawn — "only mine", one epic, one label —
+     * without changing the columns or their counts, which are the project's.
+     *
      * @param array<array> $statuses the project's columns, in order
      * @return array{columns: array<int, array>, more: array<int, int>}
      */
-    public function board(int $projectId, array $statuses, int $doneShown = 20): array
+    public function board(int $projectId, array $statuses, array $filters = [], int $doneShown = 20): array
     {
         $columns = [];
         foreach ($statuses as $status) {
             $columns[(int) $status['id']] = [];
         }
 
+        [$where, $parameters] = $this->conditions(['project_id' => $projectId] + $filters);
+        $narrowed = implode(' AND ', $where);
+
         $open = $this->db->prepare(
-            self::SELECT . ' WHERE t.project_id = :project AND s.category <> \'done\'' . self::ORDER
+            self::SELECT . ' WHERE ' . $narrowed . ' AND s.category <> \'done\' ORDER BY t.`rank`, t.id'
         );
-        $open->execute(['project' => $projectId]);
+        $open->execute($parameters);
 
         foreach ($open->fetchAll() as $ticket) {
             $columns[(int) $ticket['status_id']][] = $ticket;
@@ -230,7 +247,8 @@ class TicketRepository
 
         $more = [];
         $done = $this->db->prepare(
-            self::SELECT . ' WHERE t.status_id = :status ORDER BY t.closed_at DESC, t.id DESC LIMIT ' . max(1, $doneShown)
+            self::SELECT . ' WHERE ' . $narrowed . ' AND t.status_id = :done_status
+             ORDER BY t.closed_at DESC, t.id DESC LIMIT ' . max(1, $doneShown)
         );
 
         foreach ($statuses as $status) {
@@ -238,12 +256,76 @@ class TicketRepository
                 continue;
             }
 
-            $done->execute(['status' => (int) $status['id']]);
+            $done->execute($parameters + ['done_status' => (int) $status['id']]);
             $columns[(int) $status['id']] = $done->fetchAll();
             $more[(int) $status['id']] = max(0, (int) $status['ticket_count'] - count($columns[(int) $status['id']]));
         }
 
         return ['columns' => $columns, 'more' => $more];
+    }
+
+    /**
+     * Puts a ticket between two others in a column: the one above it and the
+     * one below it, either of which may be missing (the top, the bottom, an
+     * empty column).
+     *
+     * The rank is halfway between the neighbours'. When there is no room left
+     * between them, the column is renumbered first — 1024 apart again, in the
+     * same order — which is rare and costs one statement per card.
+     */
+    public function place(int $id, int $statusId, ?int $aboveId, ?int $belowId): void
+    {
+        $rank = $this->rankBetween($statusId, $aboveId, $belowId);
+
+        if ($rank === null) {
+            $this->renumber($statusId);
+            $rank = (int) $this->rankBetween($statusId, $aboveId, $belowId);
+        }
+
+        $this->db->prepare('UPDATE tickets SET `rank` = :rank WHERE id = :id')->execute(['rank' => $rank, 'id' => $id]);
+    }
+
+    private function rankBetween(int $statusId, ?int $aboveId, ?int $belowId): ?int
+    {
+        $above = $aboveId === null ? null : $this->rankOf($aboveId);
+        $below = $belowId === null ? null : $this->rankOf($belowId);
+
+        if ($above === null && $below === null) {
+            $last = $this->db->prepare('SELECT MAX(`rank`) FROM tickets WHERE status_id = :status');
+            $last->execute(['status' => $statusId]);
+
+            return (int) $last->fetchColumn() + 1024;
+        }
+
+        if ($above === null) {
+            return (int) $below - 1024;
+        }
+
+        if ($below === null) {
+            return $above + 1024;
+        }
+
+        return $below - $above >= 2 ? intdiv($above + $below, 2) : null;
+    }
+
+    private function rankOf(int $id): ?int
+    {
+        $statement = $this->db->prepare('SELECT `rank` FROM tickets WHERE id = :id');
+        $statement->execute(['id' => $id]);
+        $rank = $statement->fetchColumn();
+
+        return $rank === false ? null : (int) $rank;
+    }
+
+    private function renumber(int $statusId): void
+    {
+        $statement = $this->db->prepare('SELECT id FROM tickets WHERE status_id = :status ORDER BY `rank`, id');
+        $statement->execute(['status' => $statusId]);
+
+        $update = $this->db->prepare('UPDATE tickets SET `rank` = :rank WHERE id = :id');
+        foreach ($statement->fetchAll(PDO::FETCH_COLUMN) as $position => $ticketId) {
+            $update->execute(['rank' => ($position + 1) * 1024, 'id' => $ticketId]);
+        }
     }
 
     /**
@@ -262,18 +344,24 @@ class TicketRepository
         try {
             $number = $projects->takeNextNumber((int) $data['project_id']);
 
+            // A new ticket goes to the bottom of its column: the order above
+            // it is somebody's decision, and a newcomer does not jump it.
+            $last = $this->db->prepare('SELECT COALESCE(MAX(`rank`), 0) FROM tickets WHERE project_id = :project');
+            $last->execute(['project' => (int) $data['project_id']]);
+
             $statement = $this->db->prepare(
                 'INSERT INTO tickets
                     (project_id, number, type, epic_id, title, description, status_id, priority,
-                     assignee_id, reporter_id, estimate_minutes, due_on, story_points, closed_at)
+                     assignee_id, reporter_id, estimate_minutes, due_on, story_points, `rank`, closed_at)
                  VALUES
                     (:project_id, :number, :type, :epic_id, :title, :description, :status_id, :priority,
-                     :assignee_id, :reporter_id, :estimate_minutes, :due_on, :story_points, :closed_at)'
+                     :assignee_id, :reporter_id, :estimate_minutes, :due_on, :story_points, :rank, :closed_at)'
             );
 
             $statement->execute([
                 'project_id' => (int) $data['project_id'],
                 'number' => $number,
+                'rank' => (int) $last->fetchColumn() + 1024,
                 'type' => in_array($data['type'] ?? '', self::TYPES, true) ? $data['type'] : 'task',
                 'due_on' => ($data['due_on'] ?? null) ?: null,
                 'story_points' => $data['story_points'] ?? null,

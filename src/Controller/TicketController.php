@@ -234,6 +234,40 @@ class TicketController extends Controller
         $this->back('/tickets/' . $id);
     }
 
+    /**
+     * A card dropped on the board, sent by the board's script: which column,
+     * between which two cards, and — across swimlanes — whose or which epic's.
+     * Answers in JSON; the page has already moved the card and only needs to
+     * hear that it may stay there.
+     */
+    public function move(int $id): void
+    {
+        Auth::require();
+
+        $this->ticketOr404($id);
+
+        $lane = [];
+        $field = $this->input('lane_field');
+        if (in_array($field, ['assignee_id', 'epic_id'], true)) {
+            $lane[$field] = $this->idInput('lane_value');
+        }
+
+        try {
+            (new TicketService())->move(
+                $id,
+                $this->input('status'),
+                $this->idInput('above'),
+                $this->idInput('below'),
+                $lane,
+                Auth::id()
+            );
+        } catch (ValidationError $e) {
+            $this->json(['ok' => false, 'error' => $e->getMessage()], 422);
+        }
+
+        $this->json(['ok' => true]);
+    }
+
     public function delete(int $id): void
     {
         Auth::requireAdmin();

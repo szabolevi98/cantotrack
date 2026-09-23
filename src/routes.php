@@ -75,6 +75,7 @@ $router->get('/tickets/{id}', static fn($id) => (new TicketController())->show((
 $router->get('/tickets/{id}/edit', static fn($id) => (new TicketController())->editForm((int) $id));
 $router->post('/tickets/{id}', static fn($id) => (new TicketController())->update((int) $id));
 $router->post('/tickets/{id}/status', static fn($id) => (new TicketController())->changeStatus((int) $id));
+$router->post('/tickets/{id}/move', static fn($id) => (new TicketController())->move((int) $id));
 $router->post('/tickets/{id}/delete', static fn($id) => (new TicketController())->delete((int) $id));
 
 // A ticket by its name, which is where "CT-14" in a comment links to.

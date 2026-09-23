@@ -45,6 +45,7 @@ $bundles = [
         'files' => [
             'core.js',
             'uploads.js',
+            'board.js',
         ],
     ],
 ];

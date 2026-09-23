@@ -183,6 +183,46 @@ class TicketService
     }
 
     /**
+     * A card dragged on the board: into a column, between two others, and —
+     * dropped into another swimlane — to another person or epic.
+     *
+     * Every part of it goes through the same rules as the forms: the column
+     * has to be the project's, the person active, the epic the project's.
+     *
+     * @param array{assignee_id?: mixed, epic_id?: mixed} $lane
+     * @throws ValidationError
+     */
+    public function move(int $id, string $status, ?int $aboveId, ?int $belowId, array $lane, ?int $actorId): void
+    {
+        $ticket = $this->tickets->find($id);
+
+        if ($ticket === null) {
+            throw new ValidationError(__('There is no such ticket.'));
+        }
+
+        // Neighbours from another project are not neighbours; the card goes
+        // to the end of the column instead of somewhere meaningless.
+        foreach ([&$aboveId, &$belowId] as &$neighbour) {
+            if ($neighbour !== null) {
+                $other = $this->tickets->find($neighbour);
+                if ($other === null || (int) $other['project_id'] !== (int) $ticket['project_id'] || $neighbour === $id) {
+                    $neighbour = null;
+                }
+            }
+        }
+        unset($neighbour);
+
+        if ($lane !== []) {
+            $this->update($id, $lane, $actorId);
+        }
+
+        $this->changeStatus($id, $status, $actorId);
+
+        $column = $this->status((int) $ticket['project_id'], $status);
+        $this->tickets->place($id, (int) $column['id'], $aboveId, $belowId);
+    }
+
+    /**
      * One history row per field that actually changed, with the values in the
      * words people saw — see the 0007 migration for why.
      *

@@ -65,8 +65,12 @@ function check(string $name, bool $ok, string $detail = ''): void
     printf('FAIL  %s%s%s', $name, $detail === '' ? '' : ' (' . $detail . ')', PHP_EOL);
 }
 
-/** One request. Returns the status, the headers and the body; follows nothing. */
-function request(string $url, array $post = [], string $cookieJar = ''): array
+/**
+ * One request. Returns the status, the headers and the body; follows nothing.
+ *
+ * @param list<string> $headers
+ */
+function request(string $url, array $post = [], string $cookieJar = '', array $headers = [], ?string $method = null): array
 {
     $handle = curl_init($url);
     curl_setopt_array($handle, [
@@ -74,7 +78,12 @@ function request(string $url, array $post = [], string $cookieJar = ''): array
         CURLOPT_HEADER => true,
         CURLOPT_FOLLOWLOCATION => false,
         CURLOPT_TIMEOUT => 15,
+        CURLOPT_HTTPHEADER => $headers,
     ]);
+
+    if ($method !== null) {
+        curl_setopt($handle, CURLOPT_CUSTOMREQUEST, $method);
+    }
 
     if ($cookieJar !== '') {
         curl_setopt($handle, CURLOPT_COOKIEJAR, $cookieJar);
@@ -324,6 +333,25 @@ if ($email === null || $password === null) {
         'the board shows the ticket in its new column',
         str_contains($board['body'], 'Smoke test ticket') && str_contains($board['body'], 'Smoke test epic')
     );
+
+    // A drag on the board, as the board's script sends it: JSON back, the
+    // token in a header, and the card in the column it was dropped in.
+    preg_match('/data-status-id="(\d+)"/', $board['body'], $m);
+    $firstColumn = $m[1] ?? '';
+    $dragged = request($baseUrl . '/tickets/' . $ticketId . '/move', ['status' => $firstColumn, 'above' => '', 'below' => ''], $jar, [
+        'Accept: application/json',
+        'X-CSRF-Token: ' . $token,
+    ]);
+    check(
+        'a card dragged on the board lands in its column',
+        $dragged['status'] === 200 && str_contains($dragged['body'], '"ok":true')
+        && str_contains(request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'], 'moved it from Done to Backlog'),
+        'status ' . $dragged['status']
+    );
+    request($baseUrl . '/tickets/' . $ticketId . '/status', ['_token' => $token, 'status' => 'done'], $jar);
+
+    $lanes = request($baseUrl . '/projects/' . $projectId . '?lanes=epic&type=task', [], $jar);
+    check('the board can be split into lanes and narrowed', $lanes['status'] === 200 && str_contains($lanes['body'], 'board__lane-title'));
 
     $list = request($baseUrl . '/tickets?q=' . $code . '-1', [], $jar);
     check('the ticket can be found by its name', str_contains($list['body'], 'Smoke test ticket'));

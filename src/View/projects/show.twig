@@ -7,23 +7,24 @@
 {% block subheading %}
     <p class="content__sub">
         <span class="project__code">{{ project.code }}</span>
-        {% if project.is_archived %}<span class="badge badge--muted">Archived</span>{% endif %}
+        {% if project.is_archived %}<span class="badge badge--muted">{{ 'Archived'|t }}</span>{% endif %}
         {% if project.description %}{{ project.description }}{% endif %}
     </p>
 {% endblock %}
 
 {% block actions %}
-    <a class="button" href="{{ url('/projects/' ~ project.id ~ '/epics/create') }}">New epic</a>
-    <a class="button button--primary" href="{{ url('/tickets/create?project=' ~ project.id) }}">New ticket</a>
+    <a class="button" href="{{ url('/projects/' ~ project.id ~ '/backlog') }}">{{ 'Backlog & sprints'|t }}</a>
+    <a class="button" href="{{ url('/projects/' ~ project.id ~ '/epics/create') }}">{{ 'New epic'|t }}</a>
+    <a class="button button--primary" href="{{ url('/tickets/create?project=' ~ project.id) }}">{{ 'New ticket'|t }}</a>
     {% if is_admin %}
-        <a class="button" href="{{ url('/projects/' ~ project.id ~ '/edit') }}">Settings</a>
+        <a class="button" href="{{ url('/projects/' ~ project.id ~ '/edit') }}">{{ 'Settings'|t }}</a>
     {% endif %}
 {% endblock %}
 
 {% block content %}
     {% if epics is not empty %}
-        <section class="card">
-            <h2 class="card__title">Epics</h2>
+        <details class="card epics-card" open>
+            <summary class="card__title">{{ 'Epics'|t }} <span class="muted">{{ epics|length }}</span></summary>
             <div class="epics">
                 {% for epic in epics %}
                     {% set total = epic.ticket_count|default(0) %}
@@ -31,7 +32,7 @@
                     <a class="epic{{ epic.is_done ? ' epic--done' : '' }}" href="{{ url('/epics/' ~ epic.id) }}">
                         <strong>{{ epic.title }}</strong>
                         <span class="epic__meta">
-                            {{ total > 0 ? done ~ ' of ' ~ total ~ ' done' : 'No tickets yet' }}
+                            {{ total > 0 ? '{done} of {total} done'|t({done: done, total: total}) : 'No tickets yet'|t }}
                         </span>
                         {% if total > 0 %}
                             <span class="bar"><span class="bar__fill" style="width: {{ (done / total * 100)|round }}%"></span></span>
@@ -39,73 +40,144 @@
                     </a>
                 {% endfor %}
             </div>
-        </section>
+        </details>
     {% endif %}
 
     {#
-        The board. Five columns, each one a list rather than anything draggable:
-        a select moves a ticket, which works with a keyboard, on a phone, and
+        The board's filters and how it is split, in the address like the
+        ticket list's. They narrow what is drawn; the columns and their
+        counts stay the project's.
+    #}
+    <form class="filters card board-filters" method="get" action="{{ url('/projects/' ~ project.id) }}">
+        <input class="field field--inline filters__search" type="search" name="q" value="{{ filters.q }}"
+               placeholder="{{ 'Filter the cards'|t }}" aria-label="{{ 'Filter the cards'|t }}">
+
+        <select class="field field--inline" name="who" data-autosubmit aria-label="{{ 'Whose'|t }}">
+            <option value="">{{ 'Everybody’s'|t }}</option>
+            <option value="me"{{ who == 'me' ? ' selected' : '' }}>{{ 'Only mine'|t }}</option>
+            <option value="none"{{ who == 'none' ? ' selected' : '' }}>{{ 'Unassigned'|t }}</option>
+            {% for person in people %}
+                <option value="{{ person.id }}"{{ who == person.id ~ '' ? ' selected' : '' }}>{{ person.name }}</option>
+            {% endfor %}
+        </select>
+
+        {% if epics is not empty %}
+            <select class="field field--inline" name="epic" data-autosubmit aria-label="{{ 'Epic'|t }}">
+                <option value="">{{ 'Every epic'|t }}</option>
+                <option value="none"{{ epic == 'none' ? ' selected' : '' }}>{{ 'No epic'|t }}</option>
+                {% for one in epics %}
+                    <option value="{{ one.id }}"{{ epic == one.id ~ '' ? ' selected' : '' }}>{{ one.title }}</option>
+                {% endfor %}
+            </select>
+        {% endif %}
+
+        <select class="field field--inline" name="type" data-autosubmit aria-label="{{ 'Type'|t }}">
+            <option value="">{{ 'Any type'|t }}</option>
+            {% for value in types %}
+                <option value="{{ value }}"{{ filters.type == value ? ' selected' : '' }}>{{ ui.type_label(value) }}</option>
+            {% endfor %}
+        </select>
+
+        {% if labels is not empty %}
+            <select class="field field--inline" name="label" data-autosubmit aria-label="{{ 'Label'|t }}">
+                <option value="">{{ 'Any label'|t }}</option>
+                {% for label in labels %}
+                    <option value="{{ label.name }}"{{ filters.label == label.name ? ' selected' : '' }}>{{ label.name }}</option>
+                {% endfor %}
+            </select>
+        {% endif %}
+
+        <select class="field field--inline" name="lanes" data-autosubmit aria-label="{{ 'Swimlanes'|t }}">
+            <option value="">{{ 'No swimlanes'|t }}</option>
+            <option value="assignee"{{ lanes_by == 'assignee' ? ' selected' : '' }}>{{ 'A lane per person'|t }}</option>
+            <option value="epic"{{ lanes_by == 'epic' ? ' selected' : '' }}>{{ 'A lane per epic'|t }}</option>
+        </select>
+
+        <button class="button autosubmit__button" type="submit">{{ 'Filter'|t }}</button>
+        {% if narrowed or lanes_by != 'none' %}
+            <a class="button" href="{{ url('/projects/' ~ project.id) }}">{{ 'Clear'|t }}</a>
+        {% endif %}
+    </form>
+
+    {#
+        The board. A card can be dragged — between columns, up and down within
+        one, and across lanes, which gives it that lane's person or epic. The
+        select on every card does the same without a mouse, on a phone, or
         without a line of JavaScript.
     #}
-    <div class="board">
-        {% for status in statuses %}
-            {% set over = status.wip_limit and status.ticket_count > status.wip_limit %}
-            <section class="board__column{{ over ? ' board__column--over' : '' }}">
-                <header class="board__head">
+    <div class="board" style="--columns: {{ statuses|length }}"
+         data-move-url="{{ url('/tickets/{id}/move') }}" data-board>
+        <div class="board__row board__row--heads">
+            {% for status in statuses %}
+                {% set over = status.wip_limit and status.ticket_count > status.wip_limit %}
+                <header class="board__head{{ over ? ' board__head--over' : '' }}" data-head-for="{{ status.id }}">
                     {{ ui.status(status.name, status.colour) }}
                     {# A limit is shown as "3 / 4", and over it the column says so
                        — it does not refuse the ticket. #}
                     <span class="board__count"{{ over ? ' title="' ~ ('Over the limit of {count}'|t({count: status.wip_limit})) ~ '"' : '' }}>
-                        {{ status.ticket_count }}{% if status.wip_limit %} / {{ status.wip_limit }}{% endif %}
+                        <span data-count>{{ status.ticket_count }}</span>{% if status.wip_limit %} / <span data-limit>{{ status.wip_limit }}</span>{% endif %}
                     </span>
                 </header>
+            {% endfor %}
+        </div>
 
-                <div class="board__cards">
-                    {% for ticket in board[status.id] %}
-                        <article class="ticket-card">
-                            <div class="ticket-card__top">
-                                <span class="ticket-card__key">{{ ui.type_icon(ticket.type) }} {{ ui.ticket_key(ticket) }}</span>
-                                {{ ui.priority(ticket.priority) }}
-                            </div>
+        {% for lane in lanes %}
+            {% if lane.title %}
+                <h3 class="board__lane-title">
+                    {% if lanes_by == 'assignee' and lane.value %}{{ ui.person(lane.title) }}{% else %}{{ lane.title }}{% endif %}
+                </h3>
+            {% endif %}
 
-                            <a class="ticket-card__title" href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a>
-
-                            {% if ticket.epic_title or ticket.label_names %}
-                                <div class="ticket-card__tags">
-                                    {% if ticket.epic_title %}<span class="ticket-card__epic">{{ ticket.epic_title }}</span>{% endif %}
-                                    {{ ui.labels(ticket.label_names|lines, false) }}
+            <div class="board__row" data-lane-field="{{ lane.field }}" data-lane-value="{{ lane.value }}">
+                {% for status in statuses %}
+                    <section class="board__column" data-status-id="{{ status.id }}"
+                             aria-label="{{ status.name|t }}{{ lane.title ? ' — ' ~ lane.title : '' }}">
+                        {% for ticket in lane.columns[status.id]|default([]) %}
+                            <article class="ticket-card" draggable="true" data-ticket-id="{{ ticket.id }}">
+                                <div class="ticket-card__top">
+                                    <span class="ticket-card__key">{{ ui.type_icon(ticket.type) }} {{ ui.ticket_key(ticket) }}</span>
+                                    {{ ui.priority(ticket.priority) }}
                                 </div>
-                            {% endif %}
 
-                            <div class="ticket-card__foot">
-                                {{ ui.person(ticket.assignee_name) }}
-                                <span class="ticket-card__meta">
-                                    {{ ui.due(ticket.due_on, ticket.status_category == 'done') }}
-                                    {% if ticket.story_points is not null %}
-                                        <span class="points" title="{{ 'Story points'|t }}">{{ ticket.story_points }}</span>
-                                    {% endif %}
-                                    {% if ticket.logged_minutes > 0 %}
-                                        <span class="muted">{{ ticket.logged_minutes|duration }}</span>
-                                    {% endif %}
-                                </span>
-                            </div>
+                                <a class="ticket-card__title" href="{{ url('/tickets/' ~ ticket.id) }}" draggable="false">{{ ticket.title }}</a>
 
-                            {{ ui.move(ticket, statuses, '/projects/' ~ project.id) }}
-                        </article>
-                    {% else %}
-                        <p class="board__empty">—</p>
-                    {% endfor %}
+                                {% if ticket.epic_title or ticket.label_names %}
+                                    <div class="ticket-card__tags">
+                                        {% if ticket.epic_title and lanes_by != 'epic' %}<span class="ticket-card__epic">{{ ticket.epic_title }}</span>{% endif %}
+                                        {{ ui.labels(ticket.label_names|lines, false) }}
+                                    </div>
+                                {% endif %}
 
-                    {% if more[status.id]|default(0) > 0 %}
-                        {# The done column only ever grows, so it shows the latest
-                           and says how many more there are rather than drawing
-                           two years of finished work on every visit. #}
-                        <a class="board__more" href="{{ url('/tickets?project=' ~ project.id ~ '&status=' ~ status.id) }}">
-                            {{ plural('and {count} more', 'and {count} more', more[status.id]) }}
-                        </a>
-                    {% endif %}
-                </div>
-            </section>
+                                <div class="ticket-card__foot">
+                                    {% if lanes_by != 'assignee' %}{{ ui.person(ticket.assignee_name) }}{% else %}<span></span>{% endif %}
+                                    <span class="ticket-card__meta">
+                                        {{ ui.due(ticket.due_on, ticket.status_category == 'done') }}
+                                        {% if ticket.story_points is not null %}
+                                            <span class="points" title="{{ 'Story points'|t }}">{{ ticket.story_points }}</span>
+                                        {% endif %}
+                                        {% if ticket.logged_minutes > 0 %}
+                                            <span class="muted">{{ ticket.logged_minutes|duration }}</span>
+                                        {% endif %}
+                                    </span>
+                                </div>
+
+                                {{ ui.move(ticket, statuses, '/projects/' ~ project.id) }}
+                            </article>
+                        {% endfor %}
+
+                        {% if loop.parent.loop.last and more[status.id]|default(0) > 0 and not narrowed %}
+                            {# A done column only ever grows, so it shows the latest
+                               and says how many more there are rather than drawing
+                               two years of finished work on every visit. #}
+                            <a class="board__more" href="{{ url('/tickets?project=' ~ project.id ~ '&status=' ~ status.id) }}">
+                                {{ plural('and {count} more', 'and {count} more', more[status.id]) }}
+                            </a>
+                        {% endif %}
+                    </section>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="card card__empty">{{ 'No cards match these filters.'|t }}</p>
         {% endfor %}
     </div>
 {% endblock %}

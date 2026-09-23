@@ -42,6 +42,7 @@ class TicketRepository
                    p.code AS project_code,
                    p.name AS project_name,
                    p.is_archived AS project_archived,
+                   p.billable_default AS project_billable,
                    s.name AS status_name,
                    s.category AS status_category,
                    s.colour AS status_colour,

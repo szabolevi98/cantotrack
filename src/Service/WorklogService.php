@@ -43,8 +43,15 @@ class WorklogService
      * @return array{id: int, minutes: int, rounded: bool}
      * @throws ValidationError
      */
-    public function log(int $ticketId, int $userId, string $time, string $date, ?string $note, string $remaining = ''): array
-    {
+    public function log(
+        int $ticketId,
+        int $userId,
+        string $time,
+        string $date,
+        ?string $note,
+        string $remaining = '',
+        ?bool $billable = null
+    ): array {
         $ticket = $this->tickets->find($ticketId);
 
         if ($ticket === null) {
@@ -55,7 +62,10 @@ class WorklogService
         $day = $this->day($date);
         $left = $this->remainingAfter($ticket, $minutes, $remaining);
 
-        $id = $this->worklogs->create($ticketId, $userId, $day, $minutes, $this->note($note));
+        // Unless the entry says, it is what its project's hours usually are.
+        $billable ??= (int) ($ticket['project_billable'] ?? 1) === 1;
+
+        $id = $this->worklogs->create($ticketId, $userId, $day, $minutes, $this->note($note), $billable);
 
         if ($left !== false) {
             $this->tickets->setRemaining($ticketId, $left);
@@ -99,12 +109,16 @@ class WorklogService
      * @return array{minutes: int, rounded: bool}
      * @throws ValidationError
      */
-    public function change(array $worklog, string $time, string $date, ?string $note): array
+    public function change(array $worklog, string $time, string $date, ?string $note, ?bool $billable = null): array
     {
         [$minutes, $rounded] = $this->minutes($time);
         $day = $this->day($date);
 
         $this->worklogs->update((int) $worklog['id'], $day, $minutes, $this->note($note));
+
+        if ($billable !== null) {
+            $this->worklogs->setBillable((int) $worklog['id'], $billable);
+        }
 
         return ['minutes' => $minutes, 'rounded' => $rounded];
     }

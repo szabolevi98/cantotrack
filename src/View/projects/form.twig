@@ -32,6 +32,18 @@
             <label for="description">{{ 'Description'|t }}</label>
             <textarea id="description" class="field" name="description" rows="4">{{ project.description|default('') }}</textarea>
 
+            <label for="client">{{ 'Client'|t }}</label>
+            <input id="client" class="field" type="text" name="client" value="{{ project.client_name|default('') }}"
+                   maxlength="120" list="known-clients" placeholder="{{ 'Nobody — an internal project'|t }}">
+            <datalist id="known-clients">{% for client in clients|default([]) %}<option value="{{ client.name }}">{% endfor %}</datalist>
+            <p class="hint">{{ 'A client is made the first time a project names one. The reports can add up the hours by client.'|t }}</p>
+
+            {# New projects bill by default; an existing one says what it says. #}
+            <label class="check">
+                <input type="checkbox" name="billable_default" value="1"{{ (project.billable_default ?? 1) ? ' checked' : '' }}>
+                {{ 'Hours logged here are billable, unless the entry says otherwise'|t }}
+            </label>
+
             {% if editing %}
                 <label class="check">
                     <input type="checkbox" name="is_archived" value="1"{{ project.is_archived ? ' checked' : '' }}>

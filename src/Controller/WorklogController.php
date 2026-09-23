@@ -36,7 +36,8 @@ class WorklogController extends Controller
                 $this->input('time'),
                 $this->input('work_date'),
                 $this->input('note'),
-                $this->input('remaining')
+                $this->input('remaining'),
+                $this->billable()
             );
         } catch (ValidationError $e) {
             $this->flash($e->getMessage(), 'danger');
@@ -58,7 +59,8 @@ class WorklogController extends Controller
                 $worklog,
                 $this->input('time'),
                 $this->input('work_date'),
-                $this->input('note')
+                $this->input('note'),
+                $this->billable()
             );
         } catch (ValidationError $e) {
             $this->flash($e->getMessage(), 'danger');
@@ -99,6 +101,16 @@ class WorklogController extends Controller
         }
 
         return $worklog;
+    }
+
+    /**
+     * Whether the form said the entry is billed. An unticked box sends
+     * nothing at all, so the form sends a marker beside it; without the
+     * marker (the API, an old form) the project's default decides.
+     */
+    private function billable(): ?bool
+    {
+        return isset($_POST['billable_sent']) ? isset($_POST['billable']) : null;
     }
 
     private function saidBack(int $minutes, string $date, bool $rounded): string

@@ -259,6 +259,12 @@
 
                     {# What is left once this is logged. Empty: what was left,
                        less this — until somebody knows better. #}
+                    <label class="check check--inline log-form__billable">
+                        <input type="hidden" name="billable_sent" value="1">
+                        <input type="checkbox" name="billable" value="1"{{ ticket.project_billable ? ' checked' : '' }}>
+                        {{ 'Billable'|t }}
+                    </label>
+
                     <div class="log-form__remaining">
                         <label for="remaining">{{ 'Left afterwards'|t }}</label>
                         <input id="remaining" class="field" type="text" name="remaining"

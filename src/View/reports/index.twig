@@ -1,0 +1,149 @@
+{% extends 'layout.twig' %}
+
+{% block title %}{{ 'Reports'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Reports'|t }}{% endblock %}
+{% block subheading %}<p class="content__sub">{{ filters.from|day }} — {{ filters.to|day }}</p>{% endblock %}
+
+{% block actions %}
+    <a class="button" href="{{ url('/reports/export?format=csv&' ~ query) }}">{{ 'Download CSV'|t }}</a>
+    <a class="button button--primary" href="{{ url('/reports/export?format=xlsx&' ~ query) }}">{{ 'Download Excel'|t }}</a>
+{% endblock %}
+
+{% block content %}
+    <nav class="report-months" aria-label="{{ 'Months'|t }}">
+        {% for month in months %}
+            <a class="segmented__item{{ filters.from == month.from and filters.to == month.to ? ' is-active' : '' }}"
+               href="{{ url('/reports?from=' ~ month.from ~ '&to=' ~ month.to ~ '&group=' ~ group) }}">{{ month.label }}</a>
+        {% endfor %}
+    </nav>
+
+    <form class="filters card" method="get" action="{{ url('/reports') }}">
+        <label class="check--inline" for="from">{{ 'From'|t }}</label>
+        <input id="from" class="field field--inline" type="date" name="from" value="{{ filters.from }}">
+        <label class="check--inline" for="to">{{ 'to'|t }}</label>
+        <input id="to" class="field field--inline" type="date" name="to" value="{{ filters.to }}">
+
+        <select class="field field--inline" name="project" aria-label="{{ 'Project'|t }}">
+            <option value="">{{ 'Every project'|t }}</option>
+            {% for project in projects %}
+                <option value="{{ project.id }}"{{ filters.project_id == project.id ? ' selected' : '' }}>{{ project.code }} — {{ project.name }}</option>
+            {% endfor %}
+        </select>
+
+        {% if clients is not empty %}
+            <select class="field field--inline" name="client" aria-label="{{ 'Client'|t }}">
+                <option value="">{{ 'Every client'|t }}</option>
+                {% for client in clients %}
+                    <option value="{{ client.id }}"{{ filters.client_id == client.id ? ' selected' : '' }}>{{ client.name }}</option>
+                {% endfor %}
+            </select>
+        {% endif %}
+
+        <select class="field field--inline" name="person" aria-label="{{ 'Person'|t }}">
+            <option value="">{{ 'Everybody'|t }}</option>
+            {% for person in people %}
+                <option value="{{ person.id }}"{{ filters.user_id == person.id ? ' selected' : '' }}>{{ person.name }}</option>
+            {% endfor %}
+        </select>
+
+        <select class="field field--inline" name="billable" aria-label="{{ 'Billable'|t }}">
+            <option value="">{{ 'Billed and not'|t }}</option>
+            <option value="yes"{{ filters.billable == 'yes' ? ' selected' : '' }}>{{ 'Billable only'|t }}</option>
+            <option value="no"{{ filters.billable == 'no' ? ' selected' : '' }}>{{ 'Not billable only'|t }}</option>
+        </select>
+
+        <select class="field field--inline" name="group" aria-label="{{ 'Add up by'|t }}">
+            {% for value, label in {project: 'By project', person: 'By person', client: 'By client', ticket: 'By ticket', day: 'By day'} %}
+                <option value="{{ value }}"{{ group == value ? ' selected' : '' }}>{{ label|t }}</option>
+            {% endfor %}
+        </select>
+
+        <button class="button" type="submit">{{ 'Show'|t }}</button>
+    </form>
+
+    <div class="stats">
+        <div class="stat">
+            <div class="stat__label">{{ 'Logged'|t }}</div>
+            <div class="stat__value">{{ total|duration }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat__label">{{ 'Billable'|t }}</div>
+            <div class="stat__value">{{ billable|duration }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat__label">{{ 'Not billable'|t }}</div>
+            <div class="stat__value">{{ (total - billable)|duration }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat__label">{{ 'In hours'|t }}</div>
+            <div class="stat__value">{{ total|hours }}</div>
+        </div>
+    </div>
+
+    <section class="card card--flush">
+        {% if summary is empty %}
+            <p class="card__empty">{{ 'Nothing was logged in this span.'|t }}</p>
+        {% else %}
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>{{ {project: 'Project', person: 'Person', client: 'Client', ticket: 'Ticket', day: 'Day'}[group]|t }}</th>
+                    <th class="table__number">{{ 'Entries'|t }}</th>
+                    <th class="table__number">{{ 'Billable'|t }}</th>
+                    <th class="table__number">{{ 'Logged'|t }}</th>
+                    <th class="table__number">{{ 'Hours'|t }}</th>
+                    <th class="report__share"></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for row in summary %}
+                    <tr>
+                        <td>
+                            {% if group == 'day' %}{{ row.label|day }}
+                            {% elseif group == 'client' and row.label == '' %}<span class="muted">{{ 'No client'|t }}</span>
+                            {% else %}{{ row.label }}{% endif %}
+                        </td>
+                        <td class="table__number">{{ row.entries }}</td>
+                        <td class="table__number">{{ row.billable|duration }}</td>
+                        <td class="table__number"><strong>{{ row.minutes|duration }}</strong></td>
+                        <td class="table__number">{{ row.minutes|hours }}</td>
+                        <td class="report__share">
+                            <span class="bar"><span class="bar__fill" style="width: {{ total > 0 ? (row.minutes / total * 100)|round : 0 }}%"></span></span>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </section>
+
+    {# Who put how long into what, on one page. #}
+    {% if matrix.projects|length > 0 and matrix.people|length > 1 %}
+        <section class="card card--flush">
+            <header class="card__head"><h2 class="card__title">{{ 'Projects by person'|t }}</h2></header>
+            <div class="grid-sheet__scroll">
+                <table class="table table--compact">
+                    <thead>
+                    <tr>
+                        <th>{{ 'Project'|t }}</th>
+                        {% for id, person in matrix.people %}<th class="table__number">{{ person }}</th>{% endfor %}
+                        <th class="table__number">{{ 'Total'|t }}</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for projectId, project in matrix.projects %}
+                        {% set row = matrix.cells[projectId]|default({}) %}
+                        <tr>
+                            <td>{{ project }}</td>
+                            {% for id, person in matrix.people %}
+                                <td class="table__number">{{ row[id] is defined ? row[id]|duration : '' }}</td>
+                            {% endfor %}
+                            <td class="table__number"><strong>{{ row|reduce((sum, m) => sum + m, 0)|duration }}</strong></td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    {% endif %}
+{% endblock %}

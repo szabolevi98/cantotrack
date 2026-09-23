@@ -1,0 +1,21 @@
+/* The reports page: quick links to the last months, and each row's share. */
+.report-months {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    margin: -8px 0 12px;
+}
+
+.report__share {
+    width: 22%;
+    min-width: 120px;
+}
+
+.log-form__billable {
+    align-self: center;
+    margin-top: 22px;
+}
+
+.log-form--edit .log-form__billable {
+    margin-top: 0;
+}

@@ -38,7 +38,9 @@ class ProjectRepository
 
     public function find(int $id): ?array
     {
-        $statement = $this->db->prepare('SELECT * FROM projects WHERE id = :id');
+        $statement = $this->db->prepare(
+            'SELECT p.*, c.name AS client_name FROM projects p LEFT JOIN clients c ON c.id = p.client_id WHERE p.id = :id'
+        );
         $statement->execute(['id' => $id]);
 
         return $statement->fetch() ?: null;
@@ -87,6 +89,13 @@ class ProjectRepository
             'archived' => $isArchived ? 1 : 0,
             'id' => $id,
         ]);
+    }
+
+    /** Who the project is for, and whether its hours are billed unless said otherwise. */
+    public function setBilling(int $id, ?int $clientId, bool $billableByDefault): void
+    {
+        $this->db->prepare('UPDATE projects SET client_id = :client, billable_default = :billable WHERE id = :id')
+            ->execute(['client' => $clientId, 'billable' => $billableByDefault ? 1 : 0, 'id' => $id]);
     }
 
     /** Whether any hour has been logged against any ticket in the project. */

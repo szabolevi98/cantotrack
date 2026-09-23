@@ -21,6 +21,7 @@ use CantoTrack\Controller\PasswordResetController;
 use CantoTrack\Controller\PeopleController;
 use CantoTrack\Controller\ProfileController;
 use CantoTrack\Controller\ProjectController;
+use CantoTrack\Controller\ReportController;
 use CantoTrack\Controller\SearchController;
 use CantoTrack\Controller\SprintController;
 use CantoTrack\Controller\TicketController;
@@ -133,6 +134,9 @@ $router->post('/worklogs/{id}/delete', static fn($id) => (new WorklogController(
 
 $router->get('/timesheet', static fn() => (new TimesheetController())->index());
 $router->post('/timesheet/grid', static fn() => (new TimesheetController())->saveGrid());
+
+$router->get('/reports', static fn() => (new ReportController())->index());
+$router->get('/reports/export', static fn() => (new ReportController())->export());
 
 $router->post('/tickets/{id}/timer', static fn($id) => (new TimerController())->start((int) $id));
 $router->post('/timer/stop', static fn() => (new TimerController())->stop());

@@ -6,6 +6,7 @@ use CantoTrack\Core\Auth;
 use CantoTrack\Core\Controller;
 use CantoTrack\Core\I18n;
 use CantoTrack\Model\AttachmentRepository;
+use CantoTrack\Model\ClientRepository;
 use CantoTrack\Model\EpicRepository;
 use CantoTrack\Model\LabelRepository;
 use CantoTrack\Model\ProjectRepository;
@@ -194,7 +195,7 @@ class ProjectController extends Controller
     {
         Auth::requireAdmin();
 
-        $this->render('projects/form.twig', ['project' => null, 'error' => null, 'statuses' => []]);
+        $this->renderForm(['project' => null, 'error' => null, 'statuses' => []]);
     }
 
     public function create(): void
@@ -217,8 +218,14 @@ class ProjectController extends Controller
         };
 
         if ($error !== null) {
-            $this->render('projects/form.twig', [
-                'project' => ['code' => $code, 'name' => $name, 'description' => $this->input('description')],
+            $this->renderForm([
+                'project' => [
+                    'code' => $code,
+                    'name' => $name,
+                    'description' => $this->input('description'),
+                    'client_name' => $this->input('client'),
+                    'billable_default' => isset($_POST['billable_default']) ? 1 : 0,
+                ],
                 'error' => $error,
                 'statuses' => [],
             ], 422);
@@ -227,6 +234,7 @@ class ProjectController extends Controller
         }
 
         $id = $projects->create($code, $name, $this->input('description'));
+        $projects->setBilling($id, (new ClientRepository())->findOrCreate($this->input('client')), isset($_POST['billable_default']));
 
         $this->flash(__('Project {code} created.', ['code' => $code]));
         $this->redirect('/projects/' . $id);
@@ -236,11 +244,17 @@ class ProjectController extends Controller
     {
         Auth::requireAdmin();
 
-        $this->render('projects/form.twig', [
+        $this->renderForm([
             'project' => $this->projectOr404($id),
             'error' => null,
             'statuses' => (new StatusRepository())->forProject($id),
         ]);
+    }
+
+    /** The settings form, with the clients it offers. */
+    private function renderForm(array $context, int $status = 200): void
+    {
+        $this->render('projects/form.twig', $context + ['clients' => (new ClientRepository())->all()], $status);
     }
 
     public function update(int $id): void
@@ -251,7 +265,7 @@ class ProjectController extends Controller
         $name = $this->input('name');
 
         if ($name === '') {
-            $this->render('projects/form.twig', [
+            $this->renderForm([
                 'project' => $project,
                 'error' => __('A project needs a name.'),
                 'statuses' => (new StatusRepository())->forProject($id),
@@ -260,7 +274,9 @@ class ProjectController extends Controller
             return;
         }
 
-        (new ProjectRepository())->update($id, $name, $this->input('description'), isset($_POST['is_archived']));
+        $projects = new ProjectRepository();
+        $projects->update($id, $name, $this->input('description'), isset($_POST['is_archived']));
+        $projects->setBilling($id, (new ClientRepository())->findOrCreate($this->input('client')), isset($_POST['billable_default']));
 
         $this->flash(__('Project saved.'));
         $this->redirect('/projects/' . $id);

@@ -126,11 +126,11 @@ class WorklogRepository
         return (int) $statement->fetchColumn();
     }
 
-    public function create(int $ticketId, int $userId, string $workDate, int $minutes, ?string $note): int
+    public function create(int $ticketId, int $userId, string $workDate, int $minutes, ?string $note, bool $billable = true): int
     {
         $statement = $this->db->prepare(
-            'INSERT INTO worklogs (ticket_id, user_id, work_date, minutes, note)
-             VALUES (:ticket, :user, :work_date, :minutes, :note)'
+            'INSERT INTO worklogs (ticket_id, user_id, work_date, minutes, billable, note)
+             VALUES (:ticket, :user, :work_date, :minutes, :billable, :note)'
         );
 
         $statement->execute([
@@ -138,10 +138,17 @@ class WorklogRepository
             'user' => $userId,
             'work_date' => $workDate,
             'minutes' => $minutes,
+            'billable' => $billable ? 1 : 0,
             'note' => trim((string) $note) ?: null,
         ]);
 
         return (int) $this->db->lastInsertId();
+    }
+
+    public function setBillable(int $id, bool $billable): void
+    {
+        $this->db->prepare('UPDATE worklogs SET billable = :billable WHERE id = :id')
+            ->execute(['billable' => $billable ? 1 : 0, 'id' => $id]);
     }
 
     public function update(int $id, string $workDate, int $minutes, ?string $note): void

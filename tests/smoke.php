@@ -768,6 +768,37 @@ if ($email === null || $password === null) {
     );
 
     request($baseUrl . '/timesheet/grid', ['_token' => $token, 'week' => date('Y-m-d', strtotime('monday this week')), 'cells' => [$ticketId => [date('Y-m-d') => '9h']]], $jar);
+    // An hour that is not billed, and the reports that add it all up.
+    request($baseUrl . '/tickets/' . $ticketId . '/log', [
+        '_token' => $token,
+        'time' => '30m',
+        'work_date' => date('Y-m-d'),
+        'note' => '=HYPERLINK("http://example.test","click")',
+        'billable_sent' => '1',
+    ], $jar);
+    $range = 'from=' . date('Y-m-d', strtotime('-7 days')) . '&to=' . date('Y-m-d') . '&project=' . $projectId;
+    $report = request($baseUrl . '/reports?' . $range, [], $jar)['body'];
+    check('the reports add the hours up by project', str_contains($report, 'Smoke test project') && str_contains($report, 'Not billable'));
+
+    $csv = request($baseUrl . '/reports/export?format=csv&' . $range, [], $jar);
+    check(
+        'and hand them out as CSV that Excel reads as UTF-8, and cannot run a formula from',
+        $csv['status'] === 200 && str_starts_with($csv['body'], "\xEF\xBB\xBF")
+        && str_contains($csv['body'], $code . '-1') && str_contains($csv['body'], "'=HYPERLINK") && str_contains($csv['body'], ',no,')
+    );
+
+    $xlsx = request($baseUrl . '/reports/export?format=xlsx&' . $range, [], $jar);
+    $sheetFile = tempnam(sys_get_temp_dir(), 'ct-xlsx-');
+    file_put_contents($sheetFile, $xlsx['body']);
+    $zip = new ZipArchive();
+    $sheet = $zip->open($sheetFile) === true ? (string) $zip->getFromName('xl/worksheets/sheet1.xml') : '';
+    $zip->close();
+    @unlink($sheetFile);
+    check('and as a spreadsheet', $xlsx['status'] === 200 && str_contains($sheet, $code . '-1'));
+
+    // Again, now that the pages above have shown and used up its message.
+    request($baseUrl . '/timesheet/grid', ['_token' => $token, 'week' => date('Y-m-d', strtotime('monday this week')), 'cells' => [$ticketId => [date('Y-m-d') => '9h']]], $jar);
+
     check(
         'while a day with several entries is left for the day list',
         str_contains(request($baseUrl . '/timesheet?view=grid', [], $jar)['body'], 'several entries on one ticket')

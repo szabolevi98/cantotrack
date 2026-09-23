@@ -361,9 +361,16 @@ button {
     font-size: 0.76rem;
 }
 
-.sidebar__logout {
+/* Sign out, the shortcuts, and the light/dark switch: one row. */
+.sidebar__actions {
     grid-column: 1 / -1;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
     margin-top: 8px;
+}
+
+.sidebar__logout {
     color: rgba(var(--ct-sidebar-text-rgb), 0.8);
     font-size: 0.82rem;
 }
@@ -544,6 +551,40 @@ img.face {
     list-style: none;
     font-family: var(--ct-mono);
     font-size: 0.95rem;
+}
+
+/* The light/dark switch: a moon on a light page, a sun on a dark one. */
+.theme-switch__button {
+    display: grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    padding: 0;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.08);
+    color: var(--ct-sidebar-text);
+    font-size: 0.95rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.theme-switch__button:hover {
+    border-color: rgba(255, 255, 255, 0.35);
+    background: rgba(255, 255, 255, 0.16);
+    color: var(--ct-sidebar-text-active);
+}
+
+.theme-switch__sun {
+    display: none;
+}
+
+.theme-switch[data-shown="dark"] .theme-switch__sun {
+    display: inline;
+}
+
+.theme-switch[data-shown="dark"] .theme-switch__moon {
+    display: none;
 }
 
 /*

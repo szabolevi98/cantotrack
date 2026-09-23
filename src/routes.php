@@ -70,6 +70,7 @@ $router->post('/filters/{id}/delete', static fn($id) => (new SearchController())
 $router->get('/profile', static fn() => (new ProfileController())->show());
 $router->post('/profile', static fn() => (new ProfileController())->update());
 $router->post('/profile/password', static fn() => (new ProfileController())->changePassword());
+$router->post('/profile/theme', static fn() => (new ProfileController())->toggleTheme());
 $router->get('/profile/tokens', static fn() => (new ApiTokenController())->index());
 $router->post('/profile/avatar', static fn() => (new AvatarController())->upload());
 $router->post('/profile/avatar/delete', static fn() => (new AvatarController())->remove());

@@ -67,6 +67,9 @@ class View
         $twig->addGlobal('can_work', Auth::check() && (Auth::user()['role'] ?? '') !== 'guest');
         $twig->addGlobal('csrf_token', Csrf::token());
         $twig->addGlobal('current_path', Router::normalise($_SERVER['REQUEST_URI'] ?? '/'));
+        // The rest of the address, for a form that should come back to the
+        // same filtered list it was sent from.
+        $twig->addGlobal('current_query', (string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_QUERY));
         $twig->addGlobal('flash', Session::takeFlash());
 
         // Minutes are how time is stored everywhere in this application; hours

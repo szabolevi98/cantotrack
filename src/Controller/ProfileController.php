@@ -69,6 +69,25 @@ class ProfileController extends Controller
         $this->redirect('/profile');
     }
 
+    /**
+     * The sidebar's switch: dark if the page was light, light if it was dark.
+     *
+     * The page says which it was, because with "the system's" chosen only the
+     * browser knows; without a script it is the stored choice, and "the
+     * system's" counts as light.
+     */
+    public function toggleTheme(): void
+    {
+        Auth::require();
+
+        $shown = $this->input('shown');
+        $shown = in_array($shown, ['light', 'dark'], true) ? $shown : ((Auth::user()['theme'] ?? '') === 'dark' ? 'dark' : 'light');
+
+        (new UserRepository())->setTheme((int) Auth::id(), $shown === 'dark' ? 'light' : 'dark');
+
+        $this->back('/');
+    }
+
     public function changePassword(): void
     {
         Auth::require();

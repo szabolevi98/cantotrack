@@ -45,6 +45,39 @@
     });
 
     /*
+     * data-theme-switch — the light/dark switch in the sidebar. The page
+     * knows which theme it is showing only here: with "the system's" chosen,
+     * that is the browser's call. The switch is told, so it shows the right
+     * icon and flips the right way; and the page flips at once, before the
+     * choice is saved and the page comes back.
+     */
+    var themeSwitch = document.querySelector('[data-theme-switch]');
+
+    if (themeSwitch) {
+        var root = document.documentElement;
+        var shown = function () {
+            var chosen = root.getAttribute('data-theme');
+            if (chosen === 'dark' || chosen === 'light') {
+                return chosen;
+            }
+            return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+        };
+        var label = function () {
+            var now = shown();
+            var button = themeSwitch.querySelector('button');
+            themeSwitch.setAttribute('data-shown', now);
+            themeSwitch.elements.shown.value = now;
+            button.title = now === 'dark' ? themeSwitch.dataset.toLight : themeSwitch.dataset.toDark;
+            button.setAttribute('aria-label', button.title);
+        };
+
+        label();
+        themeSwitch.addEventListener('submit', function () {
+            root.setAttribute('data-theme', shown() === 'dark' ? 'light' : 'dark');
+        });
+    }
+
+    /*
      * data-autosubmit — a select that sends its form when it changes.
      *
      * With a mouse or a finger that is immediate: somebody opened the list and

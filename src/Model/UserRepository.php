@@ -149,6 +149,15 @@ class UserRepository
         ]);
     }
 
+    /** The appearance alone: what the sidebar's switch changes. */
+    public function setTheme(int $id, string $theme): void
+    {
+        $this->db->prepare('UPDATE users SET theme = :theme WHERE id = :id')->execute([
+            'theme' => in_array($theme, ['system', 'light', 'dark'], true) ? $theme : 'system',
+            'id' => $id,
+        ]);
+    }
+
     /** What a person may change about themselves on their profile. */
     public function updateProfile(int $id, string $name, ?string $shortName, ?string $locale, string $theme, bool $notifyEmail = true): void
     {

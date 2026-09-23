@@ -917,4 +917,6 @@ return [
     '“{value}” is not a priority.' => '„{value}” nem prioritás.',
     '“{value}” is not an estimate.' => '„{value}” nem becslés.',
     '“{value}” is not one of the board’s columns.' => '„{value}” nem a tábla egyik oszlopa.',
+    'Switch to the dark theme' => 'Váltás sötét témára',
+    'Switch to the light theme' => 'Váltás világos témára',
 ];

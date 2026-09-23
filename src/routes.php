@@ -20,6 +20,7 @@ use CantoTrack\Controller\EpicController;
 use CantoTrack\Controller\ImportController;
 use CantoTrack\Controller\IntegrationController;
 use CantoTrack\Controller\LinkController;
+use CantoTrack\Controller\LocaleController;
 use CantoTrack\Controller\LoginController;
 use CantoTrack\Controller\NotificationController;
 use CantoTrack\Controller\PasswordResetController;
@@ -47,6 +48,8 @@ $router->post('/login/code', static fn() => (new LoginController())->submitCode(
 // Signing out is a post: a GET that ends a session is one any page on the
 // internet can trigger with an <img> pointing at it.
 $router->post('/logout', static fn() => (new LoginController())->logout());
+// The language, signed in or not — the sign-in page has the switch too.
+$router->post('/locale', static fn() => (new LocaleController())->change());
 
 $router->get('/password/forgot', static fn() => (new PasswordResetController())->form());
 $router->post('/password/forgot', static fn() => (new PasswordResetController())->send());

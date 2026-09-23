@@ -45,3 +45,5 @@
 .bi-sun::before { content: "\f5a2"; }
 .bi-question-circle::before { content: "\f505"; }
 .bi-chevron-down::before { content: "\f282"; }
+.bi-translate::before { content: "\f658"; }
+.bi-check2::before { content: "\f272"; }

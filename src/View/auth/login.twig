@@ -27,6 +27,17 @@
     </form>
 
     <p class="auth__back"><a href="{{ url('/password/forgot') }}">{{ 'Forgot your password?'|t }}</a></p>
+
+    {# The language, before there is a profile to keep it on. #}
+    <div class="auth__langs" role="group" aria-label="{{ 'Language'|t }}">
+        {% for code, name in locales %}
+            <form method="post" action="{{ url('/locale') }}">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <button class="link-button{{ code == locale ? ' is-current' : '' }}" type="submit" name="locale" value="{{ code }}" lang="{{ code }}"
+                        {{ code == locale ? 'aria-current="true"' : '' }}>{{ name }}</button>
+            </form>
+        {% endfor %}
+    </div>
     {% if recaptcha_key|default(null) %}
         <p class="auth__note">{{ 'This page is protected by reCAPTCHA; Google’s privacy policy and terms apply.'|t }}</p>
     {% endif %}

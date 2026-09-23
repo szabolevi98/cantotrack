@@ -132,6 +132,26 @@
             </button>
         </form>
 
+        {# The language, as in the rest of the family: the two letters, and a
+           short menu of the languages by their own names. #}
+        <details class="lang-menu" data-menu>
+            <summary class="lang-pill" title="{{ 'Language'|t }}" aria-label="{{ 'Language'|t }}">
+                <i class="bi bi-translate" aria-hidden="true"></i><span>{{ locale|upper }}</span>
+            </summary>
+            <div class="menu menu--narrow">
+                {% for code, name in locales %}
+                    <form method="post" action="{{ url('/locale') }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="back" value="{{ current_path }}{{ current_query ? '?' ~ current_query : '' }}">
+                        <button class="menu__item{{ code == locale ? ' is-current' : '' }}" type="submit" name="locale" value="{{ code }}" lang="{{ code }}"
+                                {{ code == locale ? 'aria-current="true"' : '' }}>
+                            <i class="bi {{ code == locale ? 'bi-check2' : '' }}" aria-hidden="true"></i>{{ name }}
+                        </button>
+                    </form>
+                {% endfor %}
+            </div>
+        </details>
+
         <button class="topbar__icon" type="button" data-shortcut-help
                 title="{{ 'Keyboard shortcuts'|t }}" aria-label="{{ 'Keyboard shortcuts'|t }}">
             <i class="bi bi-question-circle" aria-hidden="true"></i>

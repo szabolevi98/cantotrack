@@ -14,6 +14,7 @@ use CantoTrack\Core\Csp;
 use CantoTrack\Core\Csrf;
 use CantoTrack\Core\ErrorPage;
 use CantoTrack\Core\HttpError;
+use CantoTrack\Core\I18n;
 use CantoTrack\Core\Logger;
 use CantoTrack\Core\Router;
 use CantoTrack\Core\Session;
@@ -117,6 +118,13 @@ $exempt = str_starts_with($path, '/api/') || str_starts_with($path, '/integratio
 // every request, and a cookie handed to a script is one more thing to leak.
 if (!$exempt) {
     Session::start();
+
+    // The language chosen before signing in; a signed-in person's profile
+    // says its own when the user is read.
+    $chosen = Session::get('_locale');
+    if (is_string($chosen)) {
+        I18n::setLocale($chosen);
+    }
 }
 
 // Whoever has to hear about a change is told by the Notifier, which listens

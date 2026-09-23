@@ -115,6 +115,7 @@ class View
         $twig->addFunction(new TwigFunction('plural', static fn(string $one, string $many, int $count, array $params = []): string =>
             I18n::plural($one, $many, $count, $params)));
         $twig->addGlobal('locale', I18n::locale());
+        $twig->addGlobal('locales', I18n::LOCALES);
         $twig->addGlobal('theme', (string) (Auth::user()['theme'] ?? 'system'));
 
         return self::$twig = $twig;

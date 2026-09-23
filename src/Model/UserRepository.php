@@ -149,6 +149,13 @@ class UserRepository
         ]);
     }
 
+    /** The language alone: what the top bar's menu changes. */
+    public function setLocale(int $id, string $locale): void
+    {
+        $this->db->prepare('UPDATE users SET locale = :locale WHERE id = :id')
+            ->execute(['locale' => $locale, 'id' => $id]);
+    }
+
     /** The appearance alone: what the sidebar's switch changes. */
     public function setTheme(int $id, string $theme): void
     {

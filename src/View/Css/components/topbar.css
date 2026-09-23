@@ -183,6 +183,50 @@
     border-top: 1px solid var(--ct-border);
 }
 
+/* The language: the two letters in a pill, the languages under it. */
+.lang-menu {
+    position: relative;
+}
+
+.lang-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 36px;
+    padding: 0 12px;
+    border: 1px solid var(--ct-border);
+    border-radius: 999px;
+    background: var(--ct-surface);
+    color: var(--ct-muted);
+    font-size: 0.82rem;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    list-style: none;
+    cursor: pointer;
+}
+
+.lang-pill::-webkit-details-marker {
+    display: none;
+}
+
+.lang-pill:hover,
+.lang-menu[open] .lang-pill {
+    border-color: var(--ct-primary-border);
+    color: var(--ct-primary);
+}
+
+.menu--narrow {
+    min-width: 160px;
+}
+
+.menu__item.is-current {
+    font-weight: 600;
+}
+
+.menu__item.is-current .bi {
+    color: var(--ct-primary);
+}
+
 @media (max-width: 760px) {
     .topbar {
         position: static;

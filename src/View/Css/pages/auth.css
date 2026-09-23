@@ -70,3 +70,23 @@
     font-size: 0.75rem;
     text-align: center;
 }
+
+/* English · Magyar, under the sign-in form. */
+.auth__langs {
+    display: flex;
+    justify-content: center;
+    gap: 14px;
+    margin-top: 10px;
+    font-size: 0.82rem;
+}
+
+.auth__langs .link-button {
+    padding: 0;
+    color: var(--ct-muted);
+    font-size: 0.82rem;
+}
+
+.auth__langs .link-button.is-current {
+    color: var(--ct-text);
+    font-weight: 600;
+}

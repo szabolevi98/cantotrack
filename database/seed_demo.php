@@ -1,11 +1,12 @@
 <?php
 
 /**
- * Fills an installation with something to look at: two projects — the
- * tracker itself, and a client's website — with their epics, tickets,
- * sprints, comments and links, a few colleagues and a client's guest, two
- * weeks of hours, a handed-in week waiting for approval, and the year's
- * public holidays.
+ * Fills an installation with something to look at: two projects written out
+ * by hand — the tracker itself, and a client's website — with their epics,
+ * tickets, sprints, comments and links, a few colleagues and a client's
+ * guest, two weeks of hours, a handed-in week waiting for approval, and the
+ * year's public holidays. Then, from seed_demo_more.php, the agency around
+ * them: four more projects and nine weeks of their work.
  *
  * For a development machine, the pictures in the README, and a public demo
  * — not for anything anyone works in. It refuses to run unless `app.env` is
@@ -77,8 +78,12 @@ $links = new LinkService();
 $sprintService = new SprintService();
 $calendar = new Calendar();
 
-$codes = ['CT', 'WEB'];
-$demoEmails = ['anna@cantotrack.demo', 'mark@cantotrack.demo', 'julia@cantotrack.demo', 'eszter@nordic.demo'];
+$codes = ['CT', 'WEB', 'BIKE', 'CLINIC', 'WINE', 'OPS', 'HELP'];
+$demoEmails = [
+    'anna@cantotrack.demo', 'mark@cantotrack.demo', 'julia@cantotrack.demo', 'eszter@nordic.demo',
+    'bence@cantotrack.demo', 'zsofia@cantotrack.demo', 'dora@cantotrack.demo', 'reka@cantotrack.demo',
+    'gergo@cantotrack.demo', 'tamas@cantotrack.demo', 'peter@balatonbikes.demo', 'kata@mecsekclinic.demo',
+];
 
 if ($reset) {
     foreach ($codes as $code) {
@@ -565,12 +570,17 @@ $update("UPDATE ticket_events SET created_at = :at WHERE kind = 'linked' AND tic
 $update('UPDATE timesheet_weeks SET submitted_at = :at WHERE week_start = :week', ['at' => $at($thisMonday, '08:30:00'), 'week' => $lastMonday->format('Y-m-d')]);
 $update("UPDATE timesheet_weeks SET reviewed_at = :at WHERE week_start = :week AND state <> 'submitted'", ['at' => $at($thisMonday, '10:15:00'), 'week' => $lastMonday->format('Y-m-d')]);
 
+// The rest of the agency: four more projects and three months of them.
+require __DIR__ . '/seed_demo_more.php';
+/** @var array{projects: int, tickets: int, comments: int, hours: int} $moreSummary */
+
 printf(
-    '%sMade 2 projects, 5 epics, %d tickets, %d comments, 2 sprints and %sh of logged time.%s',
+    '%sMade %d projects, %d tickets, %d comments and %sh of logged time.%s',
     PHP_EOL,
-    count($made),
-    count($said),
-    intdiv($logged, 60),
+    2 + $moreSummary['projects'],
+    count($made) + $moreSummary['tickets'],
+    count($said) + $moreSummary['comments'],
+    intdiv($logged, 60) + $moreSummary['hours'],
     PHP_EOL
 );
 
@@ -582,4 +592,4 @@ if ($madePasswords !== []) {
     }
 }
 
-printf('%sRun again with --reset to start these two projects over.%s', PHP_EOL, PHP_EOL);
+printf('%sRun again with --reset to start the demo projects over.%s', PHP_EOL, PHP_EOL);

@@ -6,6 +6,7 @@ use CantoTrack\Core\ConflictError;
 use CantoTrack\Core\DatabaseConnection;
 use CantoTrack\Core\Format;
 use CantoTrack\Core\ValidationError;
+use CantoTrack\Model\AttachmentRepository;
 use CantoTrack\Model\EpicRepository;
 use CantoTrack\Model\LabelRepository;
 use CantoTrack\Model\ProjectRepository;
@@ -34,10 +35,12 @@ class TicketService
     private StatusRepository $statuses;
     private LabelRepository $labels;
     private Activity $activity;
+    private PDO $db;
 
     public function __construct(?PDO $db = null)
     {
         $db ??= DatabaseConnection::get();
+        $this->db = $db;
 
         $this->tickets = new TicketRepository($db);
         $this->projects = new ProjectRepository($db);
@@ -237,7 +240,13 @@ class TicketService
             );
         }
 
+        // The files first: the rows about them go with the ticket, and the
+        // bytes would stay on disk with nothing pointing at them.
+        $files = (new AttachmentRepository($this->db))->pathsForTickets('t.id = :id', ['id' => $id]);
+
         $this->tickets->delete($id);
+
+        AttachmentService::unlinkAll($files);
     }
 
     private function title(mixed $given): string

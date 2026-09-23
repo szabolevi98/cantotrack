@@ -74,6 +74,16 @@ class Format
         return null;
     }
 
+    /** "1.4 MB", "820 KB" — the size of a file, as a person reads it. */
+    public static function bytes(int $bytes): string
+    {
+        return match (true) {
+            $bytes >= 1048576 => rtrim(rtrim(number_format($bytes / 1048576, 1, '.', ''), '0'), '.') . ' MB',
+            $bytes >= 1024 => (int) round($bytes / 1024) . ' KB',
+            default => $bytes . ' B',
+        };
+    }
+
     /** "22 Sep 2026", which is unambiguous in a way that any all-numeric date is not. */
     public static function day(string $date): string
     {

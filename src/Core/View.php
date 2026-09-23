@@ -75,6 +75,7 @@ class View
         // What people typed, as HTML. Safe to print unescaped only because the
         // renderer escapes any HTML in the text itself — see Markdown.
         $twig->addFilter(new TwigFilter('markdown', static fn(?string $text): string => Markdown::toHtml($text), ['is_safe' => ['html']]));
+        $twig->addFilter(new TwigFilter('bytes', static fn(?int $bytes): string => Format::bytes((int) $bytes)));
         $twig->addFilter(new TwigFilter('label_colour', static fn(?string $name): string => \CantoTrack\Model\LabelRepository::colour((string) $name)));
         // The labels come out of the database as one string, a name per line.
         $twig->addFilter(new TwigFilter('lines', static fn(?string $text): array =>

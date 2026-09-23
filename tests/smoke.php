@@ -104,6 +104,39 @@ function request(string $url, array $post = [], string $cookieJar = ''): array
     ];
 }
 
+/**
+ * A file upload, the way a browser's form sends one — or the page's own
+ * script, which asks for JSON and carries the token in a header.
+ *
+ * @param list<array{path: string, name: string, type: string}> $files
+ */
+function upload(string $url, string $token, array $files, string $cookieJar, bool $asScript = false): array
+{
+    $fields = $asScript ? [] : ['_token' => $token];
+
+    foreach ($files as $index => $file) {
+        $fields['files[' . $index . ']'] = new CURLFile($file['path'], $file['type'], $file['name']);
+    }
+
+    $handle = curl_init($url);
+    curl_setopt_array($handle, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_HEADER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => $fields,
+        CURLOPT_COOKIEJAR => $cookieJar,
+        CURLOPT_COOKIEFILE => $cookieJar,
+        CURLOPT_HTTPHEADER => $asScript ? ['Accept: application/json', 'X-CSRF-Token: ' . $token] : [],
+    ]);
+
+    $response = (string) curl_exec($handle);
+    $status = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
+    $headerSize = (int) curl_getinfo($handle, CURLINFO_HEADER_SIZE);
+    curl_close($handle);
+
+    return ['status' => $status, 'headers' => substr($response, 0, $headerSize), 'body' => substr($response, $headerSize)];
+}
+
 printf('Checking %s%s%s', $baseUrl, PHP_EOL, PHP_EOL);
 
 // The login page, and the token every form on it has to carry.
@@ -464,6 +497,51 @@ if ($email === null || $password === null) {
         'and the dashboard shows it among what happened lately',
         str_contains($dashboard['body'], 'commented') && str_contains($dashboard['body'], $code . '-1')
     );
+
+    // ---------------------------------------------------------------------
+    // Files: a picture is taken and shown in place, a web page is refused,
+    // and what is handed back cannot act as a page of this application.
+    // ---------------------------------------------------------------------
+    $png = tempnam(sys_get_temp_dir(), 'ct-png-');
+    // The smallest valid PNG there is: one transparent pixel.
+    file_put_contents($png, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='));
+    $html = tempnam(sys_get_temp_dir(), 'ct-html-');
+    file_put_contents($html, '<!DOCTYPE html><html><body><script>alert(document.domain)</script></body></html>');
+
+    $uploaded = upload($baseUrl . '/tickets/' . $ticketId . '/attachments', $token, [
+        ['path' => $png, 'name' => 'pixel.png', 'type' => 'image/png'],
+    ], $jar, true);
+    $files = json_decode($uploaded['body'], true)['files'] ?? [];
+    check('a picture can be attached', $uploaded['status'] === 200 && count($files) === 1, 'status ' . $uploaded['status']);
+
+    $refused = upload($baseUrl . '/tickets/' . $ticketId . '/attachments', $token, [
+        ['path' => $html, 'name' => 'harmless.png', 'type' => 'image/png'],
+    ], $jar, true);
+    check(
+        'a web page is refused, whatever it calls itself',
+        $refused['status'] === 422 && str_contains($refused['body'], 'not a kind of file')
+    );
+
+    if ($files !== []) {
+        $served = request($files[0]['url'], [], $jar);
+        check(
+            'and the picture is handed back as a picture that cannot run anything',
+            $served['status'] === 200
+            && str_contains($served['headers'], 'Content-Type: image/png')
+            && str_contains($served['headers'], 'X-Content-Type-Options: nosniff')
+            && str_contains($served['headers'], 'sandbox')
+        );
+        check(
+            'only to somebody signed in',
+            request($files[0]['url'], [], tempnam(sys_get_temp_dir(), 'ct-smoke-'))['status'] === 302
+        );
+
+        $gone = request($baseUrl . '/attachments/' . $files[0]['id'] . '/delete', ['_token' => $token], $jar);
+        check('an attachment can be removed', $gone['status'] === 302 && request($files[0]['url'], [], $jar)['status'] === 404);
+    }
+
+    @unlink($png);
+    @unlink($html);
 
     // ---------------------------------------------------------------------
     // The hours

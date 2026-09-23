@@ -115,6 +115,15 @@ $path = Router::normalise($_SERVER['REQUEST_URI'] ?? '/');
 $exempt = str_starts_with($path, '/api/') || str_starts_with($path, '/integrations/');
 
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' && !$exempt) {
+    // A post bigger than post_max_size reaches PHP empty — no fields, so no
+    // token either — and would be answered "your session expired". Said as
+    // what it is instead.
+    if ($_POST === [] && $_FILES === [] && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0
+        && str_starts_with((string) ($_SERVER['CONTENT_TYPE'] ?? ''), 'multipart/form-data')
+        && !isset($_SERVER['HTTP_X_CSRF_TOKEN'])) {
+        throw new HttpError(413, __('That was more than the server takes in one go. Try a smaller file.'));
+    }
+
     $given = $_POST['_token'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? null;
 
     if (!Csrf::validate(is_string($given) ? $given : null)) {

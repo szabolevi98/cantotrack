@@ -44,6 +44,7 @@ $bundles = [
         'comment' => ['/*', ' *', ' */'],
         'files' => [
             'core.js',
+            'uploads.js',
         ],
     ],
 ];

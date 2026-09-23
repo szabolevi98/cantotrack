@@ -5,10 +5,12 @@ namespace CantoTrack\Controller;
 use CantoTrack\Core\Auth;
 use CantoTrack\Core\Controller;
 use CantoTrack\Core\I18n;
+use CantoTrack\Model\AttachmentRepository;
 use CantoTrack\Model\EpicRepository;
 use CantoTrack\Model\ProjectRepository;
 use CantoTrack\Model\StatusRepository;
 use CantoTrack\Model\TicketRepository;
+use CantoTrack\Service\AttachmentService;
 
 /**
  * Projects: the list, the board, and the settings an administrator sets one up
@@ -169,7 +171,9 @@ class ProjectController extends Controller
             $this->redirect('/projects/' . $id . '/edit');
         }
 
+        $files = (new AttachmentRepository())->pathsForTickets('t.project_id = :id', ['id' => $id]);
         $projects->delete($id);
+        AttachmentService::unlinkAll($files);
 
         $this->flash(__('Project {code} and its tickets were deleted.', ['code' => $project['code']]), 'warning');
         $this->redirect('/projects');

@@ -10,6 +10,7 @@
  * @var \CantoTrack\Core\Router $router
  */
 
+use CantoTrack\Controller\AttachmentController;
 use CantoTrack\Controller\CommentController;
 use CantoTrack\Controller\DashboardController;
 use CantoTrack\Controller\EpicController;
@@ -78,6 +79,10 @@ $router->post('/tickets/{id}/delete', static fn($id) => (new TicketController())
 
 // A ticket by its name, which is where "CT-14" in a comment links to.
 $router->get('/t/{key}', static fn($key) => (new TicketController())->byKey((string) $key));
+
+$router->post('/tickets/{id}/attachments', static fn($id) => (new AttachmentController())->upload((int) $id));
+$router->get('/attachments/{id}', static fn($id) => (new AttachmentController())->download((int) $id));
+$router->post('/attachments/{id}/delete', static fn($id) => (new AttachmentController())->delete((int) $id));
 
 $router->post('/tickets/{id}/comments', static fn($id) => (new CommentController())->create((int) $id));
 $router->post('/comments/{id}', static fn($id) => (new CommentController())->update((int) $id));

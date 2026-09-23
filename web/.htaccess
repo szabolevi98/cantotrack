@@ -13,11 +13,21 @@ RewriteRule ^ index.php [L]
 # These happen BEFORE the script runs, so the ini_set() in index.php cannot
 # catch them. The `<IfModule>` is needed because `php_flag` only means anything
 # under mod_php; under FastCGI the same settings come from a .user.ini.
+#
+# The upload limits are here too: a screenshot is routinely over PHP's default
+# of 2 MB, and the application's own limit (uploads.max_mb, 10 MB) can only
+# apply to what PHP let through first.
 <IfModule mod_php.c>
     php_flag display_startup_errors off
     php_flag display_errors off
+    php_value upload_max_filesize 12M
+    php_value post_max_size 40M
+    php_value max_file_uploads 20
 </IfModule>
 <IfModule mod_php8.c>
     php_flag display_startup_errors off
     php_flag display_errors off
+    php_value upload_max_filesize 12M
+    php_value post_max_size 40M
+    php_value max_file_uploads 20
 </IfModule>

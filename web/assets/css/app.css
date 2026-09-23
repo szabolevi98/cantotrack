@@ -1905,6 +1905,102 @@ a.label:hover {
     color: var(--ct-danger);
 }
 
+/* ---------------------------------------------------------------------------
+ * Attachments: pictures as a grid of previews, anything else as lines.
+ * ------------------------------------------------------------------------- */
+.attachments__images {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 12px;
+    margin: 6px 0 14px;
+    padding: 0;
+    list-style: none;
+}
+
+.attachment-image {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.attachment-image img {
+    display: block;
+    width: 100%;
+    height: 110px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-sm);
+    background: var(--ct-bg);
+    object-fit: cover;
+}
+
+.attachment-image__name {
+    overflow: hidden;
+    color: var(--ct-muted);
+    font-size: 0.78rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.attachment-image form {
+    position: absolute;
+    top: 4px;
+    right: 4px;
+}
+
+.attachment-image .link-button {
+    padding: 2px 7px;
+    border-radius: 6px;
+    background: rgba(var(--ct-shadow-rgb), 0.55);
+    color: #ffffff;
+}
+
+.attachments__files {
+    margin: 0 0 14px;
+    padding: 0;
+    list-style: none;
+}
+
+.attachments__files li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 10px;
+    align-items: baseline;
+    padding: 7px 0;
+    border-bottom: 1px solid var(--ct-border);
+    font-size: 0.9rem;
+}
+
+.attachments__files form {
+    margin-left: auto;
+}
+
+.upload {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 10px;
+    align-items: center;
+}
+
+.upload__input {
+    max-width: 100%;
+    font-size: 0.86rem;
+}
+
+.upload__hint {
+    margin: 0;
+}
+
+/* A card files are being dragged over, and one that is busy taking them. */
+[data-drop-upload].is-dropping {
+    border-color: var(--ct-primary);
+    box-shadow: 0 0 0 3px rgba(var(--ct-primary-rgb), 0.16);
+}
+
+[data-drop-upload].is-busy {
+    opacity: 0.6;
+}
+
 /*
  * The sign-in page: one card in the middle of a coloured field.
  *

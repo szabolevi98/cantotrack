@@ -1,16 +1,16 @@
 {% extends 'layout.twig' %}
 
-{% block title %}Projects — {{ app_name }}{% endblock %}
-{% block heading %}Projects{% endblock %}
+{% block title %}{{ 'Projects'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Projects'|t }}{% endblock %}
 
 {% block actions %}
     {% if show_archived %}
-        <a class="button" href="{{ url('/projects') }}">Hide archived</a>
+        <a class="button" href="{{ url('/projects') }}">{{ 'Hide archived'|t }}</a>
     {% else %}
-        <a class="button" href="{{ url('/projects?archived=1') }}">Show archived</a>
+        <a class="button" href="{{ url('/projects?archived=1') }}">{{ 'Show archived'|t }}</a>
     {% endif %}
     {% if is_admin %}
-        <a class="button button--primary" href="{{ url('/projects/create') }}">New project</a>
+        <a class="button button--primary" href="{{ url('/projects/create') }}">{{ 'New project'|t }}</a>
     {% endif %}
 {% endblock %}
 
@@ -18,11 +18,11 @@
     {% if projects is empty %}
         <section class="card">
             <p class="card__empty">
-                No projects yet.
+                {{ 'No projects yet.'|t }}
                 {% if is_admin %}
-                    A project is where everything else hangs from — <a href="{{ url('/projects/create') }}">make the first one</a>.
+                    {{ 'A project is where everything else hangs from —'|t }} <a href="{{ url('/projects/create') }}">{{ 'make the first one'|t }}</a>.
                 {% else %}
-                    An administrator has to set the first one up.
+                    {{ 'An administrator has to set the first one up.'|t }}
                 {% endif %}
             </p>
         </section>
@@ -44,14 +44,14 @@
 
                     <div class="project__meta">
                         {% if total > 0 %}
-                            <span>{{ done }} of {{ total }} done</span>
+                            <span>{{ '{done} of {total} done'|t({done: done, total: total}) }}</span>
                             {# The bar is the only place the numbers become a shape,
                                which is what makes two projects comparable at a glance. #}
                             <span class="bar"><span class="bar__fill" style="width: {{ (done / total * 100)|round }}%"></span></span>
                         {% else %}
-                            <span class="muted">No tickets yet</span>
+                            <span class="muted">{{ 'No tickets yet'|t }}</span>
                         {% endif %}
-                        {% if project.is_archived %}<span class="badge badge--muted">Archived</span>{% endif %}
+                        {% if project.is_archived %}<span class="badge badge--muted">{{ 'Archived'|t }}</span>{% endif %}
                         {% if project.visibility == 'private' %}<span class="badge badge--violet">{{ 'Private'|t }}</span>{% endif %}
                     </div>
                 </a>

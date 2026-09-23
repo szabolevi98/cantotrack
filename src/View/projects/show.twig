@@ -134,7 +134,7 @@
         without a line of JavaScript.
     #}
     <div class="board" style="--columns: {{ statuses|length }}"
-         data-move-url="{{ url('/tickets/{id}/move') }}" data-board>
+         data-move-url="{{ url('/tickets/{id}/move') }}" data-move-failed="{{ 'The move did not go through.'|t }}" data-board>
         <div class="board__row board__row--heads">
             {% for status in statuses %}
                 {% set over = status.wip_limit and status.ticket_count > status.wip_limit %}

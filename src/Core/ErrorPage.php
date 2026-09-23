@@ -45,7 +45,7 @@ class ErrorPage
         try {
             echo View::twig()->render('errors/error.twig', [
                 'status' => $status,
-                'title' => self::TITLES[$status] ?? self::TITLES[500],
+                'title' => __(self::TITLES[$status] ?? self::TITLES[500]),
                 'message' => $message,
             ]);
         } catch (\Throwable $e) {

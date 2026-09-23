@@ -54,7 +54,7 @@ class EpicController extends Controller
             View::render('epics/form.twig', [
                 'project' => $project,
                 'epic' => ['title' => $title, 'description' => $_POST['description'] ?? '', 'is_done' => 0],
-                'error' => 'An epic needs a title.',
+                'error' => __('An epic needs a title.'),
             ]);
 
             return;
@@ -62,7 +62,7 @@ class EpicController extends Controller
 
         $id = (new EpicRepository())->create($projectId, $title, (string) ($_POST['description'] ?? ''));
 
-        Session::flash('Epic created.');
+        Session::flash(__('Epic created.'));
         $this->redirect('/epics/' . $id);
     }
 
@@ -90,7 +90,7 @@ class EpicController extends Controller
             View::render('epics/form.twig', [
                 'project' => (new ProjectRepository())->find((int) $epic['project_id']),
                 'epic' => $epic,
-                'error' => 'An epic needs a title.',
+                'error' => __('An epic needs a title.'),
             ]);
 
             return;
@@ -98,7 +98,7 @@ class EpicController extends Controller
 
         (new EpicRepository())->update($id, $title, (string) ($_POST['description'] ?? ''), isset($_POST['is_done']));
 
-        Session::flash('Epic saved.');
+        Session::flash(__('Epic saved.'));
         $this->redirect('/epics/' . $id);
     }
 
@@ -111,7 +111,7 @@ class EpicController extends Controller
 
         // Worth saying, because it is the opposite of what deleting a project
         // does: the work stays, only the grouping is gone.
-        Session::flash('Epic deleted. Its tickets are still in the project, without an epic.', 'warning');
+        Session::flash(__('Epic deleted. Its tickets are still in the project, without an epic.'), 'warning');
         $this->redirect('/projects/' . $epic['project_id']);
     }
 

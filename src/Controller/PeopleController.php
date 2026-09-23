@@ -55,9 +55,9 @@ class PeopleController extends Controller
         $users = new UserRepository();
 
         $error = match (true) {
-            $name === '' => 'A person needs a name.',
-            filter_var($email, FILTER_VALIDATE_EMAIL) === false => 'That does not look like an email address.',
-            $users->emailTaken($email) => 'Somebody already signs in with that address.',
+            $name === '' => __('A person needs a name.'),
+            filter_var($email, FILTER_VALIDATE_EMAIL) === false => __('That does not look like an email address.'),
+            $users->emailTaken($email) => __('Somebody already signs in with that address.'),
             default => null,
         };
 
@@ -77,7 +77,7 @@ class PeopleController extends Controller
         // Shown on the next page and never again: it is not stored in readable
         // form anywhere, which is the point.
         Session::put('_new_password', ['email' => $email, 'password' => $password]);
-        Session::flash($name . ' can sign in now.');
+        Session::flash(__('{name} can sign in now.', ['name' => $name]));
 
         $this->redirect('/people');
     }
@@ -112,11 +112,11 @@ class PeopleController extends Controller
         $itsMe = (int) $person['id'] === (int) Auth::id();
 
         $error = match (true) {
-            $name === '' => 'A person needs a name.',
-            filter_var($email, FILTER_VALIDATE_EMAIL) === false => 'That does not look like an email address.',
-            $users->emailTaken($email, $id) => 'Somebody already signs in with that address.',
-            $itsMe && $role !== 'admin' => 'You cannot take the administrator role off yourself.',
-            $itsMe && !$isActive => 'You cannot deactivate your own account.',
+            $name === '' => __('A person needs a name.'),
+            filter_var($email, FILTER_VALIDATE_EMAIL) === false => __('That does not look like an email address.'),
+            $users->emailTaken($email, $id) => __('Somebody already signs in with that address.'),
+            $itsMe && $role !== 'admin' => __('You cannot take the administrator role off yourself.'),
+            $itsMe && !$isActive => __('You cannot deactivate your own account.'),
             default => null,
         };
 
@@ -134,7 +134,7 @@ class PeopleController extends Controller
         $users->update($id, $name, $email, $role, $isActive);
         $users->setWorkingWeek($id, $this->workingWeek());
 
-        Session::flash('Saved.');
+        Session::flash(__('Saved.'));
         $this->redirect('/people');
     }
 
@@ -149,7 +149,7 @@ class PeopleController extends Controller
         (new UserRepository())->setPassword($id, $password);
 
         Session::put('_new_password', ['email' => $person['email'], 'password' => $password]);
-        Session::flash('A new password for ' . $person['name'] . ' is below.');
+        Session::flash(__('A new password for {name} is below.', ['name' => $person['name']]));
 
         $this->redirect('/people');
     }

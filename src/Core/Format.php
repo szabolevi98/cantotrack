@@ -105,12 +105,27 @@ class Format
         };
     }
 
-    /** "22 Sep 2026", which is unambiguous in a way that any all-numeric date is not. */
+    /** The months as Hungarian writes them short, with the full stop that marks the cut. */
+    private const HU_MONTHS = ['jan.', 'febr.', 'márc.', 'ápr.', 'máj.', 'jún.', 'júl.', 'aug.', 'szept.', 'okt.', 'nov.', 'dec.'];
+
+    /**
+     * "22 Sep 2026", which is unambiguous in a way that any all-numeric date
+     * is not — and "2026. szept. 22." to somebody reading in Hungarian, where
+     * the year comes first.
+     */
     public static function day(string $date): string
     {
         $time = strtotime($date);
 
-        return $time === false ? $date : date('j M Y', $time);
+        if ($time === false) {
+            return $date;
+        }
+
+        if (I18n::locale() === 'hu') {
+            return date('Y', $time) . '. ' . self::HU_MONTHS[(int) date('n', $time) - 1] . ' ' . date('j', $time) . '.';
+        }
+
+        return date('j M Y', $time);
     }
 
     /** "SL" — the two letters an avatar circle carries when there is no picture. */

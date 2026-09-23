@@ -69,6 +69,9 @@ jobs:
           INI
           sed 's/^name = cantotrack_ci$/name = cantotrack_test/' config/config.ini > config/test.ini
 
+      - name: Every sentence has its Hungarian
+        run: php bin/i18n_check.php
+
       - name: Code style
         run: vendor/bin/php-cs-fixer fix --dry-run --diff
 

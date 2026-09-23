@@ -1,12 +1,12 @@
 {% extends 'layout.twig' %}
 {% import 'common/macros.twig' as ui %}
 
-{% block title %}People — {{ app_name }}{% endblock %}
-{% block heading %}People{% endblock %}
-{% block subheading %}<p class="content__sub">Who can sign in, and what they may do.</p>{% endblock %}
+{% block title %}{{ 'People'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'People'|t }}{% endblock %}
+{% block subheading %}<p class="content__sub">{{ 'Who can sign in, and what they may do.'|t }}</p>{% endblock %}
 
 {% block actions %}
-    <a class="button button--primary" href="{{ url('/people/create') }}">Add somebody</a>
+    <a class="button button--primary" href="{{ url('/people/create') }}">{{ 'Add somebody'|t }}</a>
 {% endblock %}
 
 {% block content %}
@@ -17,15 +17,14 @@
     #}
     {% if new_password %}
         <section class="card card--handover">
-            <h2 class="card__title">Hand this over</h2>
+            <h2 class="card__title">{{ 'Hand this over'|t }}</h2>
             <p class="card__body">
-                It is not stored in readable form anywhere, so this is the only time
-                it can be read. If it goes missing, make a new one.
+                {{ 'It is not stored in readable form anywhere, so this is the only time it can be read. If it goes missing, make a new one.'|t }}
             </p>
             <dl class="facts">
-                <dt>Signs in with</dt>
+                <dt>{{ 'Signs in with'|t }}</dt>
                 <dd>{{ new_password.email }}</dd>
-                <dt>Password</dt>
+                <dt>{{ 'Password'|t }}</dt>
                 <dd><code class="handover">{{ new_password.password }}</code></dd>
             </dl>
         </section>
@@ -35,12 +34,12 @@
         <table class="table">
             <thead>
             <tr>
-                <th>Name</th>
-                <th>Signs in with</th>
-                <th>Role</th>
-                <th class="table__number">Open</th>
-                <th class="table__number">Logged, 30 days</th>
-                <th>Last seen</th>
+                <th>{{ 'Name'|t }}</th>
+                <th>{{ 'Signs in with'|t }}</th>
+                <th>{{ 'Role'|t }}</th>
+                <th class="table__number">{{ 'Open'|t }}</th>
+                <th class="table__number">{{ 'Logged, 30 days'|t }}</th>
+                <th>{{ 'Last seen'|t }}</th>
                 <th></th>
             </tr>
             </thead>
@@ -49,16 +48,17 @@
                 <tr class="{{ person.is_active ? '' : 'row--muted' }}">
                     <td>
                         {{ ui.person(person.name, person.id) }}
-                        {% if not person.is_active %}<span class="badge badge--muted">Deactivated</span>{% endif %}
-                        {% if person.id == current_user.id %}<span class="badge">You</span>{% endif %}
+                        {% if not person.is_active %}<span class="badge badge--muted">{{ 'Deactivated'|t }}</span>{% endif %}
+                        {% if person.id == current_user.id %}<span class="badge">{{ 'You'|t }}</span>{% endif %}
+                        {% if person.totp_enabled_at|default(null) %}<span class="badge badge--green" title="{{ 'Two-step sign-in is on'|t }}">2FA</span>{% endif %}
                     </td>
                     <td>{{ person.email }}</td>
-                    <td>{{ person.role == 'admin' ? 'Administrator' : 'Member' }}</td>
+                    <td>{{ {admin: 'Administrator', guest: 'Guest'}[person.role]|default('Member')|t }}</td>
                     <td class="table__number">{{ person.open_tickets > 0 ? person.open_tickets : '—' }}</td>
                     <td class="table__number">{{ person.minutes_30d > 0 ? person.minutes_30d|duration : '—' }}</td>
-                    <td>{{ person.last_login_at ? person.last_login_at|day : 'Never' }}</td>
+                    <td>{{ person.last_login_at ? person.last_login_at|day : 'Never'|t }}</td>
                     <td class="table__number">
-                        <a href="{{ url('/people/' ~ person.id ~ '/edit') }}">Edit</a>
+                        <a href="{{ url('/people/' ~ person.id ~ '/edit') }}">{{ 'Edit'|t }}</a>
                     </td>
                 </tr>
             {% endfor %}

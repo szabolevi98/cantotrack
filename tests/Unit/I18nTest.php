@@ -34,6 +34,25 @@ final class I18nTest extends TestCase
         self::assertSame('3 tickets', I18n::plural('{count} ticket', '{count} tickets', 3));
     }
 
+    public function testHungarianIsReadFromTheCatalogue(): void
+    {
+        I18n::setLocale('hu');
+
+        self::assertSame('Mentés', I18n::translate('Save'));
+        // After a number, the singular — for both halves of the pair.
+        self::assertSame('1 nap módosult.', I18n::plural('{count} day changed.', '{count} days changed.', 1));
+        self::assertSame('3 nap módosult.', I18n::plural('{count} day changed.', '{count} days changed.', 3));
+    }
+
+    public function testDatesAreWrittenTheHungarianWay(): void
+    {
+        I18n::setLocale('hu');
+        self::assertSame('2026. szept. 22.', \CantoTrack\Core\Format::day('2026-09-22'));
+
+        I18n::setLocale('en');
+        self::assertSame('22 Sep 2026', \CantoTrack\Core\Format::day('2026-09-22'));
+    }
+
     public function testAnUnknownLocaleFallsBackToEnglish(): void
     {
         I18n::setLocale('xx');

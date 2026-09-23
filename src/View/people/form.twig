@@ -2,8 +2,8 @@
 
 {% set editing = person is not null and person.id is defined and person.id %}
 
-{% block title %}{{ editing ? 'Edit person' : 'Add somebody' }} — {{ app_name }}{% endblock %}
-{% block heading %}{{ editing ? 'Edit ' ~ person.name : 'Add somebody' }}{% endblock %}
+{% block title %}{{ editing ? 'Edit person'|t : 'Add somebody'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ editing ? 'Edit {name}'|t({name: person.name}) : 'Add somebody'|t }}{% endblock %}
 
 {% block content %}
     {% if error %}<p class="flash flash--danger">{{ error }}</p>{% endif %}
@@ -12,25 +12,25 @@
         <form method="post" action="{{ editing ? url('/people/' ~ person.id) : url('/people/create') }}">
             <input type="hidden" name="_token" value="{{ csrf_token }}">
 
-            <label for="name">Name</label>
+            <label for="name">{{ 'Name'|t }}</label>
             <input id="name" class="field" type="text" name="name" value="{{ person.name|default('') }}"
                    maxlength="120" required autofocus>
 
-            <label for="email">Email address</label>
+            <label for="email">{{ 'Email address'|t }}</label>
             <input id="email" class="field" type="email" name="email" value="{{ person.email|default('') }}"
                    maxlength="190" required>
-            <p class="hint">This is what they sign in with.</p>
+            <p class="hint">{{ 'This is what they sign in with.'|t }}</p>
 
-            <label for="role">Role</label>
+            <label for="role">{{ 'Role'|t }}</label>
             <select id="role" class="field" name="role">
                 <option value="member"{{ person.role|default('member') == 'member' ? ' selected' : '' }}>
-                    Member — works tickets and logs time
+                    {{ 'Member — works tickets and logs time'|t }}
                 </option>
                 <option value="guest"{{ person.role|default('') == 'guest' ? ' selected' : '' }}>
-                    Guest — reads and comments on the projects they are added to
+                    {{ 'Guest — reads and comments on the projects they are added to'|t }}
                 </option>
                 <option value="admin"{{ person.role|default('') == 'admin' ? ' selected' : '' }}>
-                    Administrator — and sets up projects and people
+                    {{ 'Administrator — and sets up projects and people'|t }}
                 </option>
             </select>
 
@@ -49,38 +49,34 @@
 
                 <label class="check">
                     <input type="checkbox" name="is_active" value="1"{{ person.is_active ? ' checked' : '' }}>
-                    Active — can sign in
+                    {{ 'Active — can sign in'|t }}
                 </label>
                 <p class="hint">
-                    Nobody is ever deleted: tickets and worklogs point at them, and the
-                    history has to keep making sense. Deactivating takes them off the
-                    assignee lists and out of the sign-in.
+                    {{ 'Nobody is ever deleted: tickets and worklogs point at them, and the history has to keep making sense. Deactivating takes them off the assignee lists and out of the sign-in.'|t }}
                 </p>
             {% else %}
                 <p class="hint">
-                    A password is made when the account is, and shown once on the next
-                    page. There is nowhere it can be read again.
+                    {{ 'A password is made when the account is, and shown once on the next page. There is nowhere it can be read again.'|t }}
                 </p>
             {% endif %}
 
             <div class="form__actions">
-                <button class="button button--primary" type="submit">{{ editing ? 'Save' : 'Create account' }}</button>
-                <a class="button" href="{{ url('/people') }}">Cancel</a>
+                <button class="button button--primary" type="submit">{{ editing ? 'Save'|t : 'Create account'|t }}</button>
+                <a class="button" href="{{ url('/people') }}">{{ 'Cancel'|t }}</a>
             </div>
         </form>
     </section>
 
     {% if editing %}
         <section class="card card--narrow">
-            <h2 class="card__title">New password</h2>
+            <h2 class="card__title">{{ 'New password'|t }}</h2>
             <p class="card__body">
-                For when {{ person.name }} has lost theirs. The one they had stops
-                working; whatever they have open stays open.
+                {{ 'For when {name} has lost theirs. The one they had stops working; whatever they have open stays open.'|t({name: person.name}) }}
             </p>
             <form method="post" action="{{ url('/people/' ~ person.id ~ '/password') }}"
                   data-confirm="{{ 'Give {name} a new password?'|t({name: person.name}) }}">
                 <input type="hidden" name="_token" value="{{ csrf_token }}">
-                <button class="button" type="submit">Make a new password</button>
+                <button class="button" type="submit">{{ 'Make a new password'|t }}</button>
             </form>
         </section>
 

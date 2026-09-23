@@ -167,7 +167,7 @@
         }).then(function (response) {
             return response.json().then(function (result) {
                 if (!response.ok || !result.ok) {
-                    window.alert(result.error || 'The move did not go through.');
+                    window.alert(result.error || board.dataset.moveFailed);
                     window.location.reload();
                 }
             });

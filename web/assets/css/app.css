@@ -5602,6 +5602,15 @@ kbd {
     font-size: 0.78rem;
 }
 
+/* A delete that can still be taken back: the words, and the button. */
+.flash.undo {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    align-items: center;
+    justify-content: space-between;
+}
+
 /*
  * The sign-in page: one card in the middle of a coloured field.
  *

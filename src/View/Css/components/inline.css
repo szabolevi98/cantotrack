@@ -349,3 +349,12 @@
     border-top: 1px solid var(--ct-border);
     font-size: 0.78rem;
 }
+
+/* A delete that can still be taken back: the words, and the button. */
+.flash.undo {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    align-items: center;
+    justify-content: space-between;
+}

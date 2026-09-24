@@ -33,10 +33,14 @@
             waitingForG = false;
             window.clearTimeout(timer);
 
-            var jumps = {d: '/', p: '/projects', t: '/tickets', s: '/timesheet'};
-            if (key === 'b' && project) {
+            var jumps = {d: '/', p: '/projects', t: '/tickets', s: '/timesheet', r: '/roadmap', q: '/tickets?mode=query'};
+            var inProject = {b: '', k: '/backlog', v: '/releases', w: '/pages'};
+            if (inProject[key] !== undefined && project) {
                 event.preventDefault();
-                go('/projects/' + project);
+                go('/projects/' + project + inProject[key]);
+            } else if (key === 'r' && project) {
+                event.preventDefault();
+                go('/projects/' + project + '/roadmap');
             } else if (jumps[key]) {
                 event.preventDefault();
                 go(jumps[key]);

@@ -1310,4 +1310,9 @@ return [
     '{count} pages' => '{count} oldal',
     '{time} behind the days so far' => '{time} lemaradás az eddigi napokhoz képest',
     '“{words}”' => '„{words}”',
+    'Go to this project’s backlog' => 'Ugrás a projekt backlogjára',
+    'Go to this project’s releases' => 'Ugrás a projekt kiadásaira',
+    'Go to this project’s pages' => 'Ugrás a projekt oldalaira',
+    'Go to the roadmap — this project’s, in a project' => 'Ugrás az ütemtervre — projekten belül a projektére',
+    'Write a query on the ticket list' => 'Lekérdezés írása a ticketlistán',
 ];

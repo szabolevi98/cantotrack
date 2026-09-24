@@ -59,6 +59,10 @@ deploy with `git pull`.
 
 ![A closed sprint: what it committed to, and its burndown](docs/sprint.png)
 
+![The roadmap of a project: its epics across the months, with its sprints and releases](docs/roadmap.png)
+
+![A release: what is in it, its notes, and the button that sends it out](docs/release.png)
+
 ### What the team knows
 
 - **Pages** for every project, in a tree as deep as it needs: how the project
@@ -70,6 +74,8 @@ deploy with `git pull`.
   written over somebody else's, and any version can be brought back. A ticket
   says which pages write about it, and a release's notes become a page in
   one click.
+
+![A page of a project, with a list of tickets read fresh from a query](docs/page.png)
 
 ### Talking about the work
 
@@ -94,6 +100,8 @@ deploy with `git pull`.
   lists them).
 
 ![A ticket: its history and comments, the links, and the facts beside them](docs/ticket.png)
+
+![The ticket list, found with a query](docs/query.png)
 
 ### Time
 
@@ -148,6 +156,8 @@ deploy with `git pull`.
 - A rule answers what happened, never another rule, so two rules cannot undo
   each other for ever; its lines in a ticket's history name it, and its log
   says what it did and what failed.
+
+![The automation rules, and a few to start from](docs/automation.png)
 
 ### For other programs
 

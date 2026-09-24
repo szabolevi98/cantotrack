@@ -174,9 +174,15 @@
         draw();
     }
 
+    // Offered while typing, or on a click; focus alone opens them only in
+    // an empty box — landing on a list of results is not asking for them.
     input.addEventListener('input', suggest);
-    input.addEventListener('focus', suggest);
     input.addEventListener('click', suggest);
+    input.addEventListener('focus', function () {
+        if (input.value.trim() === '') {
+            suggest();
+        }
+    });
 
     input.addEventListener('keydown', function (event) {
         if (list.hidden || items.length === 0) {

@@ -29,7 +29,7 @@
             <div class="query-form__row">
                 <div class="query-form__box">
                     <input id="query" class="field field--code query-form__input{{ query_error ? ' field--error' : '' }}" type="text" name="query"
-                           value="{{ query_text }}" autocomplete="off" spellcheck="false" autofocus
+                           value="{{ query_text }}" autocomplete="off" spellcheck="false"{{ query_text ? '' : ' autofocus' }}
                            placeholder="project = BIKE AND assignee = me AND category != done ORDER BY priority DESC"
                            role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="query-suggestions"
                            {{ query_error ? 'aria-invalid="true" aria-describedby="query-error"' : '' }}>

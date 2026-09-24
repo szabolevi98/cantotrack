@@ -59,12 +59,21 @@
     flex: 1;
     flex-direction: column;
     min-height: 0;
-    margin: 0 -8px;
-    padding: 0 8px;
+    /* The search box sits 8px up into the brand's margin; the menu starts
+       that much higher and gives it back as padding, so that nothing it
+       clips while it scrolls is the box's border — and everything stays
+       exactly where it was. */
+    margin-top: -8px;
+    padding-top: 8px;
     overflow-y: auto;
     overscroll-behavior: contain;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(var(--ct-sidebar-text-rgb), 0.3) transparent;
+    /* Scrolled by the wheel, a finger or the keyboard, without a bar that
+       would take width from the menu. */
+    scrollbar-width: none;
+}
+
+.sidebar__menu::-webkit-scrollbar {
+    display: none;
 }
 
 .sidebar__nav {
@@ -217,6 +226,8 @@
     }
 
     .sidebar__menu {
+        margin-top: 0;
+        padding-top: 0;
         overflow: visible;
     }
 

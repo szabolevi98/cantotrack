@@ -92,7 +92,7 @@ class GitHubPush
                     }
 
                     try {
-                        (new TicketService($this->db))->changeStatus((int) $ticket['id'], 'done', $actorId);
+                        (new TicketService($this->db))->changeStatus((int) $ticket['id'], 'done', $actorId, null, true);
                         $closed[] = $key;
                     } catch (ValidationError $e) {
                         Logger::error('A commit could not close ' . $key . ': ' . $e->getMessage());

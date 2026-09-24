@@ -403,6 +403,29 @@ class ProjectController extends Controller
         $this->redirect('/projects/' . $status['project_id'] . '/edit#workflow');
     }
 
+    /** Which column a ticket may go to from which — the grid on the settings page. */
+    public function saveMoves(int $id): void
+    {
+        Auth::requireAdmin();
+
+        $this->projectOr404($id);
+        $statuses = new StatusRepository();
+
+        if ($this->input('reset') !== '') {
+            $every = [];
+            foreach ($statuses->forProject($id) as $status) {
+                $every[(int) $status['id']] = array_map(static fn(array $s): int => (int) $s['id'], $statuses->forProject($id));
+            }
+            $statuses->setMoves($id, $every);
+            $this->flash(__('Every move is allowed again.'));
+        } else {
+            $statuses->setMoves($id, is_array($_POST['moves'] ?? null) ? $_POST['moves'] : []);
+            $this->flash(__('The moves are saved.'));
+        }
+
+        $this->redirect('/projects/' . $id . '/edit#moves');
+    }
+
     public function moveStatus(int $statusId): void
     {
         Auth::requireAdmin();

@@ -46,7 +46,7 @@ class StatusRepository
         );
         $statement->execute(['project' => $projectId]);
 
-        return $statement->fetchAll();
+        return $this->withMoves($statement->fetchAll());
     }
 
     /** Every project's columns at once, keyed by project — for lists that mix projects. */
@@ -56,7 +56,7 @@ class StatusRepository
         $statement->execute();
 
         $grouped = [];
-        foreach ($statement->fetchAll() as $status) {
+        foreach ($this->withMoves($statement->fetchAll()) as $status) {
             $grouped[(int) $status['project_id']][] = $status;
         }
 
@@ -67,8 +67,100 @@ class StatusRepository
     {
         $statement = $this->db->prepare('SELECT * FROM statuses WHERE id = :id');
         $statement->execute(['id' => $id]);
+        $status = $statement->fetch();
 
-        return $statement->fetch() ?: null;
+        return $status ? $this->withMoves([$status])[0] : null;
+    }
+
+    /**
+     * Each column with `moves`: the ids of the columns its tickets may go
+     * to, or null when they may go anywhere — see the 0031 migration.
+     *
+     * @param array<int, array<string, mixed>> $statuses
+     * @return array<int, array<string, mixed>>
+     */
+    private function withMoves(array $statuses): array
+    {
+        $limited = array_values(array_map(
+            static fn(array $s): int => (int) $s['id'],
+            array_filter($statuses, static fn(array $s): bool => (int) ($s['moves_limited'] ?? 0) === 1)
+        ));
+
+        $moves = array_fill_keys($limited, []);
+
+        if ($limited !== []) {
+            $marks = implode(',', array_fill(0, count($limited), '?'));
+            $statement = $this->db->prepare(
+                'SELECT from_status_id, to_status_id FROM status_transitions WHERE from_status_id IN (' . $marks . ')'
+            );
+            $statement->execute($limited);
+
+            foreach ($statement->fetchAll() as $row) {
+                $moves[(int) $row['from_status_id']][] = (int) $row['to_status_id'];
+            }
+        }
+
+        foreach ($statuses as &$status) {
+            $status['moves'] = $moves[(int) $status['id']] ?? null;
+        }
+        unset($status);
+
+        return $statuses;
+    }
+
+    /** Whether a ticket in one column may be moved to another. Staying put always may. */
+    public static function allows(array $from, int $toId): bool
+    {
+        if ((int) $from['id'] === $toId || !isset($from['moves'])) {
+            return true;
+        }
+
+        return in_array($toId, (array) $from['moves'], true);
+    }
+
+    /**
+     * A project's moves, from the settings: for each column, the columns its
+     * tickets may go to. A column allowed to go to every other is not
+     * limited at all — so a column added later is open to it, as it would
+     * be to anyone who never limited anything.
+     *
+     * @param array<int|string, mixed> $given column id => list of column ids
+     */
+    public function setMoves(int $projectId, array $given): void
+    {
+        $ids = array_map(static fn(array $s): int => (int) $s['id'], $this->forProject($projectId));
+
+        $this->db->beginTransaction();
+
+        try {
+            $clear = $this->db->prepare('DELETE FROM status_transitions WHERE from_status_id = :id');
+            $mark = $this->db->prepare('UPDATE statuses SET moves_limited = :limited WHERE id = :id');
+            $add = $this->db->prepare('INSERT INTO status_transitions (from_status_id, to_status_id) VALUES (:from, :to)');
+
+            foreach ($ids as $from) {
+                $to = array_values(array_intersect(
+                    $ids,
+                    array_map('intval', (array) ($given[$from] ?? []))
+                ));
+                $to = array_values(array_diff($to, [$from]));
+                $limited = count($to) < count($ids) - 1;
+
+                $clear->execute(['id' => $from]);
+                $mark->execute(['limited' => $limited ? 1 : 0, 'id' => $from]);
+
+                if ($limited) {
+                    foreach ($to as $target) {
+                        $add->execute(['from' => $from, 'to' => $target]);
+                    }
+                }
+            }
+
+            $this->db->commit();
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+
+            throw $e;
+        }
     }
 
     public function createDefaults(int $projectId): void
@@ -115,9 +207,10 @@ class StatusRepository
         // into "done", they were finished now; moved out of it, they are open
         // again and no longer finished at all.
         $this->db->prepare(
-            'UPDATE tickets SET closed_at = CASE WHEN :category = \'done\' THEN COALESCE(closed_at, NOW()) ELSE NULL END
+            'UPDATE tickets SET closed_at = CASE WHEN :category = \'done\' THEN COALESCE(closed_at, NOW()) ELSE NULL END,
+                 resolution = CASE WHEN :again = \'done\' THEN COALESCE(resolution, \'done\') ELSE NULL END
              WHERE status_id = :id'
-        )->execute(['category' => self::category($category), 'id' => $id]);
+        )->execute(['category' => self::category($category), 'again' => self::category($category), 'id' => $id]);
     }
 
     /** Swaps a column with its neighbour to the left (-1) or right (+1). */
@@ -166,9 +259,10 @@ class StatusRepository
 
                 $this->db->prepare(
                     'UPDATE tickets SET status_id = :target,
-                         closed_at = CASE WHEN :category = \'done\' THEN COALESCE(closed_at, NOW()) ELSE NULL END
+                         closed_at = CASE WHEN :category = \'done\' THEN COALESCE(closed_at, NOW()) ELSE NULL END,
+                         resolution = CASE WHEN :again = \'done\' THEN COALESCE(resolution, \'done\') ELSE NULL END
                      WHERE status_id = :id'
-                )->execute(['target' => $moveTo, 'category' => $target['category'] ?? 'todo', 'id' => $id]);
+                )->execute(['target' => $moveTo, 'category' => $target['category'] ?? 'todo', 'again' => $target['category'] ?? 'todo', 'id' => $id]);
             }
 
             $this->db->prepare('DELETE FROM statuses WHERE id = :id')->execute(['id' => $id]);

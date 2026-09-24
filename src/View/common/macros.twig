@@ -103,13 +103,18 @@
     a crawler will follow on its own.
 #}
 {% macro move(ticket, statuses, back) %}
+    {# Only the columns this one lets the ticket go to — see the 0031
+       migration — and the one it is in. #}
+    {% set here = statuses|filter(s => s.id == ticket.status_id)|first %}
     <form class="move" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/status') }}">
         <input type="hidden" name="_token" value="{{ csrf_token }}">
         <input type="hidden" name="back" value="{{ back }}">
         <select class="field field--inline move__select" name="status" data-autosubmit
                 aria-label="{{ 'Status of {key}'|t({key: ticket.project_code ~ '-' ~ ticket.number}) }}">
             {% for status in statuses %}
-                <option value="{{ status.id }}"{{ ticket.status_id == status.id ? ' selected' : '' }}>{{ status.name|t }}</option>
+                {% if status.id == ticket.status_id or not here or here.moves is null or status.id in here.moves %}
+                    <option value="{{ status.id }}"{{ ticket.status_id == status.id ? ' selected' : '' }}>{{ status.name|t }}</option>
+                {% endif %}
             {% endfor %}
         </select>
         {# Without JavaScript the select changes nothing on its own, so the form
@@ -258,15 +263,27 @@
     saw at the time; the ones that are the application's own (a priority, a
     type, the five default columns) are translated, anything typed is not.
 #}
+{#
+    Why a finished ticket is finished, when it is not simply "done": a quiet
+    badge beside its status.
+#}
+{% macro resolution(ticket) %}
+    {%- set names = {wont_do: 'Won’t do', duplicate: 'Duplicate', cannot_reproduce: 'Cannot reproduce'} -%}
+    {%- if ticket.status_category|default('') == 'done' and names[ticket.resolution|default('')] is defined -%}
+        <span class="badge badge--muted">{{ names[ticket.resolution]|t }}</span>
+    {%- endif -%}
+{% endmacro %}
+
 {% macro event_line(event) %}
     {%- set who = event.user_name ?: 'Somebody'|t -%}
     {%- set fields = {
         title: 'title', type: 'type', priority: 'priority', assignee: 'assignee', epic: 'epic', parent: 'parent', release: 'release',
-        estimate: 'estimate', due: 'due date', points: 'story points', labels: 'labels', description: 'description'
+        estimate: 'estimate', due: 'due date', points: 'story points', labels: 'labels', description: 'description',
+        resolution: 'resolution'
     } -%}
     {%- set field = (fields[event.field]|default(event.field))|t -%}
-    {%- set old = event.field in ['priority', 'type', 'status'] ? event.old_value|t : event.old_value -%}
-    {%- set new = event.field in ['priority', 'type', 'status'] ? event.new_value|t : event.new_value -%}
+    {%- set old = event.field in ['priority', 'type', 'status', 'resolution'] and event.old_value ? event.old_value|t : event.old_value -%}
+    {%- set new = event.field in ['priority', 'type', 'status', 'resolution'] and event.new_value ? event.new_value|t : event.new_value -%}
     {%- if event.field == 'due' -%}
         {%- set old = event.old_value ? event.old_value|day : null -%}
         {%- set new = event.new_value ? event.new_value|day : null -%}

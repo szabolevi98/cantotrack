@@ -196,6 +196,53 @@
             </form>
         </section>
 
+        {#
+            Which column a ticket may go to from which. Every box ticked is
+            the way it always was: anything goes. A row with boxes cleared
+            limits that column — its tickets go only where it is ticked.
+        #}
+        <section class="card" id="moves">
+            <h2 class="card__title">{{ 'Moves between columns'|t }}</h2>
+            <p class="card__body">
+                {{ 'Where a ticket in each column may go next. Untick a box to rule that move out — say, from In progress straight to Done without a review. Rules and commits that close tickets are not held to it.'|t }}
+            </p>
+            <form method="post" action="{{ url('/projects/' ~ project.id ~ '/moves') }}">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <div class="moves">
+                    <table class="table moves__table">
+                        <thead>
+                            <tr>
+                                <th scope="col">{{ 'From ↓ · to →'|t }}</th>
+                                {% for to in statuses %}<th scope="col">{{ ui.status(to.name, to.colour) }}</th>{% endfor %}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for from in statuses %}
+                                <tr>
+                                    <th scope="row">{{ ui.status(from.name, from.colour) }}</th>
+                                    {% for to in statuses %}
+                                        <td>
+                                            {% if to.id == from.id %}
+                                                <span class="muted" aria-hidden="true">·</span>
+                                            {% else %}
+                                                <input type="checkbox" name="moves[{{ from.id }}][]" value="{{ to.id }}"
+                                                       {{ from.moves is null or to.id in from.moves ? 'checked' : '' }}
+                                                       aria-label="{{ 'From {from} to {to}'|t({from: from.name|t, to: to.name|t}) }}">
+                                            {% endif %}
+                                        </td>
+                                    {% endfor %}
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="form__actions">
+                    <button class="button button--primary" type="submit">{{ 'Save the moves'|t }}</button>
+                    <button class="button" type="submit" name="reset" value="1">{{ 'Allow every move'|t }}</button>
+                </div>
+            </form>
+        </section>
+
         <section class="card card--narrow">
             <h2 class="card__title">{{ 'Delete this project'|t }}</h2>
             <p class="card__body">

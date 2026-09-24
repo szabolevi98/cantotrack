@@ -1640,6 +1640,12 @@ summary.link-button::-webkit-details-marker {
     transition: background 0.1s ease, border-color 0.1s ease;
 }
 
+/* A column the dragged card may not go to, from where it is. */
+.board__column.is-closed {
+    opacity: 0.45;
+    background: repeating-linear-gradient(135deg, transparent 0 8px, var(--ct-border) 8px 9px);
+}
+
 /* Where a dragged card would land. */
 .board__column.is-target {
     border-color: var(--ct-primary);
@@ -1928,6 +1934,27 @@ summary.link-button::-webkit-details-marker {
 .workflow__delete label {
     margin: 0;
     font-weight: 400;
+}
+
+/* The moves between columns: a grid of boxes, from each row to each column. */
+.moves {
+    overflow-x: auto;
+    margin: 14px 0 4px;
+}
+
+.moves__table th,
+.moves__table td {
+    text-align: center;
+    white-space: nowrap;
+}
+
+.moves__table tbody th {
+    text-align: left;
+}
+
+.moves__table input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
 }
 
 /* ---------------------------------------------------------------------------

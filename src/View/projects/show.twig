@@ -163,12 +163,14 @@
             <div class="board__row" data-lane-field="{{ lane.field }}" data-lane-value="{{ lane.value }}">
                 {% for status in statuses %}
                     <section class="board__column" data-status-id="{{ status.id }}"
+                             {% if status.moves is not null %}data-moves="{{ status.moves|join(',') }}"{% endif %}
                              aria-label="{{ status.name|t }}{{ lane.title ? ' — ' ~ lane.title : '' }}">
                         {% for ticket in lane.columns[status.id]|default([]) %}
                             <article class="ticket-card" draggable="{{ can_work ? 'true' : 'false' }}" data-ticket-id="{{ ticket.id }}">
                                 <div class="ticket-card__top">
                                     <span class="ticket-card__key">{{ ui.type_icon(ticket.type) }} {{ ui.ticket_key(ticket) }}</span>
                                     <span>
+                                        {{ ui.resolution(ticket) }}
                                         {% if ticket.blocked_by > 0 and ticket.status_category != 'done' %}
                                             <span class="badge badge--red" title="{{ 'Blocked by an unfinished ticket'|t }}">{{ 'Blocked'|t }}</span>
                                         {% endif %}

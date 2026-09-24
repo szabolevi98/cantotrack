@@ -1152,6 +1152,41 @@ foreach (array_slice($openTickets['BIKE'] ?? [], 0, 2) as $t) {
 }
 (new CantoTrack\Service\Automation())->daily();
 
+// ---------------------------------------------------------------------------
+// The clinic's work is looked at before it is done: its columns limit where
+// a ticket may go. And a few finished tickets were decided against, or
+// turned out to be the same as another.
+// ---------------------------------------------------------------------------
+$clinicColumns = [];
+foreach ((new CantoTrack\Model\StatusRepository())->forProject($projectOf['CLINIC']) as $status) {
+    $clinicColumns[(string) $status['name']] = (int) $status['id'];
+}
+$everyColumn = array_values($clinicColumns);
+$clinicMoves = array_fill_keys($everyColumn, $everyColumn);
+$clinicMoves[$clinicColumns['Backlog']] = [$clinicColumns['To do']];
+$clinicMoves[$clinicColumns['To do']] = [$clinicColumns['Backlog'], $clinicColumns['In progress']];
+$clinicMoves[$clinicColumns['In progress']] = [$clinicColumns['To do'], $clinicColumns['Review']];
+$clinicMoves[$clinicColumns['Review']] = [$clinicColumns['In progress'], $clinicColumns['Done']];
+$clinicMoves[$clinicColumns['Done']] = [$clinicColumns['In progress']];
+(new CantoTrack\Model\StatusRepository())->setMoves($projectOf['CLINIC'], $clinicMoves);
+
+$finished = $database->query(
+    "SELECT t.id FROM tickets t JOIN projects p ON p.id = t.project_id
+     WHERE t.closed_at IS NOT NULL AND p.code IN ('BIKE', 'HELP', 'WINE') AND t.parent_id IS NULL ORDER BY t.id"
+);
+$finishedIds = $finished === false ? [] : array_map('intval', $finished->fetchAll(PDO::FETCH_COLUMN));
+foreach (array_values($finishedIds) as $i => $t) {
+    $resolution = match ($i % 9) {
+        3 => 'wont_do',
+        6 => 'duplicate',
+        8 => $i % 2 === 0 ? 'cannot_reproduce' : null,
+        default => null,
+    };
+    if ($resolution !== null) {
+        $ticketService->resolve($t, $resolution, $who['tamas']);
+    }
+}
+
 $moreSummary = [
     'projects' => count($catalogue),
     'tickets' => count($made2),

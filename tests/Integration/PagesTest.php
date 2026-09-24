@@ -83,4 +83,15 @@ final class PagesTest extends DatabaseTestCase
 
         self::assertNull($this->repository->find($child)['parent_id']);
     }
+
+    public function testAProjectGoesWithItsTreeOfPages(): void
+    {
+        $home = $this->pages->create($this->project, null, 'Home', '', $this->me);
+        $child = $this->pages->create($this->project, $home, 'Child', '', $this->me);
+        $this->pages->create($this->project, $child, 'Grandchild', '', $this->me);
+
+        (new \CantoTrack\Model\ProjectRepository($this->db))->delete($this->project);
+
+        self::assertNull($this->repository->find($home));
+    }
 }

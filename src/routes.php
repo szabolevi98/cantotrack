@@ -128,6 +128,7 @@ $router->post('/sprints/{id}/delete', static fn($id) => (new SprintController())
 // A project's columns, from its settings page.
 $router->post('/projects/{id}/statuses', static fn($id) => (new ProjectController())->createStatus((int) $id));
 $router->post('/statuses/{id}', static fn($id) => (new ProjectController())->updateStatus((int) $id));
+$router->post('/projects/{id}/moves', static fn($id) => (new ProjectController())->saveMoves((int) $id));
 $router->post('/statuses/{id}/move', static fn($id) => (new ProjectController())->moveStatus((int) $id));
 $router->post('/statuses/{id}/delete', static fn($id) => (new ProjectController())->deleteStatus((int) $id));
 
@@ -185,6 +186,7 @@ $router->get('/tickets/{id}', static fn($id) => (new TicketController())->show((
 $router->get('/tickets/{id}/edit', static fn($id) => (new TicketController())->editForm((int) $id));
 $router->post('/tickets/{id}', static fn($id) => (new TicketController())->update((int) $id));
 $router->post('/tickets/{id}/status', static fn($id) => (new TicketController())->changeStatus((int) $id));
+$router->post('/tickets/{id}/resolution', static fn($id) => (new TicketController())->resolve((int) $id));
 $router->post('/tickets/{id}/move', static fn($id) => (new TicketController())->move((int) $id));
 $router->post('/tickets/{id}/delete', static fn($id) => (new TicketController())->delete((int) $id));
 

@@ -21,6 +21,14 @@ class TicketRepository
 
     public const TYPES = ['task', 'bug', 'story'];
 
+    /** Why a finished ticket is finished, and what that is called. */
+    public const RESOLUTIONS = [
+        'done' => 'Done',
+        'wont_do' => 'Won’t do',
+        'duplicate' => 'Duplicate',
+        'cannot_reproduce' => 'Cannot reproduce',
+    ];
+
     /** A ticket name as people type it: CT-14. */
     public const KEY_PATTERN = '/^([A-Z][A-Z0-9]{1,9})-(\d+)$/';
 
@@ -418,10 +426,10 @@ class TicketRepository
             $statement = $this->db->prepare(
                 'INSERT INTO tickets
                     (project_id, number, type, epic_id, parent_id, release_id, title, description, status_id, priority,
-                     assignee_id, reporter_id, estimate_minutes, due_on, story_points, `rank`, closed_at)
+                     assignee_id, reporter_id, estimate_minutes, due_on, story_points, `rank`, closed_at, resolution)
                  VALUES
                     (:project_id, :number, :type, :epic_id, :parent_id, :release_id, :title, :description, :status_id, :priority,
-                     :assignee_id, :reporter_id, :estimate_minutes, :due_on, :story_points, :rank, :closed_at)'
+                     :assignee_id, :reporter_id, :estimate_minutes, :due_on, :story_points, :rank, :closed_at, :resolution)'
             );
 
             $statement->execute([
@@ -443,6 +451,7 @@ class TicketRepository
                 'estimate_minutes' => $data['estimate_minutes'] ?: null,
                 // A ticket created straight into a done column was finished now.
                 'closed_at' => ($data['status_category'] ?? '') === 'done' ? date('Y-m-d H:i:s') : null,
+                'resolution' => ($data['status_category'] ?? '') === 'done' ? 'done' : null,
             ]);
 
             $id = (int) $this->db->lastInsertId();
@@ -506,16 +515,29 @@ class TicketRepository
      * when the ticket reaches a done column and cleared when it leaves again,
      * so "finished last week" cannot include something that was reopened.
      */
-    public function changeStatus(int $id, int $statusId, string $category): void
+    public function changeStatus(int $id, int $statusId, string $category, ?string $resolution = null): void
     {
         $statement = $this->db->prepare(
             'UPDATE tickets
              SET status_id = :status,
-                 closed_at = CASE WHEN :category = \'done\' THEN COALESCE(closed_at, NOW()) ELSE NULL END
+                 closed_at = CASE WHEN :category = \'done\' THEN COALESCE(closed_at, NOW()) ELSE NULL END,
+                 resolution = :resolution
              WHERE id = :id'
         );
 
-        $statement->execute(['status' => $statusId, 'category' => $category, 'id' => $id]);
+        $statement->execute([
+            'status' => $statusId,
+            'category' => $category,
+            'resolution' => $category === 'done' ? ($resolution ?? 'done') : null,
+            'id' => $id,
+        ]);
+    }
+
+    /** Why a finished ticket is finished — see the 0031 migration. */
+    public function setResolution(int $id, string $resolution): void
+    {
+        $this->db->prepare('UPDATE tickets SET resolution = :resolution WHERE id = :id AND closed_at IS NOT NULL')
+            ->execute(['resolution' => $resolution, 'id' => $id]);
     }
 
     public function delete(int $id): void

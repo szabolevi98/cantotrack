@@ -219,6 +219,7 @@ class TicketController extends Controller
             'category', 'statuscategory' => ['to do', 'in progress', 'done'],
             'type', 'issuetype' => array_merge(TicketRepository::TYPES, ['subtask']),
             'priority' => TicketRepository::PRIORITIES,
+            'resolution' => array_keys(TicketRepository::RESOLUTIONS),
             'assignee', 'reporter', 'watcher' => array_merge(['me', 'currentUser()'], array_map(static fn(array $u): string => (string) $u['name'], (new UserRepository())->active())),
             'epic' => $column('SELECT DISTINCT title FROM epics WHERE is_done = 0' . $visible . ' ORDER BY title'),
             'sprint' => array_merge(['openSprints()', 'closedSprints()', 'futureSprints()'], $column('SELECT name FROM sprints WHERE state <> \'closed\'' . $visible . ' ORDER BY name')),
@@ -464,6 +465,22 @@ class TicketController extends Controller
         // Back where it was clicked, so moving a ticket from the board does not
         // land somebody on the ticket's own page.
         $this->back('/tickets/' . $id);
+    }
+
+    /** Why a finished ticket is finished — "won't do" rather than "done". */
+    public function resolve(int $id): void
+    {
+        Auth::requireMember();
+
+        $this->ticketOr404($id);
+
+        try {
+            (new TicketService())->resolve($id, $this->input('resolution'), Auth::id());
+        } catch (ValidationError $e) {
+            $this->flash($e->getMessage(), 'danger');
+        }
+
+        $this->redirect('/tickets/' . $id);
     }
 
     /**

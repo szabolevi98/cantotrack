@@ -154,6 +154,11 @@ class ProjectRepository
 
         try {
             $this->db->prepare('DELETE FROM tickets WHERE project_id = :id')->execute(['id' => $id]);
+            // Its pages too, the tree taken apart first: a cascade deleting a
+            // page while setting its children's parent to nothing trips over
+            // children it is deleting in the same go.
+            $this->db->prepare('UPDATE pages SET parent_id = NULL WHERE project_id = :id')->execute(['id' => $id]);
+            $this->db->prepare('DELETE FROM pages WHERE project_id = :id')->execute(['id' => $id]);
             $this->db->prepare('DELETE FROM projects WHERE id = :id')->execute(['id' => $id]);
             $this->db->commit();
         } catch (\Throwable $e) {

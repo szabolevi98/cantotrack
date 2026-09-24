@@ -295,8 +295,18 @@ class TicketService
         return $parent;
     }
 
-    /** @throws ValidationError */
-    public function changeStatus(int $id, string $status, ?int $actorId = null): void
+    /**
+     * Moves a ticket to another column — one the column it is in lets it go
+     * to (see the 0031 migration). Into a done column it goes with a
+     * resolution, "done" unless somebody said otherwise.
+     *
+     * `$anyMove` is for the changes nobody drags: an automation rule, a
+     * commit that says "fixes CT-14". Whoever set those up decided where
+     * the ticket goes, and the columns' moves are for people.
+     *
+     * @throws ValidationError
+     */
+    public function changeStatus(int $id, string $status, ?int $actorId = null, ?string $resolution = null, bool $anyMove = false): void
     {
         $ticket = $this->tickets->find($id);
 
@@ -305,21 +315,97 @@ class TicketService
         }
 
         $column = $this->status((int) $ticket['project_id'], $status);
+        $resolution = $resolution === null || $resolution === '' ? null : $this->resolution($resolution);
 
         if ((int) $column['id'] === (int) $ticket['status_id']) {
+            if ($resolution !== null) {
+                $this->resolve($id, $resolution, $actorId);
+            }
+
             return;
         }
 
-        $this->tickets->changeStatus($id, (int) $column['id'], (string) $column['category']);
+        $from = $this->statuses->find((int) $ticket['status_id']);
+
+        if (!$anyMove && $from !== null && !StatusRepository::allows($from, (int) $column['id'])) {
+            throw new ValidationError(__('{key} cannot go from {from} to {to}: the project’s workflow does not allow that move.', [
+                'key' => $ticket['project_code'] . '-' . $ticket['number'],
+                'from' => __((string) $from['name']),
+                'to' => __((string) $column['name']),
+            ]));
+        }
+
+        $this->tickets->changeStatus($id, (int) $column['id'], (string) $column['category'], $resolution);
+        $after = (array) $this->tickets->find($id);
 
         $this->activity->happened(
-            (array) $this->tickets->find($id),
+            $after,
             $actorId,
             'status',
             'status',
             (string) $ticket['status_name'],
             (string) $column['name']
         );
+
+        // "Done" goes without saying; anything else is worth a line.
+        if ($after['resolution'] !== null && $after['resolution'] !== 'done') {
+            $this->activity->happened($after, $actorId, 'changed', 'resolution', null, TicketRepository::RESOLUTIONS[$after['resolution']]);
+        }
+    }
+
+    /**
+     * Why a finished ticket is finished, changed after it got there — "won't
+     * do" rather than "done", say.
+     *
+     * @throws ValidationError
+     */
+    public function resolve(int $id, string $resolution, ?int $actorId = null): void
+    {
+        $ticket = $this->tickets->find($id);
+
+        if ($ticket === null) {
+            throw new ValidationError(__('There is no such ticket.'));
+        }
+
+        if ($ticket['status_category'] !== 'done') {
+            throw new ValidationError(__('Only a finished ticket has a resolution.'));
+        }
+
+        $resolution = $this->resolution($resolution);
+
+        if ($resolution === $ticket['resolution']) {
+            return;
+        }
+
+        $this->tickets->setResolution($id, $resolution);
+
+        $this->activity->happened(
+            (array) $this->tickets->find($id),
+            $actorId,
+            'changed',
+            'resolution',
+            $ticket['resolution'] === null ? null : TicketRepository::RESOLUTIONS[$ticket['resolution']] ?? null,
+            TicketRepository::RESOLUTIONS[$resolution]
+        );
+    }
+
+    /**
+     * A resolution by its key or by what it is called ("Won't do", "wont
+     * do", "wont_do" all read the same).
+     *
+     * @throws ValidationError
+     */
+    private function resolution(string $given): string
+    {
+        $plain = (string) preg_replace('/[^a-z]/', '', mb_strtolower(str_replace('’', "'", $given)));
+
+        foreach (TicketRepository::RESOLUTIONS as $key => $name) {
+            if ($plain === str_replace('_', '', $key) || $plain === (string) preg_replace('/[^a-z]/', '', mb_strtolower(str_replace('’', "'", $name)))) {
+                return $key;
+            }
+        }
+
+        throw new ValidationError(__('There is no resolution “{value}”.', ['value' => $given]));
     }
 
     /**
@@ -338,6 +424,14 @@ class TicketService
 
         if ($ticket === null) {
             throw new ValidationError(__('There is no such ticket.'));
+        }
+
+        // A move the workflow refuses is refused before the lane changes
+        // anything, so a refused drop leaves the ticket as it was.
+        $column = $this->status((int) $ticket['project_id'], $status);
+        $from = $this->statuses->find((int) $ticket['status_id']);
+        if ($from !== null && !StatusRepository::allows($from, (int) $column['id'])) {
+            $this->changeStatus($id, $status, $actorId);
         }
 
         // Neighbours from another project are not neighbours; the card goes

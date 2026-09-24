@@ -401,6 +401,26 @@
                         {% if ticket.blocked_by > 0 %}<span class="badge badge--red" title="{{ 'Blocked by an unfinished ticket'|t }}">{{ 'Blocked'|t }}</span>{% endif %}
                     </dd>
 
+                    {% if finished %}
+                        {% set resolutions = {done: 'Done', wont_do: 'Won’t do', duplicate: 'Duplicate', cannot_reproduce: 'Cannot reproduce'} %}
+                        <dt>{{ 'Resolution'|t }}</dt>
+                        <dd>
+                            {% if can_work %}
+                                <form class="move" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/resolution') }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                    <select class="field field--inline" name="resolution" data-autosubmit aria-label="{{ 'Resolution'|t }}">
+                                        {% for key, name in resolutions %}
+                                            <option value="{{ key }}"{{ ticket.resolution|default('done') == key ? ' selected' : '' }}>{{ name|t }}</option>
+                                        {% endfor %}
+                                    </select>
+                                    <button class="button button--small autosubmit__button" type="submit">{{ 'Save'|t }}</button>
+                                </form>
+                            {% else %}
+                                {{ resolutions[ticket.resolution|default('done')]|t }}
+                            {% endif %}
+                        </dd>
+                    {% endif %}
+
                     <dt>{{ 'Sprint'|t }}</dt>
                     <dd>
                         {% if ticket.sprint_state == 'closed' or not can_work %}

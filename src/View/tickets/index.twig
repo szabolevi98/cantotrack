@@ -232,7 +232,7 @@
                             {% if ticket.epic_title %}<span class="tag">{{ ticket.epic_title }}</span>{% endif %}
                             {{ ui.labels(ticket.label_names|lines, false) }}
                         </td>
-                        <td>{{ ui.status(ticket.status_name, ticket.status_colour) }}</td>
+                        <td>{{ ui.status(ticket.status_name, ticket.status_colour) }} {{ ui.resolution(ticket) }}</td>
                         <td>{{ ui.person(ticket.assignee_name, ticket.assignee_id) }}</td>
                         <td>{{ ui.due(ticket.due_on, ticket.status_category == 'done') }}</td>
                         <td class="table__number">{{ ticket.estimate_minutes ? ticket.estimate_minutes|duration : '—' }}</td>

@@ -290,7 +290,7 @@ final class Automation
 
         switch ($type) {
             case 'status':
-                $service->changeStatus($id, $value, $actor);
+                $service->changeStatus($id, $value, $actor, null, true);
 
                 return __('moved to {value}', ['value' => $value]);
 

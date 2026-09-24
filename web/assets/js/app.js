@@ -440,6 +440,17 @@
         // The placeholder takes the card's height, so the column does not jump.
         placeholder.style.height = card.offsetHeight + 'px';
 
+        // The columns the one it is in does not let it go to, greyed out
+        // and not taking it.
+        var moves = card.parentNode.dataset.moves;
+        if (moves !== undefined) {
+            var allowed = moves === '' ? [] : moves.split(',');
+            allowed.push(card.parentNode.dataset.statusId);
+            board.querySelectorAll('.board__column').forEach(function (column) {
+                column.classList.toggle('is-closed', allowed.indexOf(column.dataset.statusId) === -1);
+            });
+        }
+
         window.requestAnimationFrame(function () {
             card.classList.add('is-dragging');
         });
@@ -451,7 +462,7 @@
         }
 
         var column = event.target.closest && event.target.closest('.board__column');
-        if (!column) {
+        if (!column || column.classList.contains('is-closed')) {
             return;
         }
 
@@ -501,8 +512,8 @@
             placeholder.parentNode.removeChild(placeholder);
         }
 
-        board.querySelectorAll('.is-target').forEach(function (column) {
-            column.classList.remove('is-target');
+        board.querySelectorAll('.is-target, .is-closed').forEach(function (column) {
+            column.classList.remove('is-target', 'is-closed');
         });
 
         if (dragged) {

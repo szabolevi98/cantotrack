@@ -43,6 +43,7 @@ final class Presenter
             'type' => $ticket['type'],
             'title' => $ticket['title'],
             'status' => ['id' => (int) $ticket['status_id'], 'name' => $ticket['status_name'], 'category' => $ticket['status_category']],
+            'resolution' => $ticket['resolution'] ?? null,
             'priority' => $ticket['priority'],
             'assignee' => $ticket['assignee_id'] === null ? null : ['id' => (int) $ticket['assignee_id'], 'name' => $ticket['assignee_name']],
             'labels' => $ticket['label_names'] === null ? [] : explode("\n", (string) $ticket['label_names']),

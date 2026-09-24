@@ -54,6 +54,7 @@ final class TicketQuery
         'created' => 'created',
         'updated' => 'updated',
         'resolved' => 'resolved', 'finished' => 'resolved',
+        'resolution' => 'resolution',
         'due' => 'due', 'duedate' => 'due',
         'title' => 'title', 'summary' => 'title',
         'description' => 'description',
@@ -65,7 +66,7 @@ final class TicketQuery
     private const KINDS = [
         'project' => 'ref', 'key' => 'ref', 'parent' => 'ref', 'type' => 'ref', 'status' => 'ref', 'category' => 'ref',
         'priority' => 'priority', 'assignee' => 'person', 'reporter' => 'person', 'watcher' => 'person',
-        'epic' => 'ref', 'sprint' => 'ref', 'release' => 'ref', 'label' => 'ref',
+        'epic' => 'ref', 'sprint' => 'ref', 'release' => 'ref', 'label' => 'ref', 'resolution' => 'ref',
         'points' => 'number', 'estimate' => 'duration', 'logged' => 'duration',
         'created' => 'date', 'updated' => 'date', 'resolved' => 'date', 'due' => 'date',
         'title' => 'text', 'description' => 'text', 'comment' => 'text', 'text' => 'text',
@@ -633,6 +634,7 @@ final class TicketQuery
             'estimate' => 't.estimate_minutes IS NULL',
             'logged' => 'NOT EXISTS (SELECT 1 FROM worklogs tqe WHERE tqe.ticket_id = t.id)',
             'resolved' => 't.closed_at IS NULL',
+            'resolution' => 't.resolution IS NULL',
             'due' => 't.due_on IS NULL',
             'description' => '(t.description IS NULL OR t.description = \'\')',
             'comment' => 'NOT EXISTS (SELECT 1 FROM comments tqe WHERE tqe.ticket_id = t.id)',
@@ -660,6 +662,7 @@ final class TicketQuery
             'epic' => ctype_digit($v) ? 't.epic_id = ' . $this->bind((int) $v) : 'e.title = ' . $this->bind($v),
             'sprint' => $this->sprint($value),
             'release' => $this->release($value),
+            'resolution' => 't.resolution = ' . $this->bind($this->resolution($v)),
             'label' => 'EXISTS (SELECT 1 FROM ticket_labels tql JOIN labels tqll ON tqll.id = tql.label_id WHERE tql.ticket_id = t.id AND tqll.name = ' . $this->bind($v) . ')',
             'points' => $this->number('t.story_points', $op, $v),
             'estimate' => $this->number('t.estimate_minutes', $op, $this->minutes($v)),
@@ -708,6 +711,20 @@ final class TicketQuery
         }
 
         return 't.type = ' . $this->bind($type);
+    }
+
+    /** "won't do", "wont_do" and "Won’t do" read the same. */
+    private function resolution(string $given): string
+    {
+        $plain = (string) preg_replace('/[^a-z]/', '', strtolower($given));
+
+        foreach (TicketRepository::RESOLUTIONS as $key => $name) {
+            if ($plain === str_replace('_', '', $key)) {
+                return $key;
+            }
+        }
+
+        $this->fail(__('“{value}” is not a resolution: done, wont_do, duplicate or cannot_reproduce.', ['value' => $given]));
     }
 
     private function priority(string $op, string $given): string

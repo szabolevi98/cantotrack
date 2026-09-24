@@ -100,7 +100,8 @@ class ReleaseService
     {
         $done = array_filter(
             $this->tickets->search(['release_id' => (int) $release['id'], 'top_level' => true, 'status' => 'done'], 500),
-            static fn(array $t): bool => $t['status_category'] === 'done'
+            // Decided against, or the same as another: not what went out.
+            static fn(array $t): bool => $t['status_category'] === 'done' && in_array($t['resolution'] ?? 'done', ['done', null], true)
         );
         $when = $release['released_at'] ?? $release['release_on'] ?? null;
         $lines = ['## ' . $release['name'] . ($when ? ' — ' . \CantoTrack\Core\Format::day(substr((string) $when, 0, 10)) : '')];

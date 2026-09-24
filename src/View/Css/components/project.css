@@ -159,6 +159,27 @@
     font-weight: 400;
 }
 
+/* The moves between columns: a grid of boxes, from each row to each column. */
+.moves {
+    overflow-x: auto;
+    margin: 14px 0 4px;
+}
+
+.moves__table th,
+.moves__table td {
+    text-align: center;
+    white-space: nowrap;
+}
+
+.moves__table tbody th {
+    text-align: left;
+}
+
+.moves__table input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+}
+
 /* ---------------------------------------------------------------------------
  * The pages of a project, as tabs above them.
  * ------------------------------------------------------------------------- */

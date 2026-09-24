@@ -83,6 +83,12 @@
     transition: background 0.1s ease, border-color 0.1s ease;
 }
 
+/* A column the dragged card may not go to, from where it is. */
+.board__column.is-closed {
+    opacity: 0.45;
+    background: repeating-linear-gradient(135deg, transparent 0 8px, var(--ct-border) 8px 9px);
+}
+
 /* Where a dragged card would land. */
 .board__column.is-target {
     border-color: var(--ct-primary);

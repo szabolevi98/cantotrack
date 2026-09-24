@@ -164,14 +164,17 @@ class ApiController extends Controller
         $service = new TicketService();
 
         $status = $input['status'] ?? null;
-        unset($input['status'], $input['project'], $input['project_id']);
+        $resolution = isset($input['resolution']) ? (string) $input['resolution'] : null;
+        unset($input['status'], $input['resolution'], $input['project'], $input['project_id']);
 
         if ($input !== []) {
             $service->update((int) $ticket['id'], $input, (int) Auth::id());
         }
 
         if ($status !== null) {
-            $service->changeStatus((int) $ticket['id'], (string) $status, (int) Auth::id());
+            $service->changeStatus((int) $ticket['id'], (string) $status, (int) Auth::id(), $resolution);
+        } elseif ($resolution !== null) {
+            $service->resolve((int) $ticket['id'], $resolution, (int) Auth::id());
         }
 
         $this->json(['data' => Presenter::ticket((array) (new TicketRepository())->find((int) $ticket['id']), true)]);

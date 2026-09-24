@@ -1,0 +1,9 @@
+{# A page started from one of the templates (see Pages::templates). #}
+<details class="dropdown" data-menu>
+    <summary class="button">{{ 'From a template'|t }}</summary>
+    <div class="menu">
+        {% for key, template in templates %}
+            <a class="menu__item" href="{{ url('/projects/' ~ project.id ~ '/pages/create?template=' ~ key) }}">{{ template.name }}</a>
+        {% endfor %}
+    </div>
+</details>

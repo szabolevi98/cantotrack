@@ -3929,6 +3929,26 @@ a.family:hover {
     color: var(--ct-muted);
 }
 
+/* A button that opens a short list of choices under it — the same menu as
+   the account's. */
+.dropdown {
+    position: relative;
+}
+
+.dropdown > summary {
+    list-style: none;
+    cursor: pointer;
+}
+
+.dropdown > summary::-webkit-details-marker {
+    display: none;
+}
+
+.dropdown > .menu {
+    z-index: 40;
+    min-width: 200px;
+}
+
 /*
  * Finding things: the search box and the saved filters in the sidebar, the
  * keyboard shortcuts, and the bar that changes many tickets at once.

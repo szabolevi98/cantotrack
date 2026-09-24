@@ -30,6 +30,7 @@ class PageController extends Controller
         $words = trim((string) ($_GET['q'] ?? ''));
 
         $this->render('pages/index.twig', [
+            'templates' => Pages::templates(date('Y-m-d')),
             'project' => $project,
             'tree' => $pages->tree($projectId),
             'words' => $words,
@@ -105,11 +106,12 @@ class PageController extends Controller
         Auth::requireMember();
 
         $project = $this->projectOr404($projectId);
+        $template = Pages::templates(date('Y-m-d'))[(string) ($_GET['template'] ?? '')] ?? null;
 
         $this->form($project, null, [
-            'title' => trim((string) ($_GET['title'] ?? '')),
+            'title' => trim((string) ($_GET['title'] ?? '')) ?: ($template['title'] ?? ''),
             'parent_id' => ctype_digit((string) ($_GET['parent'] ?? '')) ? (int) $_GET['parent'] : null,
-            'body' => '',
+            'body' => $template['body'] ?? '',
         ]);
     }
 

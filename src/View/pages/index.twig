@@ -6,7 +6,10 @@
 {% block subheading %}<p class="content__sub"><span class="project__code">{{ project.code }}</span> {{ 'What the team knows and has decided.'|t }}</p>{% endblock %}
 
 {% block actions %}
-    {% if can_work %}<a class="button button--primary" href="{{ url('/projects/' ~ project.id ~ '/pages/create') }}">{{ 'New page'|t }}</a>{% endif %}
+    {% if can_work %}
+        {% include 'pages/templates.twig' %}
+        <a class="button button--primary" href="{{ url('/projects/' ~ project.id ~ '/pages/create') }}">{{ 'New page'|t }}</a>
+    {% endif %}
 {% endblock %}
 
 {% block content %}

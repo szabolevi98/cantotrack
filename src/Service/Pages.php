@@ -82,6 +82,59 @@ class Pages
      * A page goes; its children move up to where it was, so nothing under it
      * is lost with it.
      */
+    /**
+     * The pages a team keeps writing, to start one from: a title and the
+     * bones of the text, in the language of whoever starts it, with today
+     * in it where a date belongs.
+     *
+     * @return array<string, array{name: string, title: string, body: string}>
+     */
+    public static function templates(string $today): array
+    {
+        $h = static fn(string $text): string => '## ' . $text . "\n\n";
+
+        return [
+            'meeting' => [
+                'name' => __('Meeting notes'),
+                'title' => __('Meeting, {day}', ['day' => $today]),
+                'body' => '# ' . __('Meeting, {day}', ['day' => $today]) . "\n\n"
+                    . '**' . __('Who was there') . ':** @' . "\n\n"
+                    . $h(__('What we talked about')) . "- \n\n"
+                    . $h(__('What we decided')) . "- \n\n"
+                    . $h(__('Who does what next')) . '- [ ] @ ' . "\n\n"
+                    . $h(__('Tickets it is about')) . "{{tickets updated >= startOfDay() ORDER BY updated DESC}}\n",
+            ],
+            'decision' => [
+                'name' => __('Decision record'),
+                'title' => __('Decision: …'),
+                'body' => '# ' . __('Decision: …') . "\n\n"
+                    . '**' . __('Decided on') . ':** ' . $today . ' · **' . __('Status') . ':** ' . __('proposed') . "\n\n"
+                    . $h(__('What made it a question')) . "\n\n"
+                    . $h(__('What we chose')) . "\n\n"
+                    . $h(__('What else we considered, and why not')) . "- \n\n"
+                    . $h(__('What follows from it')) . "- \n",
+            ],
+            'retro' => [
+                'name' => __('Retrospective'),
+                'title' => __('Retrospective, {day}', ['day' => $today]),
+                'body' => '# ' . __('Retrospective, {day}', ['day' => $today]) . "\n\n"
+                    . $h(__('What went well')) . "- \n\n"
+                    . $h(__('What did not')) . "- \n\n"
+                    . $h(__('What we try next time')) . '- [ ] ' . "\n\n"
+                    . $h(__('What the sprint finished')) . "{{tickets sprint IN closedSprints() AND resolved >= -14d ORDER BY resolved DESC}}\n",
+            ],
+            'howto' => [
+                'name' => __('How-to'),
+                'title' => __('How to …'),
+                'body' => '# ' . __('How to …') . "\n\n"
+                    . __('What it is for, in a sentence.') . "\n\n"
+                    . $h(__('Before you start')) . "- \n\n"
+                    . $h(__('Steps')) . "1. \n2. \n3. \n\n"
+                    . $h(__('If it goes wrong')) . "- \n",
+            ],
+        ];
+    }
+
     public function delete(array $page): void
     {
         $this->db->prepare('UPDATE pages SET parent_id = :parent WHERE parent_id = :id')

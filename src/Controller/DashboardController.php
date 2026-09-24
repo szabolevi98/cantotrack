@@ -4,9 +4,12 @@ namespace CantoTrack\Controller;
 
 use CantoTrack\Core\Auth;
 use CantoTrack\Core\Controller;
+use CantoTrack\Core\ValidationError;
 use CantoTrack\Model\EventRepository;
+use CantoTrack\Model\GadgetRepository;
 use CantoTrack\Model\ProjectRepository;
 use CantoTrack\Model\TicketRepository;
+use CantoTrack\Service\Gadgets;
 
 /**
  * The page a signed-in person lands on: their own open tickets first, and what
@@ -41,7 +44,40 @@ class DashboardController extends Controller
             'releases' => $this->comingReleases(),
             'pages' => (new \CantoTrack\Model\PageRepository())->recent(5),
             'starred' => $tickets->favouritesOf((int) Auth::id(), 6),
+            'gadgets' => (new Gadgets())->drawn((int) Auth::id()),
+            'gadget_groups' => array_keys(Gadgets::GROUPS),
         ]);
+    }
+
+    /** A piece added to one's own dashboard. */
+    public function addGadget(): void
+    {
+        Auth::require();
+
+        try {
+            (new Gadgets())->add((int) Auth::id(), $this->input('kind'), $this->input('title'), $this->input('query'), $this->input('group_by'));
+            $this->flash(__('Added to your dashboard.'));
+        } catch (ValidationError $e) {
+            $this->flash($e->getMessage(), 'danger');
+        }
+
+        $this->redirect('/#gadgets');
+    }
+
+    public function removeGadget(int $id): void
+    {
+        Auth::require();
+
+        (new GadgetRepository())->delete($id, (int) Auth::id());
+        $this->redirect('/#gadgets');
+    }
+
+    public function moveGadget(int $id): void
+    {
+        Auth::require();
+
+        (new GadgetRepository())->move($id, (int) Auth::id(), $this->input('direction') === 'up' ? -1 : 1);
+        $this->redirect('/#gadgets');
     }
 
     /**

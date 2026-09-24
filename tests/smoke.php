@@ -429,6 +429,14 @@ if ($email === null || $password === null) {
     $flow = request($baseUrl . '/projects/' . $projectId . '/flow?weeks=4', [], $jar);
     check('the project shows how its work flows', $flow['status'] === 200 && str_contains($flow['body'], 'chart__band--done'), 'status ' . $flow['status']);
 
+    request($baseUrl . '/dashboard/gadgets', ['_token' => $token, 'kind' => 'breakdown', 'title' => 'Smoke split', 'query' => 'project = ' . $code, 'group_by' => 'status'], $jar);
+    $dashboard = request($baseUrl . '/', [], $jar)['body'];
+    check('a piece of the person’s own can be put on the dashboard', str_contains($dashboard, 'Smoke split') && str_contains($dashboard, 'gadget__bars'));
+    // The one just added is the last; the ones the person had stay.
+    if (preg_match_all('#/dashboard/gadgets/(\d+)/delete#', $dashboard, $m) > 0) {
+        request($baseUrl . '/dashboard/gadgets/' . end($m[1]) . '/delete', ['_token' => $token], $jar);
+    }
+
     $suggested = request($baseUrl . '/suggest?kind=tickets&q=' . $code . '-', [], $jar);
     check(
         'typing the start of a key offers the tickets it could be',

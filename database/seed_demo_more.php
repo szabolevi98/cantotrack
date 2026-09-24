@@ -1143,6 +1143,17 @@ on the week's calendar, or write a query on the ticket list:
 MD, $who['me']);
 }
 
+// A dashboard of their own, for the two people most likely to be looked
+// at first.
+$database->prepare('DELETE FROM dashboard_gadgets WHERE user_id IN (:me, :anna)')->execute(['me' => $who['me'], 'anna' => $who['anna']]);
+$gadgets = new CantoTrack\Model\GadgetRepository();
+$gadgets->create($who['me'], 'breakdown', 'Open work by person', 'category != done', 'assignee');
+$gadgets->create($who['me'], 'count', 'Urgent and open', 'priority = urgent AND category != done', null);
+$gadgets->create($who['me'], 'list', 'Bugs this week', 'type = bug AND created >= startOfWeek() ORDER BY priority DESC', null);
+$gadgets->create($who['me'], 'breakdown', 'Where the sprints are', 'sprint IN openSprints()', 'status');
+$gadgets->create($who['anna'], 'list', 'Mine, most urgent first', 'assignee = me AND category != done ORDER BY priority DESC', null);
+$gadgets->create($who['anna'], 'breakdown', 'Everything open, by project', 'category != done', 'project');
+
 // A few words under the pages, the way people leave them.
 $pageComments = new CantoTrack\Model\PageRepository();
 foreach ([

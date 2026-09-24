@@ -830,6 +830,143 @@ code {
     color: var(--ct-danger);
 }
 
+/* ---------------------------------------------------------------------------
+ * A person's own dashboard: pieces made of queries.
+ * ------------------------------------------------------------------------- */
+.gadgets {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: var(--ct-gap);
+    align-items: start;
+    margin-bottom: var(--ct-gap);
+}
+
+.gadget {
+    margin: 0;
+}
+
+.gadget__head {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    justify-content: space-between;
+}
+
+.gadget__head .card__title a {
+    color: inherit;
+}
+
+.gadget__tools {
+    display: flex;
+    gap: 2px;
+    opacity: 0.35;
+}
+
+.gadget:hover .gadget__tools,
+.gadget__tools:focus-within {
+    opacity: 1;
+}
+
+.gadget__count {
+    display: block;
+    margin: 6px 0 2px;
+    color: var(--ct-primary);
+    font-size: 2.6rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    text-decoration: none;
+}
+
+.gadget__query code {
+    font-size: 0.78rem;
+    word-break: break-word;
+}
+
+.gadget__list,
+.gadget__bars {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 8px 0 0;
+    padding: 0;
+    list-style: none;
+}
+
+.gadget__list li {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+}
+
+.gadget__key {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    white-space: nowrap;
+}
+
+.gadget__list li > a {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.gadget__bars a {
+    display: grid;
+    grid-template-columns: minmax(0, 9rem) 1fr 2.5rem;
+    gap: 8px;
+    align-items: center;
+    color: inherit;
+    text-decoration: none;
+}
+
+.gadget__bars a:hover .gadget__label {
+    color: var(--ct-primary);
+}
+
+.gadget__label {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.9rem;
+}
+
+.gadget__bar {
+    height: 10px;
+    border-radius: 999px;
+    background: var(--ct-primary-soft);
+}
+
+.gadget__bar span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+    background: var(--ct-primary);
+}
+
+.gadget__number {
+    text-align: right;
+    font-variant-numeric: tabular-nums;
+}
+
+.gadget__more {
+    margin: 8px 0 0;
+    font-size: 0.88rem;
+}
+
+.gadget-add {
+    margin-bottom: var(--ct-gap);
+}
+
+.gadget-add summary {
+    cursor: pointer;
+}
+
+.gadget-add__form {
+    max-width: 640px;
+}
+
 /*
  * Fields and buttons.
  *

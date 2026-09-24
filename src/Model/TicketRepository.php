@@ -166,6 +166,35 @@ class TicketRepository
         return (int) $statement->fetchColumn();
     }
 
+    /**
+     * How many tickets the same filters find for each value of something —
+     * the column chosen by the caller from its own list, never from a request.
+     *
+     * @return list<array{label: string, count: int}>
+     */
+    public function countBy(array $filters, string $expression): array
+    {
+        [$where, $parameters] = $this->conditions($filters);
+
+        $statement = $this->db->prepare(
+            'SELECT ' . $expression . ' AS label, COUNT(*) AS count FROM tickets t
+             JOIN projects p ON p.id = t.project_id
+             JOIN statuses s ON s.id = t.status_id
+             LEFT JOIN sprints sp ON sp.id = t.sprint_id
+             LEFT JOIN releases rl ON rl.id = t.release_id
+             LEFT JOIN epics e ON e.id = t.epic_id
+             LEFT JOIN users a ON a.id = t.assignee_id'
+            . ($where === [] ? '' : ' WHERE ' . implode(' AND ', $where))
+            . ' GROUP BY label ORDER BY count DESC, label LIMIT 12'
+        );
+        $statement->execute($parameters);
+
+        return array_values(array_map(
+            static fn(array $row): array => ['label' => (string) $row['label'], 'count' => (int) $row['count']],
+            $statement->fetchAll()
+        ));
+    }
+
     /** @return array{0: list<string>, 1: array<string, mixed>} */
     private function conditions(array $filters): array
     {

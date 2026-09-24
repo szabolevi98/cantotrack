@@ -29,6 +29,13 @@ deploy with `git pull`.
 - **A board per project**, with the project's own columns, WIP limits, and
   swimlanes by person or epic. Cards are dragged between columns — and every
   card also has a select, so the board works on a phone and on a keyboard too.
+  What a card shows is the project's choice. A click on a card opens the
+  ticket in a panel beside the board, where everything about it can be
+  changed without leaving it.
+- **A workflow of the project's own**: which column a ticket may move to from
+  which (say, nothing to Done without a review), with the columns it may not go
+  to greyed out while a card is dragged. A finished ticket says why it is —
+  done, won't do, duplicate, cannot be reproduced.
 - **Backlog and sprints.** A sprint writes down what it committed to when it
   starts; closing it hands the unfinished work on to the next one. Each sprint
   has a burndown, and the project a velocity chart — drawn on the server as
@@ -61,7 +68,14 @@ deploy with `git pull`.
 
 ![The roadmap of a project: its epics across the months, with its sprints and releases](docs/roadmap.png)
 
-![A release: what is in it, its notes, and the button that sends it out](docs/release.png)
+![A release: what is in it, its burnup, and the button that sends it out](docs/release.png)
+
+- **How the work flows**, per project: a cumulative flow of what was waiting,
+  under way and done each day; how long tickets took from starting and from
+  being written down, with the time 85 of every 100 were done within; and what
+  came in against what went out, week by week. A release shows its burnup.
+
+![The flow of a project: cumulative flow, cycle times, created against resolved](docs/flow.png)
 
 ### What the team knows
 
@@ -74,19 +88,30 @@ deploy with `git pull`.
   written over somebody else's, and any version can be brought back. A ticket
   says which pages write about it, and a release's notes become a page in
   one click.
+- A page starts empty or from a template — meeting notes, a decision, a
+  retrospective, a how-to; a picture pasted into it is kept with it; and
+  everybody who can read it can comment under it.
 
 ![A page of a project, with a list of tickets read fresh from a query](docs/page.png)
 
 ### Talking about the work
 
 - **Comments in Markdown**, with task lists, `@mentions` that notify, and ticket
-  keys (`CT-14`) that link themselves. A screenshot pasted into a comment is
-  attached to the ticket.
+  keys (`CT-14`) that link themselves; typing `@` offers the people, `#` or the
+  start of a key the tickets. A screenshot pasted into a comment is attached
+  to the ticket, and a deleted comment can be taken back for a few minutes.
+- **Every fact of a ticket is changed where it is shown** — its title, its
+  description, its assignee, its due date — and the history below says so. A
+  ticket can be cloned into a new one that knows where it came from.
+- **Search by words** with a full-text index over tickets, their comments and
+  the pages, the best match first and the words marked where they were found.
 - **Every change is in the ticket's history**, written in words ("moved it from
   In progress to Review"), next to the comments or on its own.
 - **Notifications** in the application and by email, to the people who follow a
   ticket — which anybody who creates, comments on or is given a ticket does —
-  and never about a ticket in a project they cannot see.
+  and never about a ticket in a project they cannot see. Each person chooses,
+  for each kind of thing, both ways, in the application only, or not at all, and
+  can ask for a digest of their own query on working-day mornings.
 - **A query language** for the ticket list, the API and the search box —
   `project = BIKE AND assignee = me AND category != done ORDER BY priority DESC`,
   `sprint IN openSprints() AND labels IS EMPTY`, `due < startOfDay()` — with
@@ -99,7 +124,24 @@ deploy with `git pull`.
   preview of every row before anything is made), and keyboard shortcuts (`?`
   lists them).
 
-![A ticket: its history and comments, the links, and the facts beside them](docs/ticket.png)
+![A ticket: its history and comments, the links, and the facts beside them — each changed where it is](docs/ticket.png)
+
+![A ticket opened beside the board, changed without leaving it](docs/panel.png)
+
+### A dashboard of one's own
+
+- **Made of pieces**: the numbers, one's own open tickets, one's week, the
+  sprints and releases coming, what was starred and looked at lately, what
+  happened — and pieces of one's own, each a query shown as the tickets it
+  finds, how many there are, or how they split by a field.
+- **Customized by dragging** pieces within and between two columns, or with
+  their arrows from the keyboard; a piece is taken off, put back, or changed
+  in place. The customizing mode explains itself and offers ready-made pieces.
+  Only the pieces on the page are read.
+
+![The dashboard](docs/dashboard.png)
+
+![Customizing the dashboard: pieces to drag, ready-made ones to add](docs/customize.png)
 
 ![The ticket list, found with a query](docs/query.png)
 
@@ -135,6 +177,13 @@ deploy with `git pull`.
 - **Billable or not**, by project default or per entry, with clients on the
   projects; **reports** by project, person, client, ticket, work type or day, exported as
   CSV (safe to open in Excel: formulas are neutralised) or as a real `.xlsx`.
+- **Rates and budgets**: an hourly rate per person, or the one agreed for a
+  project; a project's budget in hours, in money or both, shown as used under
+  its tabs and on the administrators' dashboard once past its warning. The
+  reports say what the billable hours are worth, to the administrators.
+- **One's own dates in one's calendar**: a private address a calendar
+  subscribes to, with the days one's tickets are due, the releases coming and
+  the sprints' last days.
 
 ![The timesheet: a week, day by day, measured against the person's own week](docs/timesheet.png)
 
@@ -149,10 +198,12 @@ deploy with `git pull`.
 ### Automation
 
 - **Rules** that do the small things nobody should have to remember: when a
-  ticket is created, moved, given to somebody, commented on, logged against,
-  or its last subtask is done — or every morning — and it matches a condition
-  in the query language, move it, give it to somebody, set its priority, add
-  or take off a label, comment, or put it in the running sprint.
+  ticket is created, moved, given to somebody, changed, linked, commented on,
+  logged against, or its last subtask is done — or every morning — and it
+  matches a condition in the query language, move it, resolve it, give it to
+  somebody, set its priority, due date or a field of the project's own, add or
+  take off a label, have somebody follow it, comment, add a subtask, or put it
+  in the running sprint.
 - A rule answers what happened, never another rule, so two rules cannot undo
   each other for ever; its lines in a ticket's history name it, and its log
   says what it did and what failed.
@@ -178,7 +229,18 @@ deploy with `git pull`.
 - **Two-step sign-in** with an authenticator app (TOTP) and single-use recovery
   codes; profile pictures; passwords reset by email with a link that works once.
 - **Three roles** — administrator, member, guest — and nobody ever deleted:
-  people are deactivated, because tickets and hours point at them.
+  people are deactivated, because tickets and hours point at them. A member can
+  **lead a project**: run its columns, members and fields without being an
+  administrator.
+- **An audit log** of who did what to the installation — sign-ins and failed
+  ones, passwords and two-step sign-in, people, project settings and members,
+  deleted work, rules and webhooks — with when, from where and what changed.
+- **Ctrl+K** jumps anywhere: a ticket, a page or a project by a few of its words,
+  what was opened lately, or something there is a shortcut for.
+- **Email** through PHP's own `mail()` or an SMTP server, chosen in the
+  configuration.
+
+![Ctrl+K: a ticket, a page, a project, or something to do](docs/palette.png)
 
 ![The same week in Hungarian](docs/hungarian.png)
 

@@ -54,9 +54,9 @@ class CommentController extends Controller
             $this->forbidden(__('That is somebody else’s comment.'));
         }
 
+        (new \CantoTrack\Service\Undo())->keep('comments', $id, (int) Auth::id(), '/tickets/' . $comment['ticket_id'] . '#comment-' . $id);
         (new CommentService())->remove($comment);
 
-        $this->flash(__('Comment deleted.'), 'warning');
         $this->redirect('/tickets/' . $comment['ticket_id']);
     }
 

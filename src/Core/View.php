@@ -71,6 +71,8 @@ class View
         // same filtered list it was sent from.
         $twig->addGlobal('current_query', (string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_QUERY));
         $twig->addGlobal('flash', Session::takeFlash());
+        // A delete that can still be taken back, offered on the next page.
+        $twig->addFunction(new TwigFunction('undo_offer', static fn(): ?array => \CantoTrack\Service\Undo::offer(Auth::id())));
 
         // Minutes are how time is stored everywhere in this application; hours
         // and minutes are how people read it. One filter, so "7h 30m" cannot

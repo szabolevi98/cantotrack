@@ -662,6 +662,18 @@ if ($email === null || $password === null) {
         str_contains($ticketPage['body'], '&lt;script&gt;') && !str_contains($ticketPage['body'], "<script>alert('comment')")
     );
 
+    // A comment deleted by mistake, and taken back.
+    $slip = request($baseUrl . '/tickets/' . $ticketId . '/comments', ['_token' => $token, 'body' => 'Deleted by a slip of the finger'], $jar);
+    $slipId = preg_match('/#comment-(\d+)/', $slip['headers'], $m) === 1 ? (int) $m[1] : 0;
+    request($baseUrl . '/comments/' . $slipId . '/delete', ['_token' => $token], $jar);
+    $afterDelete = request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'];
+    $undone = request($baseUrl . '/undo', ['_token' => $token], $jar);
+    check(
+        'a deleted comment can be taken back from the page after',
+        $slipId > 0 && str_contains($afterDelete, '/undo"') && !str_contains($afterDelete, 'Deleted by a slip')
+        && $undone['status'] === 302 && str_contains(request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'], 'Deleted by a slip of the finger')
+    );
+
     $byKey = request($baseUrl . '/t/' . $code . '-1', [], $jar);
     check(
         'a ticket’s name as an address leads to the ticket',

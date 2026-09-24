@@ -228,6 +228,14 @@
         <div class="content__actions">{% block actions %}{% endblock %}</div>
     </header>
 
+    {% set undo = current_user ? undo_offer() : null %}
+    {% if undo %}
+        <form class="flash flash--warning undo" method="post" action="{{ url('/undo') }}" role="status">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <span>{{ undo.label }}</span>
+            <button class="button button--small" type="submit">{{ 'Undo'|t }}</button>
+        </form>
+    {% endif %}
     {% for message in flash %}
         <p class="flash flash--{{ message.kind }}" role="{{ message.kind == 'danger' ? 'alert' : 'status' }}">{{ message.message }}</p>
     {% endfor %}

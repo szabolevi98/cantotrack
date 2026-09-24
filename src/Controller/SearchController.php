@@ -60,6 +60,21 @@ class SearchController extends Controller
         ]);
     }
 
+    /** Takes back the delete just made — see Undo. */
+    public function undo(): void
+    {
+        Auth::require();
+
+        try {
+            $back = (new \CantoTrack\Service\Undo())->restore((int) Auth::id());
+            $this->flash(__('It is back.'));
+            $this->redirect($back);
+        } catch (\CantoTrack\Core\ValidationError $e) {
+            $this->flash($e->getMessage(), 'danger');
+            $this->redirect('/');
+        }
+    }
+
     public function saveFilter(): void
     {
         Auth::require();

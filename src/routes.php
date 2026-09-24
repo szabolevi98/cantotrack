@@ -79,6 +79,7 @@ $router->post('/tickets/{id}/favourite', static fn($id) => (new TicketController
 $router->post('/tickets/{id}/watch', static fn($id) => (new NotificationController())->toggleWatch((int) $id));
 
 $router->get('/search', static fn() => (new SearchController())->search());
+$router->post('/undo', static fn() => (new SearchController())->undo());
 $router->post('/dashboard/gadgets', static fn() => (new DashboardController())->addGadget());
 $router->post('/dashboard/gadgets/{id}/delete', static fn($id) => (new DashboardController())->removeGadget((int) $id));
 $router->post('/dashboard/gadgets/{id}/move', static fn($id) => (new DashboardController())->moveGadget((int) $id));

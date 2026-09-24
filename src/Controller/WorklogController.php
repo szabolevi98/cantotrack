@@ -180,14 +180,17 @@ class WorklogController extends Controller
 
         $worklog = $this->mineOr403($id);
 
+        $back = self::isLocalPath((string) ($_POST['back'] ?? '')) ? (string) $_POST['back'] : '/tickets/' . $worklog['ticket_id'];
+
         try {
+            (new \CantoTrack\Service\Undo())->keep('worklogs', $id, (int) Auth::id(), $back);
             (new WorklogService())->remove($worklog);
         } catch (ValidationError $e) {
+            \CantoTrack\Core\Session::forget('_undo');
             $this->flash($e->getMessage(), 'danger');
             $this->back('/tickets/' . $worklog['ticket_id']);
         }
 
-        $this->flash(__('Worklog deleted.'), 'warning');
         $this->back('/tickets/' . $worklog['ticket_id']);
     }
 

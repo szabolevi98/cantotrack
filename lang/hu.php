@@ -1508,4 +1508,9 @@ return [
     'Parent and subtasks' => 'Szülő és részfeladatok',
     'Due date' => 'Határidő',
     'Hours logged' => 'Rögzített órák',
+    'The hours are deleted.' => 'Az órák törölve.',
+    'The comment is deleted.' => 'A komment törölve.',
+    'There is nothing to take back any more.' => 'Már nincs mit visszavonni.',
+    'It is back.' => 'Visszakerült.',
+    'Undo' => 'Visszavonás',
 ];

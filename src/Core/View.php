@@ -88,6 +88,8 @@ class View
         // What people typed, as HTML. Safe to print unescaped only because the
         // renderer escapes any HTML in the text itself — see Markdown.
         $twig->addFilter(new TwigFilter('markdown', static fn(?string $text): string => Markdown::toHtml($text), ['is_safe' => ['html']]));
+        // A stretch of a text around the words searched for, with them marked.
+        $twig->addFilter(new TwigFilter('excerpt', static fn(?string $text, string $words, int $length = 180): string => FullText::excerpt((string) $text, $words, $length), ['is_safe' => ['html']]));
         // The sidebar's saved filters, read only when a page that has the
         // sidebar is drawn — the login page and the error page do not ask.
         $twig->addFunction(new TwigFunction('saved_filters', static fn(): array =>

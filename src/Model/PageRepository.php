@@ -4,6 +4,7 @@ namespace CantoTrack\Model;
 
 use CantoTrack\Core\Access;
 use CantoTrack\Core\DatabaseConnection;
+use CantoTrack\Core\FullText;
 use PDO;
 
 /**
@@ -143,13 +144,12 @@ class PageRepository
     /** @return list<array<string, mixed>> pages whose title or text holds some words */
     public function search(int $projectId, string $words): array
     {
-        $like = '%' . addcslashes($words, '%_\\') . '%';
+        [$where, $order, $parameters] = self::matching('', $words);
         $statement = $this->db->prepare(
             'SELECT id, parent_id, title, body, updated_at FROM pages
-             WHERE project_id = :project AND (title LIKE :q OR body LIKE :q2)
-             ORDER BY title LIKE :q3 DESC, updated_at DESC LIMIT 50'
+             WHERE project_id = :project AND ' . $where . ' ORDER BY ' . $order . ', updated_at DESC LIMIT 50'
         );
-        $statement->execute(['project' => $projectId, 'q' => $like, 'q2' => $like, 'q3' => $like]);
+        $statement->execute(['project' => $projectId] + $parameters);
 
         return array_values($statement->fetchAll());
     }
@@ -157,14 +157,42 @@ class PageRepository
     /** @return list<array<string, mixed>> pages anywhere the person may look whose title or text holds some words */
     public function searchEverywhere(string $words, int $limit = 20): array
     {
-        $like = '%' . addcslashes($words, '%_\\') . '%';
+        [$where, $order, $parameters] = self::matching('pg.', $words);
         $statement = $this->db->prepare(
-            self::SELECT . ' WHERE (pg.title LIKE :q OR pg.body LIKE :q2)' . Access::sql('pg.project_id') . '
-             ORDER BY pg.title LIKE :q3 DESC, pg.updated_at DESC LIMIT ' . max(1, $limit)
+            self::SELECT . ' WHERE ' . $where . Access::sql('pg.project_id') . '
+             ORDER BY ' . $order . ', pg.updated_at DESC LIMIT ' . max(1, $limit)
         );
-        $statement->execute(['q' => $like, 'q2' => $like, 'q3' => $like]);
+        $statement->execute($parameters);
 
         return array_values($statement->fetchAll());
+    }
+
+    /**
+     * The condition and the order for pages that have some words: by the
+     * full-text index, the best match first, when the words can be looked up
+     * in it; by reading the text when they cannot (see FullText).
+     *
+     * @return array{0: string, 1: string, 2: array<string, string>}
+     */
+    private static function matching(string $alias, string $words): array
+    {
+        $boolean = FullText::booleanQuery($words);
+
+        if ($boolean !== null) {
+            return [
+                'MATCH(' . $alias . 'title, ' . $alias . 'body) AGAINST(:q IN BOOLEAN MODE)',
+                '(MATCH(' . $alias . 'title) AGAINST(:q2 IN BOOLEAN MODE) * 3 + MATCH(' . $alias . 'title, ' . $alias . 'body) AGAINST(:q3 IN BOOLEAN MODE)) DESC',
+                ['q' => $boolean, 'q2' => $boolean, 'q3' => $boolean],
+            ];
+        }
+
+        $like = '%' . addcslashes($words, '%_\\') . '%';
+
+        return [
+            '(' . $alias . 'title LIKE :q OR ' . $alias . 'body LIKE :q2)',
+            $alias . 'title LIKE :q3 DESC',
+            ['q' => $like, 'q2' => $like, 'q3' => $like],
+        ];
     }
 
     /** @return list<array<string, mixed>> the latest pages edited, in the projects the person may see */

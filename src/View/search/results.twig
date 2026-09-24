@@ -21,7 +21,10 @@
                         {% for ticket in tickets %}
                             <tr>
                                 <td class="table__key">{{ ui.type_icon(ticket.type) }} {{ ui.ticket_key(ticket) }}</td>
-                                <td><a href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a>{{ ui.family(ticket) }}</td>
+                                <td>
+                                    <a href="{{ url('/tickets/' ~ ticket.id) }}" data-panel>{{ ticket.title|excerpt(words, 250) }}</a>{{ ui.family(ticket) }}
+                                    {% if ticket.description %}<p class="muted search-snippet">{{ ticket.description|excerpt(words) }}</p>{% endif %}
+                                </td>
                                 <td>{{ ui.status(ticket.status_name, ticket.status_colour) }} {{ ui.resolution(ticket) }}</td>
                                 <td>{{ ui.person(ticket.assignee_name, ticket.assignee_id) }}</td>
                             </tr>
@@ -42,8 +45,7 @@
                             <li>
                                 <a href="{{ url('/pages/' ~ page.id) }}"><strong>{{ page.title }}</strong></a>
                                 <span class="muted">{{ page.project_code }}</span>
-                                {% set at = page.body|default('')|lower|split(words|lower)|first|length %}
-                                {% if page.body %}<p class="muted page-results__snippet">…{{ page.body|slice(max(0, at - 50), 140) }}…</p>{% endif %}
+                                {% if page.body %}<p class="muted page-results__snippet search-snippet">{{ page.body|excerpt(words, 160) }}</p>{% endif %}
                             </li>
                         {% endfor %}
                     </ul>

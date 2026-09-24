@@ -4,6 +4,7 @@ namespace CantoTrack\Model;
 
 use CantoTrack\Core\Access;
 use CantoTrack\Core\DatabaseConnection;
+use CantoTrack\Core\FullText;
 use PDO;
 
 /**
@@ -124,6 +125,15 @@ class TicketRepository
         // A query's own order, if it gave one — only ever columns it chose
         // from its own list — with the newest last for ties.
         $order = !empty($filters['query_order']) ? ' ORDER BY ' . $filters['query_order'] . ', t.id DESC' : self::ORDER;
+
+        // Searched for words, the best match first: a word in the title
+        // counts three times what it does in the text.
+        if (($filters['order'] ?? '') === 'relevance' && isset($parameters['ft'])) {
+            $order = ' ORDER BY (MATCH(t.title) AGAINST(:ftr IN BOOLEAN MODE) * 3
+                + MATCH(t.title, t.description) AGAINST(:ftr2 IN BOOLEAN MODE)) DESC, t.id DESC';
+            $parameters['ftr'] = $parameters['ft'];
+            $parameters['ftr2'] = $parameters['ft'];
+        }
 
         $statement = $this->db->prepare(
             self::SELECT
@@ -270,7 +280,16 @@ class TicketRepository
                 $where[] = '(p.code = :key_code AND t.number = :key_number)';
                 $parameters['key_code'] = $m[1];
                 $parameters['key_number'] = (int) $m[2];
+            } elseif (($words = FullText::booleanQuery($q)) !== null) {
+                // By the index: the title and the text, and what was said
+                // about it — see the 0032 migration.
+                $where[] = '(MATCH(t.title, t.description) AGAINST(:ft IN BOOLEAN MODE)
+                    OR t.id IN (SELECT ftc.ticket_id FROM comments ftc WHERE MATCH(ftc.body) AGAINST(:ft2 IN BOOLEAN MODE)))';
+                $parameters['ft'] = $words;
+                $parameters['ft2'] = $words;
             } else {
+                // Only words the index does not keep ("UI", "to do"): read
+                // the text for them.
                 $like = '%' . addcslashes($q, '%_\\') . '%';
                 $where[] = '(t.title LIKE :q OR t.description LIKE :q2)';
                 // The same value twice under two names: with real prepared

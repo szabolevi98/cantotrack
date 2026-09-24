@@ -54,7 +54,7 @@ class SearchController extends Controller
 
         $this->render('search/results.twig', [
             'words' => $q,
-            'tickets' => $tickets->search(['q' => $q], 20),
+            'tickets' => $tickets->search(['q' => $q, 'order' => 'relevance'], 20),
             'ticket_total' => $tickets->count(['q' => $q]),
             'pages' => (new \CantoTrack\Model\PageRepository())->searchEverywhere($q),
         ]);

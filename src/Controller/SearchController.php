@@ -11,8 +11,9 @@ use CantoTrack\Model\TicketRepository;
  * The search box in the sidebar, and the ticket lists kept by name.
  *
  * The box does the one thing people use a tracker's search for most: type a
- * ticket's name and be on it. Anything that is not a ticket's name becomes a
- * text search of the ticket list.
+ * ticket's name and be on it. Something that reads like a query goes to the
+ * ticket list as one; other words find the tickets and the pages that have
+ * them.
  */
 class SearchController extends Controller
 {
@@ -48,7 +49,15 @@ class SearchController extends Controller
             $this->redirect('/tickets?' . http_build_query(['query' => $q]));
         }
 
-        $this->redirect('/tickets?' . http_build_query(['q' => $q]));
+        // Words: the tickets and the pages that have them, side by side.
+        $tickets = new TicketRepository();
+
+        $this->render('search/results.twig', [
+            'words' => $q,
+            'tickets' => $tickets->search(['q' => $q], 20),
+            'ticket_total' => $tickets->count(['q' => $q]),
+            'pages' => (new \CantoTrack\Model\PageRepository())->searchEverywhere($q),
+        ]);
     }
 
     public function saveFilter(): void

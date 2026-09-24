@@ -81,6 +81,70 @@
         {# What happened lately, across the projects: the thing somebody back
            from a day off wants to read first. #}
         <aside class="split__side">
+            {% if week %}
+                {% set behind = week.so_far - week.logged %}
+                <a class="card dash-week" href="{{ url('/timesheet') }}">
+                    <h2 class="card__title">{{ 'Your week'|t }}</h2>
+                    <div class="dash-week__figure"><strong>{{ week.logged|duration }}</strong> <span class="muted">/ {{ week.expected|duration }}</span></div>
+                    <span class="bar"><span class="bar__fill" style="width: {{ week.expected > 0 ? min(100, week.logged / week.expected * 100)|round : 0 }}%"></span></span>
+                    <p class="muted dash-week__note">{{ behind > 30 ? '{time} behind the days so far'|t({time: behind|duration}) : 'Up to date with the days so far'|t }}</p>
+                </a>
+            {% endif %}
+
+            {% if sprints is not empty %}
+                <section class="card">
+                    <h2 class="card__title">{{ 'Sprints running'|t }}</h2>
+                    <ul class="dash-list">
+                        {% for sprint in sprints %}
+                            <li>
+                                <a href="{{ url('/sprints/' ~ sprint.id) }}"><strong>{{ sprint.name }}</strong></a>
+                                <span class="muted">{{ sprint.project_code }}{% if sprint.days_left is not null %} · {{ sprint.days_left >= 0 ? plural('{count} day left', '{count} days left', sprint.days_left) : 'over'|t }}{% endif %}</span>
+                                <span class="bar"><span class="bar__fill" style="width: {{ sprint.ticket_count > 0 ? (sprint.done_count / sprint.ticket_count * 100)|round : 0 }}%"></span></span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            {% endif %}
+
+            {% if releases is not empty %}
+                <section class="card">
+                    <h2 class="card__title">{{ 'Releases coming'|t }}</h2>
+                    <ul class="dash-list">
+                        {% for release in releases %}
+                            <li>
+                                <a href="{{ url('/releases/' ~ release.id) }}"><strong>{{ release.project_code }} {{ release.name }}</strong></a>
+                                <span class="{{ release.release_on < 'now'|date('Y-m-d') ? 'dash-list__late' : 'muted' }}">{{ release.release_on|day }} · {{ '{done} of {count} done'|t({done: release.done_count, count: release.ticket_count}) }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            {% endif %}
+
+            {% if starred is not empty %}
+                <section class="card">
+                    <h2 class="card__title">{{ 'Starred'|t }}</h2>
+                    <ul class="dash-list">
+                        {% for ticket in starred %}
+                            <li>{{ ui.ticket_key(ticket) }} <a href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            {% endif %}
+
+            {% if pages is not empty %}
+                <section class="card">
+                    <h2 class="card__title">{{ 'Pages lately'|t }}</h2>
+                    <ul class="dash-list">
+                        {% for page in pages %}
+                            <li>
+                                <a href="{{ url('/pages/' ~ page.id) }}">{{ page.title }}</a>
+                                <span class="muted">{{ page.project_code }} · {{ page.updated_by_name|default('—') }} · {{ page.updated_at|day }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            {% endif %}
+
             <section class="card">
                 <h2 class="card__title">{{ 'Lately'|t }}</h2>
                 {% if recent is empty %}

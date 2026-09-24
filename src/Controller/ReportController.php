@@ -134,7 +134,7 @@ class ReportController extends Controller
      * a spreadsheet shows it rather than running it: "=HYPERLINK(...)" typed
      * into a worklog is otherwise a link somebody clicks in the invoice sheet.
      */
-    private static function neutral(string $value): string
+    public static function neutral(string $value): string
     {
         return preg_match('/^[=+\-@\t\r]/', $value) === 1 ? "'" . $value : $value;
     }

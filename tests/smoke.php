@@ -415,7 +415,9 @@ if ($email === null || $password === null) {
         $jump['status'] === 302 && str_contains($jump['headers'], '/tickets/' . $ticketId)
     );
     $words = request($baseUrl . '/search?q=' . urlencode('Smoke test'), [], $jar);
-    check('anything else searches the list', $words['status'] === 302 && str_contains($words['headers'], '/tickets?q=Smoke'));
+    check('other words find the tickets that have them', $words['status'] === 200 && str_contains($words['body'], $code . '-1'));
+    $asQuery = request($baseUrl . '/search?q=' . urlencode('type = bug'), [], $jar);
+    check('and something that reads like a query is one', $asQuery['status'] === 302 && str_contains($asQuery['headers'], '/tickets?query='));
 
     // A list kept by name, in the sidebar from then on.
     $saved = request($baseUrl . '/filters', ['_token' => $token, 'name' => 'Smoke list ' . $code, 'query' => 'project=' . $projectId . '&open=1&evil=x'], $jar);
@@ -853,6 +855,12 @@ if ($email === null || $password === null) {
     $pageShown = request($baseUrl . '/pages/' . $pageId, [], $jar)['body'];
     check('a page can be written, with a list of tickets in it', $pageId > 0 && str_contains($pageShown, 'page-tickets') && str_contains($pageShown, 'Smoke test ticket'));
     check('and the ticket says where it is written about', str_contains(request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'], 'Smoke page'));
+
+    // The search box finds pages as well as tickets, and the list comes
+    // out as a spreadsheet with the same query.
+    check('the search box finds tickets and pages', str_contains(request($baseUrl . '/search?q=' . urlencode('Smoke'), [], $jar)['body'], 'Smoke page'));
+    $spreadsheet = request($baseUrl . '/tickets/export?' . http_build_query(['query' => 'project = ' . $code]), [], $jar);
+    check('and the ticket list comes out as a spreadsheet', $spreadsheet['status'] === 200 && str_contains($spreadsheet['body'], $code . '-1') && str_contains($spreadsheet['body'], 'Smoke platform'));
 
     $timesheet = request($baseUrl . '/timesheet?view=days', [], $jar);
     check('the timesheet answers', $timesheet['status'] === 200, 'status ' . $timesheet['status']);

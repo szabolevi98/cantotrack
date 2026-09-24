@@ -154,6 +154,19 @@ class PageRepository
         return array_values($statement->fetchAll());
     }
 
+    /** @return list<array<string, mixed>> pages anywhere the person may look whose title or text holds some words */
+    public function searchEverywhere(string $words, int $limit = 20): array
+    {
+        $like = '%' . addcslashes($words, '%_\\') . '%';
+        $statement = $this->db->prepare(
+            self::SELECT . ' WHERE (pg.title LIKE :q OR pg.body LIKE :q2)' . Access::sql('pg.project_id') . '
+             ORDER BY pg.title LIKE :q3 DESC, pg.updated_at DESC LIMIT ' . max(1, $limit)
+        );
+        $statement->execute(['q' => $like, 'q2' => $like, 'q3' => $like]);
+
+        return array_values($statement->fetchAll());
+    }
+
     /** @return list<array<string, mixed>> the latest pages edited, in the projects the person may see */
     public function recent(int $limit = 8): array
     {

@@ -178,6 +178,7 @@ $router->post('/epics/{id}/delete', static fn($id) => (new EpicController())->de
 $router->get('/tickets', static fn() => (new TicketController())->index());
 $router->get('/tickets/create', static fn() => (new TicketController())->createForm());
 $router->post('/tickets/create', static fn() => (new TicketController())->create());
+$router->get('/tickets/export', static fn() => (new TicketController())->export());
 $router->get('/tickets/query/values', static fn() => (new TicketController())->queryValues());
 $router->post('/tickets/bulk', static fn() => (new TicketController())->bulk());
 $router->get('/tickets/{id}', static fn($id) => (new TicketController())->show((int) $id));

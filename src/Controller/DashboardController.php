@@ -36,6 +36,72 @@ class DashboardController extends Controller
             )),
             'projects' => (new ProjectRepository())->allWithCounts(),
             'recent' => (new EventRepository())->recent(15),
+            'week' => (Auth::user()['role'] ?? '') !== 'guest' ? $this->week() : null,
+            'sprints' => $this->runningSprints(),
+            'releases' => $this->comingReleases(),
+            'pages' => (new \CantoTrack\Model\PageRepository())->recent(5),
+            'starred' => $tickets->favouritesOf((int) Auth::id(), 6),
         ]);
+    }
+
+    /**
+     * This week's hours against one's own working week — and how many of
+     * this week's working days are behind.
+     *
+     * @return array{logged: int, expected: int, so_far: int}
+     */
+    private function week(): array
+    {
+        $monday = (new \DateTimeImmutable('monday this week'))->format('Y-m-d');
+        $sunday = (new \DateTimeImmutable('sunday this week'))->format('Y-m-d');
+        $today = date('Y-m-d');
+        $days = (new \CantoTrack\Service\Calendar())->days((array) Auth::user(), $monday, $sunday);
+
+        $statement = \CantoTrack\Core\DatabaseConnection::get()->prepare(
+            'SELECT COALESCE(SUM(minutes), 0) FROM worklogs WHERE user_id = :user AND work_date BETWEEN :from AND :to'
+        );
+        $statement->execute(['user' => Auth::id(), 'from' => $monday, 'to' => $sunday]);
+
+        return [
+            'logged' => (int) $statement->fetchColumn(),
+            'expected' => array_sum(array_column($days, 'expected')),
+            'so_far' => array_sum(array_map(static fn(array $d): int => $d['expected'], array_filter($days, static fn(string $date): bool => $date <= $today, ARRAY_FILTER_USE_KEY))),
+        ];
+    }
+
+    /** @return list<array<string, mixed>> the sprints running in the projects one may see, with their project */
+    private function runningSprints(): array
+    {
+        $out = [];
+
+        foreach ((new ProjectRepository())->allWithCounts() as $project) {
+            foreach ((new \CantoTrack\Model\SprintRepository())->forProject((int) $project['id']) as $sprint) {
+                if ($sprint['state'] === 'active') {
+                    $sprint['project_code'] = $project['code'];
+                    $sprint['days_left'] = $sprint['ends_on'] === null ? null : (int) floor((strtotime((string) $sprint['ends_on']) - strtotime('today')) / 86400);
+                    $out[] = $sprint;
+                }
+            }
+        }
+
+        return $out;
+    }
+
+    /** @return list<array<string, mixed>> the next releases to go out, soonest first */
+    private function comingReleases(): array
+    {
+        $out = [];
+
+        foreach ((new ProjectRepository())->allWithCounts() as $project) {
+            foreach ((new \CantoTrack\Model\ReleaseRepository())->unreleased((int) $project['id']) as $release) {
+                if ($release['release_on'] !== null) {
+                    $out[] = $release;
+                }
+            }
+        }
+
+        usort($out, static fn(array $a, array $b): int => strcmp((string) $a['release_on'], (string) $b['release_on']));
+
+        return array_slice($out, 0, 4);
     }
 }

@@ -1,0 +1,55 @@
+{% extends 'layout.twig' %}
+{% import 'common/macros.twig' as ui %}
+
+{% block title %}{{ '“{words}”'|t({words: words}) }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Found for “{words}”'|t({words: words}) }}{% endblock %}
+{% block subheading %}<p class="content__sub">{{ plural('{count} ticket', '{count} tickets', ticket_total) }} · {{ plural('{count} page', '{count} pages', pages|length) }}</p>{% endblock %}
+
+{% block content %}
+    <div class="split">
+        <div class="split__main">
+            <section class="card card--flush">
+                <header class="card__head">
+                    <h2 class="card__title">{{ 'Tickets'|t }}</h2>
+                    {% if ticket_total > tickets|length %}<a href="{{ url('/tickets?q=' ~ words|url_encode) }}">{{ 'All {count}'|t({count: ticket_total}) }}</a>{% endif %}
+                </header>
+                {% if tickets is empty %}
+                    <p class="card__empty">{{ 'No ticket has those words.'|t }}</p>
+                {% else %}
+                    <table class="table">
+                        <tbody>
+                        {% for ticket in tickets %}
+                            <tr>
+                                <td class="table__key">{{ ui.type_icon(ticket.type) }} {{ ui.ticket_key(ticket) }}</td>
+                                <td><a href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a>{{ ui.family(ticket) }}</td>
+                                <td>{{ ui.status(ticket.status_name, ticket.status_colour) }}</td>
+                                <td>{{ ui.person(ticket.assignee_name, ticket.assignee_id) }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                {% endif %}
+            </section>
+        </div>
+        <aside class="split__side">
+            <section class="card">
+                <h2 class="card__title">{{ 'Pages'|t }}</h2>
+                {% if pages is empty %}
+                    <p class="card__body muted">{{ 'No page has those words.'|t }}</p>
+                {% else %}
+                    <ul class="page-results">
+                        {% for page in pages %}
+                            <li>
+                                <a href="{{ url('/pages/' ~ page.id) }}"><strong>{{ page.title }}</strong></a>
+                                <span class="muted">{{ page.project_code }}</span>
+                                {% set at = page.body|default('')|lower|split(words|lower)|first|length %}
+                                {% if page.body %}<p class="muted page-results__snippet">…{{ page.body|slice(max(0, at - 50), 140) }}…</p>{% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                {% endif %}
+            </section>
+            <p class="hint">{{ 'Looking for something exact? Write a query on the ticket list:'|t }} <a href="{{ url('/tickets?query=' ~ ('text ~ "' ~ words ~ '"')|url_encode) }}"><code>text ~ "{{ words }}"</code></a></p>
+        </aside>
+    </div>
+{% endblock %}

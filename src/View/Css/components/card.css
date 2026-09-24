@@ -99,3 +99,47 @@
     border-color: rgba(164, 112, 29, 0.35);
     background: var(--ct-warning-soft);
 }
+
+/* The dashboard's side: one's week, and short lists of what is going on. */
+.dash-week {
+    display: block;
+    color: var(--ct-text);
+}
+
+.dash-week:hover {
+    text-decoration: none;
+    box-shadow: var(--ct-shadow-lg, var(--ct-shadow));
+}
+
+.dash-week__figure {
+    margin: 4px 0 8px;
+    font-size: 1.4rem;
+}
+
+.dash-week__note {
+    margin: 8px 0 0;
+    font-size: 0.85rem;
+}
+
+.dash-list {
+    display: grid;
+    gap: 10px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.9rem;
+}
+
+.dash-list li {
+    display: grid;
+    gap: 3px;
+}
+
+.dash-list li > .muted,
+.dash-list__late {
+    font-size: 0.8rem;
+}
+
+.dash-list__late {
+    color: var(--ct-danger);
+}

@@ -194,6 +194,7 @@
             <header class="card__head">
                 {# The count is said out loud: a list that stops at a page size
                    without saying so is a list that hides work. #}
+                <a class="tickets__export" href="{{ url('/tickets/export' ~ (query ? '?' ~ query : '')) }}">{{ 'As a spreadsheet'|t }}</a>
                 <span class="muted">
                     {{ 'Showing {from}–{to} of {total}'|t({
                         from: (page - 1) * per_page + 1,

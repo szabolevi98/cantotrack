@@ -45,23 +45,8 @@ class TicketController extends Controller
     {
         Auth::require();
 
-        $filters = $this->filters();
-        $queryError = null;
+        [$filters, $queryError] = $this->listFilters();
         $query = trim((string) ($_GET['query'] ?? ''));
-
-        if ($query !== '') {
-            try {
-                $compiled = \CantoTrack\Service\TicketQuery::compile($query, Auth::id(), null, (new \CantoTrack\Model\CustomFieldRepository())->kindsByName());
-                $filters['query_where'] = $compiled['where'];
-                $filters['query_params'] = $compiled['params'];
-                $filters['query_order'] = $compiled['order'];
-            } catch (ValidationError $e) {
-                $queryError = $e->getMessage();
-                // Nothing rather than everything: a query that cannot be read
-                // shows what is wrong with it, not the whole tracker.
-                $filters['query_where'] = 'FALSE';
-            }
-        }
 
         $tickets = new TicketRepository();
         $total = $tickets->count($filters);
@@ -98,6 +83,88 @@ class TicketController extends Controller
             'custom_names' => array_values(array_unique(array_map(static fn(array $f): string => (string) $f['name'], (new \CantoTrack\Model\CustomFieldRepository())->visible()))),
             'releases' => $filters['project_id'] ? (new ReleaseRepository())->forProject($filters['project_id']) : [],
         ]);
+    }
+
+    /**
+     * The list's filters with its query compiled into them, and what is
+     * wrong with the query if it cannot be read — in which case the list is
+     * empty rather than the whole tracker.
+     *
+     * @return array{0: array<string, mixed>, 1: ?string}
+     */
+    private function listFilters(): array
+    {
+        $filters = $this->filters();
+        $query = trim((string) ($_GET['query'] ?? ''));
+
+        if ($query === '') {
+            return [$filters, null];
+        }
+
+        try {
+            $compiled = \CantoTrack\Service\TicketQuery::compile($query, Auth::id(), null, (new \CantoTrack\Model\CustomFieldRepository())->kindsByName());
+            $filters['query_where'] = $compiled['where'];
+            $filters['query_params'] = $compiled['params'];
+            $filters['query_order'] = $compiled['order'];
+
+            return [$filters, null];
+        } catch (ValidationError $e) {
+            $filters['query_where'] = 'FALSE';
+
+            return [$filters, $e->getMessage()];
+        }
+    }
+
+    /**
+     * The list as a spreadsheet: every ticket the same filters or query find,
+     * with the projects' own fields as columns of their own.
+     */
+    public function export(): void
+    {
+        Auth::require();
+
+        [$filters] = $this->listFilters();
+        $tickets = (new TicketRepository())->search($filters, 500);
+        $fields = new \CantoTrack\Model\CustomFieldRepository();
+        $names = array_values(array_unique(array_map(static fn(array $f): string => (string) $f['name'], $fields->visible())));
+        $byId = [];
+        foreach ($fields->visible() as $field) {
+            $byId[(int) $field['id']] = $field;
+        }
+
+        header('Content-Type: text/csv; charset=utf-8');
+        header('Content-Disposition: attachment; filename="tickets-' . date('Y-m-d') . '.csv"');
+        header('Cache-Control: private, no-store');
+
+        $out = fopen('php://output', 'wb');
+        if ($out === false) {
+            exit;
+        }
+
+        $safe = static fn(mixed $v): string => ReportController::neutral((string) ($v ?? ''));
+        fwrite($out, "\xEF\xBB\xBF");
+        fputcsv($out, array_merge(['Key', 'Type', 'Title', 'Status', 'Priority', 'Assignee', 'Reporter', 'Epic', 'Sprint', 'Release', 'Parent', 'Labels', 'Points', 'Estimate (h)', 'Logged (h)', 'Due', 'Created', 'Finished'], $names), ',', '"', '');
+
+        foreach ($tickets as $t) {
+            $values = [];
+            foreach ($fields->valuesFor((int) $t['id']) as $fieldId => $value) {
+                if (isset($byId[$fieldId])) {
+                    $values[(string) $byId[$fieldId]['name']] = $byId[$fieldId]['kind'] === 'checkbox' ? 'yes' : $value;
+                }
+            }
+
+            fputcsv($out, array_merge([
+                $t['project_code'] . '-' . $t['number'], $t['type'], $safe($t['title']), $t['status_name'], $t['priority'],
+                $t['assignee_name'] ?? '', $t['reporter_name'] ?? '', $safe($t['epic_title']), $t['sprint_name'] ?? '', $t['release_name'] ?? '',
+                $t['parent_id'] === null ? '' : $t['project_code'] . '-' . $t['parent_number'],
+                $safe(str_replace("\n", ', ', (string) ($t['label_names'] ?? ''))),
+                $t['story_points'] ?? '', $t['estimate_minutes'] ? Format::hours((int) $t['estimate_minutes']) : '',
+                Format::hours((int) $t['logged_minutes']), $t['due_on'] ?? '', substr((string) $t['created_at'], 0, 10), $t['closed_at'] ? substr((string) $t['closed_at'], 0, 10) : '',
+            ], array_map(static fn(string $name): string => $safe($values[$name] ?? ''), $names)), ',', '"', '');
+        }
+
+        fclose($out);
+        exit;
     }
 
     /**

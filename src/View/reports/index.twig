@@ -89,6 +89,12 @@
             <div class="stat__label">{{ 'In hours'|t }}</div>
             <div class="stat__value">{{ total|hours }}</div>
         </div>
+        {% if is_admin %}
+            <div class="stat">
+                <div class="stat__label">{{ 'Worth'|t }}</div>
+                <div class="stat__value">{{ amount|money }}</div>
+            </div>
+        {% endif %}
     </div>
 
     <section class="card card--flush">
@@ -103,6 +109,7 @@
                     <th class="table__number">{{ 'Billable'|t }}</th>
                     <th class="table__number">{{ 'Logged'|t }}</th>
                     <th class="table__number">{{ 'Hours'|t }}</th>
+                    {% if is_admin %}<th class="table__number">{{ 'Worth'|t }}</th>{% endif %}
                     <th class="report__share"></th>
                 </tr>
                 </thead>
@@ -118,6 +125,7 @@
                         <td class="table__number">{{ row.billable|duration }}</td>
                         <td class="table__number"><strong>{{ row.minutes|duration }}</strong></td>
                         <td class="table__number">{{ row.minutes|hours }}</td>
+                        {% if is_admin %}<td class="table__number">{{ row.amount|money }}</td>{% endif %}
                         <td class="report__share">
                             <span class="bar"><span class="bar__fill" style="width: {{ total > 0 ? (row.minutes / total * 100)|round : 0 }}%"></span></span>
                         </td>

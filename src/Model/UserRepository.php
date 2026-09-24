@@ -60,6 +60,12 @@ class UserRepository
         )->execute(['prefs' => $prefs, 'digest' => $digestQuery, 'id' => $id]);
     }
 
+    /** What an hour of a person's is worth, or null for no rate. */
+    public function setRate(int $id, ?float $rate): void
+    {
+        $this->db->prepare('UPDATE users SET hourly_rate = :rate WHERE id = :id')->execute(['rate' => $rate, 'id' => $id]);
+    }
+
     /** The hash of a person's private calendar address, or null to have none — see the 0036 migration. */
     public function setCalendarExport(int $id, ?string $hash): void
     {

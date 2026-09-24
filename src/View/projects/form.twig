@@ -64,6 +64,36 @@
                     </label>
                 </fieldset>
 
+                {# What an hour here is worth, and how many the project has. #}
+                <fieldset class="choice" id="budget">
+                    <legend>{{ 'Rate and budget'|t }}</legend>
+                    <input type="hidden" name="budget_shown" value="1">
+                    <div class="form__row">
+                        <div>
+                            <label for="hourly_rate">{{ 'Hourly rate here ({currency})'|t({currency: currency_code()}) }}</label>
+                            <input id="hourly_rate" class="field" type="text" inputmode="decimal" name="hourly_rate"
+                                   value="{{ project.hourly_rate is not null ? project.hourly_rate + 0 : '' }}" placeholder="{{ 'Each person’s own'|t }}">
+                        </div>
+                        <div>
+                            <label for="budget_alert">{{ 'Warn at (%)'|t }}</label>
+                            <input id="budget_alert" class="field" type="number" min="1" max="100" name="budget_alert" value="{{ project.budget_alert|default(80) }}">
+                        </div>
+                    </div>
+                    <div class="form__row">
+                        <div>
+                            <label for="budget_hours">{{ 'Budget in hours'|t }}</label>
+                            <input id="budget_hours" class="field" type="text" inputmode="decimal" name="budget_hours"
+                                   value="{{ project.budget_hours is not null ? project.budget_hours + 0 : '' }}" placeholder="{{ 'None'|t }}">
+                        </div>
+                        <div>
+                            <label for="budget_amount">{{ 'Budget in money ({currency})'|t({currency: currency_code()}) }}</label>
+                            <input id="budget_amount" class="field" type="text" inputmode="decimal" name="budget_amount"
+                                   value="{{ project.budget_amount is not null ? project.budget_amount + 0 : '' }}" placeholder="{{ 'None'|t }}">
+                        </div>
+                    </div>
+                    <p class="hint">{{ 'The project’s rate counts instead of each person’s. Every hour logged counts against the hours; the billable ones, at their rate, against the money.'|t }}</p>
+                </fieldset>
+
                 {# What a card on the board shows — fewer, on a board that
                    has a lot of them. #}
                 <fieldset class="choice card-fields">

@@ -1,0 +1,27 @@
+{#
+    How much of the project's budget is used: its hours for everyone, its
+    money for the administrators.
+#}
+{% if budget %}
+    <section class="budget{{ budget.over ? ' budget--over' : (budget.warn ? ' budget--warn' : '') }}" aria-label="{{ 'Budget'|t }}">
+        {% if budget.hours is not null %}
+            <div class="budget__part">
+                <span class="budget__label">{{ 'Hours'|t }}</span>
+                <span class="bar"><span class="bar__fill" style="width: {{ min(100, budget.hours_share) }}%"></span></span>
+                <span class="budget__figure">{{ budget.hours_used|round(1) }} / {{ budget.hours|round(1) }} h · {{ budget.hours_share }}%</span>
+            </div>
+        {% endif %}
+        {% if budget.amount is not null and is_admin %}
+            <div class="budget__part">
+                <span class="budget__label">{{ 'Money'|t }}</span>
+                <span class="bar"><span class="bar__fill" style="width: {{ min(100, budget.amount_share) }}%"></span></span>
+                <span class="budget__figure">{{ budget.amount_used|money }} / {{ budget.amount|money }} · {{ budget.amount_share }}%</span>
+            </div>
+        {% endif %}
+        {% if budget.over %}
+            <span class="badge badge--red">{{ 'Over budget'|t }}</span>
+        {% elseif budget.warn %}
+            <span class="badge badge--amber">{{ 'Past {share}% of the budget'|t({share: budget.alert}) }}</span>
+        {% endif %}
+    </section>
+{% endif %}

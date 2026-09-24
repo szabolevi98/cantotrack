@@ -33,6 +33,7 @@ class ReportController extends Controller
             'summary' => $summary,
             'total' => array_sum(array_column($summary, 'minutes')),
             'billable' => array_sum(array_column($summary, 'billable')),
+            'amount' => array_sum(array_column($summary, 'amount')),
             'matrix' => $reports->matrix($filters),
             'projects' => (new ProjectRepository())->allWithCounts(true),
             'clients' => (new ClientRepository())->all(),
@@ -68,8 +69,15 @@ class ReportController extends Controller
             __('Minutes'), __('Hours'), __('Billable'), __('Work type'), __('Started at'), __('Note'),
         ];
 
+        // What the hours are worth is for the administrators, who invoice.
+        $money = \CantoTrack\Core\Auth::isAdmin();
+        if ($money) {
+            $headers[] = __('Rate');
+            $headers[] = __('Worth');
+        }
+
         if ($format === 'xlsx') {
-            $data = array_values(array_map(static fn(array $r): array => [
+            $data = array_values(array_map(static fn(array $r): array => array_merge([
                 new \DateTimeImmutable((string) $r['work_date']),
                 (string) $r['person'],
                 $r['project_code'] . ' — ' . $r['project_name'],
@@ -82,7 +90,7 @@ class ReportController extends Controller
                 (string) ($r['work_type'] ?? ''),
                 $r['started_at'] === null ? '' : substr((string) $r['started_at'], 0, 5),
                 (string) ($r['note'] ?? ''),
-            ], $rows));
+            ], $money ? [$r['rate'] === null ? '' : (float) $r['rate'], round((float) $r['amount'], 2)] : []), $rows));
 
             $bytes = Xlsx::build(__('Hours'), $headers, $data);
 
@@ -109,7 +117,7 @@ class ReportController extends Controller
         fputcsv($out, $headers, ',', '"', '');
 
         foreach ($rows as $r) {
-            fputcsv($out, [
+            fputcsv($out, array_merge([
                 $r['work_date'],
                 $r['person'],
                 $r['project_code'] . ' — ' . $r['project_name'],
@@ -122,7 +130,7 @@ class ReportController extends Controller
                 self::neutral((string) ($r['work_type'] ?? '')),
                 $r['started_at'] === null ? '' : substr((string) $r['started_at'], 0, 5),
                 self::neutral((string) ($r['note'] ?? '')),
-            ], ',', '"', '');
+            ], $money ? [$r['rate'] ?? '', number_format((float) $r['amount'], 2, '.', '')] : []), ',', '"', '');
         }
 
         fclose($out);

@@ -105,6 +105,14 @@ class ProjectRepository
         return $id;
     }
 
+    /** The project's own rate, its budget in hours and in money, and the share that calls for a word. */
+    public function setBudget(int $id, ?float $rate, ?float $hours, ?float $amount, int $alert): void
+    {
+        $this->db->prepare(
+            'UPDATE projects SET hourly_rate = :rate, budget_hours = :hours, budget_amount = :amount, budget_alert = :alert WHERE id = :id'
+        )->execute(['rate' => $rate, 'hours' => $hours, 'amount' => $amount, 'alert' => max(1, min(100, $alert)), 'id' => $id]);
+    }
+
     /** What a card on the board can show, in the order the settings list it. */
     public const CARD_FIELDS = ['priority', 'epic', 'labels', 'family', 'assignee', 'due', 'points', 'logged'];
 

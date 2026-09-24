@@ -86,7 +86,7 @@ class ReportRepository
         ], $statement->fetchAll()));
     }
 
-    /** @return list<array{key: mixed, label: string, minutes: int, billable: int, entries: int}> */
+    /** @return list<array{key: mixed, label: string, minutes: int, billable: int, amount: float, entries: int}> */
     public function summary(array $filters, string $group): array
     {
         [$key, $label] = self::GROUPS[$group] ?? self::GROUPS['project'];
@@ -96,6 +96,7 @@ class ReportRepository
             'SELECT ' . $key . ' AS `key`, ' . $label . ' AS label,
                     SUM(w.minutes) AS minutes,
                     SUM(CASE WHEN w.billable = 1 THEN w.minutes ELSE 0 END) AS billable,
+                    SUM(' . \CantoTrack\Service\Budget::WORTH . ') AS amount,
                     COUNT(*) AS entries
              ' . self::FROM . ' WHERE ' . $where . '
              GROUP BY ' . $key . ', label
@@ -108,6 +109,7 @@ class ReportRepository
             'label' => (string) $row['label'],
             'minutes' => (int) $row['minutes'],
             'billable' => (int) $row['billable'],
+            'amount' => round((float) $row['amount'], 2),
             'entries' => (int) $row['entries'],
         ], $statement->fetchAll()));
     }
@@ -150,7 +152,8 @@ class ReportRepository
         $statement = $this->db->prepare(
             'SELECT w.work_date, u.name AS person, p.code AS project_code, p.name AS project_name,
                     c.name AS client, CONCAT(p.code, \'-\', t.number) AS ticket_key, t.title AS ticket_title,
-                    w.minutes, w.billable, w.note, w.started_at, wt.name AS work_type
+                    w.minutes, w.billable, w.note, w.started_at, wt.name AS work_type,
+                    COALESCE(p.hourly_rate, u.hourly_rate) AS rate, ' . \CantoTrack\Service\Budget::WORTH . ' AS amount
              ' . self::FROM . ' WHERE ' . $where . '
              ORDER BY w.work_date, u.name, w.id'
         );

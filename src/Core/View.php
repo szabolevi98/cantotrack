@@ -71,6 +71,7 @@ class View
         // same filtered list it was sent from.
         $twig->addGlobal('current_query', (string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_QUERY));
         $twig->addGlobal('flash', Session::takeFlash());
+        $twig->addFunction(new TwigFunction('currency_code', static fn(): string => \CantoTrack\Service\Money::currency()));
         // A delete that can still be taken back, offered on the next page.
         $twig->addFunction(new TwigFunction('undo_offer', static fn(): ?array => \CantoTrack\Service\Undo::offer(Auth::id())));
 
@@ -90,6 +91,7 @@ class View
         // What people typed, as HTML. Safe to print unescaped only because the
         // renderer escapes any HTML in the text itself — see Markdown.
         $twig->addFilter(new TwigFilter('markdown', static fn(?string $text): string => Markdown::toHtml($text), ['is_safe' => ['html']]));
+        $twig->addFilter(new TwigFilter('money', static fn(float|int|string|null $amount): string => \CantoTrack\Service\Money::format((float) $amount)));
         // A stretch of a text around the words searched for, with them marked.
         $twig->addFilter(new TwigFilter('excerpt', static fn(?string $text, string $words, int $length = 180): string => FullText::excerpt((string) $text, $words, $length), ['is_safe' => ['html']]));
         // The sidebar's saved filters, read only when a page that has the

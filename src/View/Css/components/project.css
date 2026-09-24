@@ -180,6 +180,48 @@
     height: 18px;
 }
 
+/* How much of the project's budget is used, under its tabs. */
+.budget {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 24px;
+    align-items: center;
+    margin: 0 0 var(--ct-gap);
+    padding: 10px 16px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-sm);
+    background: var(--ct-surface);
+    font-size: 0.88rem;
+}
+
+.budget__part {
+    display: grid;
+    grid-template-columns: auto 160px auto;
+    gap: 10px;
+    align-items: center;
+}
+
+.budget__label {
+    color: var(--ct-muted);
+    font-weight: 600;
+}
+
+.budget__figure {
+    font-variant-numeric: tabular-nums;
+}
+
+.budget--warn {
+    border-color: var(--ct-amber-border, #e7c46a);
+}
+
+.budget--over {
+    border-color: var(--ct-danger);
+}
+
+.budget--over .bar__fill {
+    background: var(--ct-danger);
+}
+
 /* ---------------------------------------------------------------------------
  * The pages of a project, as tabs above them.
  * ------------------------------------------------------------------------- */

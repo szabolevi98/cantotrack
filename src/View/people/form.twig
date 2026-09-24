@@ -21,6 +21,13 @@
                    maxlength="190" required>
             <p class="hint">{{ 'This is what they sign in with.'|t }}</p>
 
+            {% if person.id|default(null) %}
+                <label for="hourly_rate">{{ 'Hourly rate ({currency})'|t({currency: currency_code()}) }}</label>
+                <input id="hourly_rate" class="field" type="text" inputmode="decimal" name="hourly_rate"
+                       value="{{ person.hourly_rate|default(null) is not null ? person.hourly_rate + 0 : '' }}" placeholder="{{ 'None'|t }}">
+                <p class="hint">{{ 'What an hour of theirs is billed at, unless the project has a rate of its own.'|t }}</p>
+            {% endif %}
+
             <label for="role">{{ 'Role'|t }}</label>
             <select id="role" class="field" name="role">
                 <option value="member"{{ person.role|default('member') == 'member' ? ' selected' : '' }}>

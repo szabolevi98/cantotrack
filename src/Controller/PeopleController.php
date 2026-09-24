@@ -134,6 +134,13 @@ class PeopleController extends Controller
         $users->update($id, $name, $email, $role, $isActive);
         $users->setWorkingWeek($id, $this->workingWeek());
 
+        try {
+            $users->setRate($id, \CantoTrack\Service\Money::parse((string) ($_POST['hourly_rate'] ?? '')));
+        } catch (\CantoTrack\Core\ValidationError $e) {
+            Session::flash($e->getMessage(), 'danger');
+            $this->redirect('/people/' . $id . '/edit');
+        }
+
         Session::flash(__('Saved.'));
         $this->redirect('/people');
     }

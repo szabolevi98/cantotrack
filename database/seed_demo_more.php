@@ -1143,6 +1143,27 @@ on the week's calendar, or write a query on the ticket list:
 MD, $who['me']);
 }
 
+// What an hour is worth, in forints: each person's rate, a rate agreed with
+// the clinic, and budgets — the bike app's nearly used up, the clinic's
+// with room left, the wine shop's in money.
+(new CantoTrack\Model\SettingRepository())->set('currency', 'HUF');
+$rates = ['me' => 22000, 'anna' => 18000, 'mark' => 16000, 'julia' => 15000, 'tamas' => 20000, 'bence' => 14000, 'zsofia' => 17000, 'dora' => 15000, 'gergo' => 16000, 'reka' => 12000, 'eszter' => 14000];
+foreach ($rates as $handle => $rate) {
+    if (isset($who[$handle])) {
+        (new CantoTrack\Model\UserRepository())->setRate($who[$handle], (float) $rate);
+    }
+}
+$loggedIn = static function (int $projectId) use ($database): float {
+    $statement = $database->prepare('SELECT COALESCE(SUM(w.minutes), 0) / 60 FROM worklogs w JOIN tickets t ON t.id = w.ticket_id WHERE t.project_id = :project');
+    $statement->execute(['project' => $projectId]);
+
+    return (float) $statement->fetchColumn();
+};
+$budgets = new CantoTrack\Model\ProjectRepository();
+$budgets->setBudget($projectOf['BIKE'], null, (float) round($loggedIn($projectOf['BIKE']) * 1.12), null, 80);
+$budgets->setBudget($projectOf['CLINIC'], 19000.0, (float) round($loggedIn($projectOf['CLINIC']) * 1.8), null, 80);
+$budgets->setBudget($projectOf['WINE'], null, null, 12000000.0, 85);
+
 // A dashboard of their own, for the two people most likely to be looked
 // at first.
 $database->prepare('DELETE FROM dashboard_gadgets WHERE user_id IN (:me, :anna)')->execute(['me' => $who['me'], 'anna' => $who['anna']]);

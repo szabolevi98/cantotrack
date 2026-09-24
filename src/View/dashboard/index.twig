@@ -93,6 +93,21 @@
                 </a>
             {% endif %}
 
+            {% if budgets|default([]) is not empty %}
+                <section class="card">
+                    <h2 class="card__title">{{ 'Budgets running out'|t }}</h2>
+                    <ul class="page-results">
+                        {% for item in budgets %}
+                            {% set share = max(item.budget.hours_share ?? 0, item.budget.amount_share ?? 0) %}
+                            <li>
+                                <a href="{{ url('/projects/' ~ item.project.id) }}"><strong>{{ item.project.code }}</strong> {{ item.project.name }}</a>
+                                <span class="badge {{ item.budget.over ? 'badge--red' : 'badge--amber' }}">{{ share }}%</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            {% endif %}
+
             {% if sprints is not empty %}
                 <section class="card">
                     <h2 class="card__title">{{ 'Sprints running'|t }}</h2>

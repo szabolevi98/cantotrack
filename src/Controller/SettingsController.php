@@ -53,6 +53,23 @@ class SettingsController extends Controller
         $this->back('/settings');
     }
 
+    public function currency(): void
+    {
+        Auth::requireAdmin();
+
+        $code = strtoupper($this->input('currency'));
+
+        if (!isset(\CantoTrack\Service\Money::CURRENCIES[$code])) {
+            $this->flash(__('That is not a currency on offer.'), 'danger');
+            $this->back('/settings');
+        }
+
+        (new SettingRepository())->set(\CantoTrack\Service\Money::SETTING, $code);
+
+        $this->flash(__('Amounts are in {code} now.', ['code' => $code]));
+        $this->back('/settings');
+    }
+
     public function addHoliday(): void
     {
         Auth::requireAdmin();

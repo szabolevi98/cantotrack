@@ -27,6 +27,7 @@
 
 {% block content %}
     {% include 'common/project_tabs.twig' with {project: project, active: 'board'} only %}
+    {% include 'projects/budget.twig' with {budget: budget|default(null)} %}
 
     {% if epics is not empty %}
         <details class="card epics-card" open>

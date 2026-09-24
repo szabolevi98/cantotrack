@@ -62,6 +62,20 @@
             </section>
 
             <section class="card">
+                <h2 class="card__title">{{ 'Currency'|t }}</h2>
+                <p class="card__body">{{ 'What the rates, the budgets and the reports’ amounts are in.'|t }}</p>
+                <form class="form__row form__row--inline" method="post" action="{{ url('/settings/currency') }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                    <select class="field" name="currency" aria-label="{{ 'Currency'|t }}">
+                        {% for code in ['EUR', 'HUF', 'USD', 'GBP', 'CHF'] %}
+                            <option value="{{ code }}"{{ currency_code() == code ? ' selected' : '' }}>{{ code }}</option>
+                        {% endfor %}
+                    </select>
+                    <button class="button" type="submit">{{ 'Save'|t }}</button>
+                </form>
+            </section>
+
+            <section class="card">
                 <h2 class="card__title">{{ 'Closed hours'|t }}</h2>
                 <p class="card__body">{{ 'Hours on and before this day no longer change — for when a month has been invoiced or paid out.'|t }}</p>
                 <form method="post" action="{{ url('/settings/lock') }}">

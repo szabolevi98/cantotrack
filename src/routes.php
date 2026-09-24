@@ -267,6 +267,7 @@ $router->post('/people/{id}/two-factor/reset', static fn($id) => (new TwoFactorC
 
 $router->get('/settings', static fn() => (new SettingsController())->index());
 $router->post('/settings/lock', static fn() => (new SettingsController())->lock());
+$router->post('/settings/currency', static fn() => (new SettingsController())->currency());
 $router->post('/settings/holidays', static fn() => (new SettingsController())->addHoliday());
 $router->post('/settings/holidays/national', static fn() => (new SettingsController())->addNational());
 $router->post('/settings/holidays/delete', static fn() => (new SettingsController())->removeHoliday());

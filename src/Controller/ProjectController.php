@@ -74,6 +74,7 @@ class ProjectController extends Controller
         $board = (new TicketRepository())->board($id, $statuses, $filters);
 
         $this->render('projects/show.twig', [
+            'budget' => (new \CantoTrack\Service\Budget())->of($project),
             'project' => $project,
             'board' => $board['columns'],
             'more' => $board['more'],
@@ -239,6 +240,21 @@ class ProjectController extends Controller
 
         $id = $projects->create($code, $name, $this->input('description'));
         $projects->setBilling($id, (new ClientRepository())->findOrCreate($this->input('client')), isset($_POST['billable_default']));
+
+        if (isset($_POST['budget_shown'])) {
+            try {
+                $projects->setBudget(
+                    $id,
+                    \CantoTrack\Service\Money::parse($this->input('hourly_rate')),
+                    \CantoTrack\Service\Money::parse($this->input('budget_hours')),
+                    \CantoTrack\Service\Money::parse($this->input('budget_amount')),
+                    (int) ($this->input('budget_alert') ?: 80)
+                );
+            } catch (\CantoTrack\Core\ValidationError $e) {
+                $this->flash($e->getMessage(), 'danger');
+                $this->redirect('/projects/' . $id . '/edit#budget');
+            }
+        }
 
         if (isset($_POST['card_fields_shown'])) {
             $projects->setCardFields($id, array_values(array_map('strval', (array) ($_POST['card_fields'] ?? []))));

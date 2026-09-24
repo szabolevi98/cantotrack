@@ -48,6 +48,21 @@ class UserRepository
     }
 
     /** Everyone, for the assignee lists. Inactive people are kept out of those. */
+    /** The hash of a person's private calendar address, or null to have none — see the 0036 migration. */
+    public function setCalendarExport(int $id, ?string $hash): void
+    {
+        $this->db->prepare('UPDATE users SET calendar_export_hash = :hash WHERE id = :id')->execute(['hash' => $hash, 'id' => $id]);
+    }
+
+    /** The active person a private calendar address belongs to. */
+    public function findByCalendarExport(string $hash): ?array
+    {
+        $statement = $this->db->prepare('SELECT * FROM users WHERE calendar_export_hash = :hash AND is_active = 1');
+        $statement->execute(['hash' => $hash]);
+
+        return $statement->fetch() ?: null;
+    }
+
     public function active(): array
     {
         return $this->rows(

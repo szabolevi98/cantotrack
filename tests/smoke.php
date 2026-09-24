@@ -432,6 +432,19 @@ if ($email === null || $password === null) {
     $palette = request($baseUrl . '/suggest?kind=palette&q=', [], $jar);
     check('the jump-anywhere box offers what was opened lately', $palette['status'] === 200 && str_contains($palette['body'], 'Smoke test ticket'));
 
+    // The person's dates as a calendar to subscribe to: the address shown
+    // once, and asked for without a session, as a calendar would.
+    request($baseUrl . '/profile/calendar-export', ['_token' => $token], $jar);
+    $profilePage = request($baseUrl . '/profile', [], $jar)['body'];
+    $calendarUrl = preg_match('#value="([^"]+/calendar/[a-f0-9]{48}\.ics)"#', $profilePage, $m) === 1 ? html_entity_decode($m[1]) : '';
+    $calendar = $calendarUrl === '' ? ['status' => 0, 'body' => '', 'headers' => ''] : request($calendarUrl);
+    check(
+        'the person’s dates come out as a calendar to subscribe to',
+        $calendar['status'] === 200 && str_contains($calendar['body'], 'BEGIN:VCALENDAR') && str_contains($calendar['headers'], 'text/calendar'),
+        'status ' . $calendar['status']
+    );
+    check('and a made-up address is not one', request($baseUrl . '/calendar/' . str_repeat('0', 48) . '.ics')['status'] === 404);
+
     $flow = request($baseUrl . '/projects/' . $projectId . '/flow?weeks=4', [], $jar);
     check('the project shows how its work flows', $flow['status'] === 200 && str_contains($flow['body'], 'chart__band--done'), 'status ' . $flow['status']);
 

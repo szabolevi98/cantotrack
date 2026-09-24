@@ -131,6 +131,30 @@
         </form>
     </section>
 
+    {#
+        The other way round: one's own dates, for one's calendar to subscribe
+        to. The address is the key — shown once, and a new one undoes it.
+    #}
+    <section class="card card--narrow" id="dates">
+        <h2 class="card__title">{{ 'Your dates in your calendar'|t }}</h2>
+        <p class="card__body">{{ 'A private address your calendar subscribes to: the days your open tickets are due, the releases coming and the last days of the sprints running, updated as they change. Google Calendar: Other calendars → From URL. Outlook: Add calendar → Subscribe from web.'|t }}</p>
+        {% if new_calendar_address|default(null) %}
+            <p class="flash flash--success">{{ 'Here it is. Copy it now: it is not shown again, and anybody who has it sees these dates.'|t }}</p>
+            <input class="field field--code" type="text" value="{{ new_calendar_address }}" readonly data-select-on-focus aria-label="{{ 'Calendar address'|t }}">
+        {% elseif me.calendar_export_hash %}
+            <p class="hint">{{ 'You have an address. It was shown once; make a new one if you need it again — the old one stops working.'|t }}</p>
+        {% endif %}
+        <form method="post" action="{{ url('/profile/calendar-export') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <div class="form__actions">
+                <button class="button" type="submit">{{ me.calendar_export_hash ? 'Make a new address'|t : 'Make an address'|t }}</button>
+                {% if me.calendar_export_hash %}
+                    <button class="button button--danger" type="submit" name="stop" value="1">{{ 'Stop it working'|t }}</button>
+                {% endif %}
+            </div>
+        </form>
+    </section>
+
     <section class="card card--narrow">
         <h2 class="card__title">{{ 'Two-step sign-in'|t }}</h2>
         <p class="card__body">

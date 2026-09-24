@@ -6,6 +6,7 @@ use CantoTrack\Core\Auth;
 use CantoTrack\Core\Controller;
 use CantoTrack\Core\I18n;
 use CantoTrack\Core\Password;
+use CantoTrack\Core\Session;
 use CantoTrack\Model\UserRepository;
 
 /**
@@ -22,7 +23,11 @@ class ProfileController extends Controller
     {
         Auth::require();
 
+        $address = Session::get('_new_calendar_address');
+        Session::forget('_new_calendar_address');
+
         $this->render('profile/index.twig', [
+            'new_calendar_address' => is_string($address) ? $address : null,
             'me' => Auth::user(),
             'locales' => I18n::LOCALES,
             'error' => null,
@@ -105,6 +110,29 @@ class ProfileController extends Controller
         }
 
         $this->redirect('/profile');
+    }
+
+    /**
+     * A private address for one's calendar to subscribe to — made new (the
+     * old one stops working), or taken away. Shown once, like a token.
+     */
+    public function calendarExport(): void
+    {
+        Auth::require();
+
+        $users = new UserRepository();
+
+        if ($this->input('stop') !== '') {
+            $users->setCalendarExport((int) Auth::id(), null);
+            $this->flash(__('Your calendar address no longer works.'), 'warning');
+            $this->redirect('/profile#dates');
+        }
+
+        [$secret, $hash] = \CantoTrack\Service\CalendarExport::newSecret();
+        $users->setCalendarExport((int) Auth::id(), $hash);
+        Session::put('_new_calendar_address', rtrim((string) \CantoTrack\Core\Config::get('app.base_url'), '/') . '/calendar/' . $secret . '.ics');
+
+        $this->redirect('/profile#dates');
     }
 
     public function changePassword(): void

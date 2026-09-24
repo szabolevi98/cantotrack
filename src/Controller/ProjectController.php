@@ -79,6 +79,7 @@ class ProjectController extends Controller
             'project' => $project,
             'board' => $board['columns'],
             'more' => $board['more'],
+            'counts' => $board['counts'],
             'statuses' => $statuses,
             'epics' => $epics,
             'lanes' => $this->lanes($board['columns'], $lanesBy, $epics),

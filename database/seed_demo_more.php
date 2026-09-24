@@ -502,7 +502,8 @@ foreach ($catalogue as $code => $project) {
             if ($k === 4) {
                 // The running sprint: some finished already, the rest on the way.
                 foreach ($top as $i => $t) {
-                    $state = ['done', 'done', 'review', 'in_progress', 'in_progress', 'todo'][$i % 6];
+                    // Something of every kind, however few: waiting, under way, in review, done.
+                    $state = ['todo', 'in_progress', 'done', 'review', 'todo', 'done', 'in_progress', 'todo'][$i % 8];
                     if ($state !== 'todo' && $state !== 'in_progress') {
                         $ticketService->changeStatus($t, 'in_progress', $me);
                     }

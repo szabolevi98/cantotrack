@@ -1637,4 +1637,5 @@ return [
     'Bugs opened this week' => 'A héten nyitott hibák',
     'There is no such piece.' => 'Nincs ilyen modul.',
     'Your dashboard is back as it starts. Your own pieces are still on it.' => 'A dashboardod visszaállt alapállapotba. A saját moduljaid megmaradtak rajta.',
+    '{count} in the whole project' => 'Az egész projektben: {count}',
 ];

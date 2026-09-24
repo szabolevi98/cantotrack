@@ -143,13 +143,14 @@
          data-move-url="{{ url('/tickets/{id}/move') }}" data-move-failed="{{ 'The move did not go through.'|t }}" data-board>
         <div class="board__row board__row--heads">
             {% for status in statuses %}
+                {% set shown = counts[status.id]|default(status.ticket_count) %}
                 {% set over = status.wip_limit and status.ticket_count > status.wip_limit %}
                 <header class="board__head{{ over ? ' board__head--over' : '' }}" data-head-for="{{ status.id }}">
                     {{ ui.status(status.name, status.colour) }}
                     {# A limit is shown as "3 / 4", and over it the column says so
                        — it does not refuse the ticket. #}
                     <span class="board__count"{{ over ? ' title="' ~ ('Over the limit of {count}'|t({count: status.wip_limit})) ~ '"' : '' }}>
-                        <span data-count>{{ status.ticket_count }}</span>{% if status.wip_limit %} / <span data-limit>{{ status.wip_limit }}</span>{% endif %}
+                        <span data-count{% if shown != status.ticket_count %} title="{{ '{count} in the whole project'|t({count: status.ticket_count}) }}"{% endif %}>{{ shown }}</span>{% if status.wip_limit %} / <span data-limit>{{ status.wip_limit }}</span>{% endif %}
                     </span>
                 </header>
             {% endfor %}

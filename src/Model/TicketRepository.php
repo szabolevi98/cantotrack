@@ -342,11 +342,13 @@ class TicketRepository
      * The open columns are in the order people arranged them (the rank); a
      * done column shows the most recently finished first.
      *
-     * The filters narrow what is drawn — "only mine", one epic, one label —
-     * without changing the columns or their counts, which are the project's.
+     * The filters narrow what is drawn — "only mine", one epic, one label, the
+     * running sprint — without changing the columns. Each column says how many
+     * of its tickets the board is showing; the project's own count is on the
+     * statuses, for the page to say beside it.
      *
      * @param array<array> $statuses the project's columns, in order
-     * @return array{columns: array<int, array>, more: array<int, int>}
+     * @return array{columns: array<int, array>, more: array<int, int>, counts: array<int, int>}
      */
     public function board(int $projectId, array $statuses, array $filters = [], int $doneShown = 20): array
     {
@@ -368,22 +370,34 @@ class TicketRepository
         }
 
         $more = [];
+        $counts = [];
         $done = $this->db->prepare(
             self::SELECT . ' WHERE ' . $narrowed . ' AND t.status_id = :done_status
              ORDER BY t.closed_at DESC, t.id DESC LIMIT ' . max(1, $doneShown)
         );
+        $doneCount = $this->db->prepare(
+            'SELECT COUNT(*) FROM tickets t JOIN projects p ON p.id = t.project_id JOIN statuses s ON s.id = t.status_id
+             LEFT JOIN sprints sp ON sp.id = t.sprint_id LEFT JOIN releases rl ON rl.id = t.release_id
+             LEFT JOIN epics e ON e.id = t.epic_id LEFT JOIN users a ON a.id = t.assignee_id
+             WHERE ' . $narrowed . ' AND t.status_id = :done_status'
+        );
 
         foreach ($statuses as $status) {
+            $id = (int) $status['id'];
+
             if ($status['category'] !== 'done') {
+                $counts[$id] = count($columns[$id]);
                 continue;
             }
 
-            $done->execute($parameters + ['done_status' => (int) $status['id']]);
-            $columns[(int) $status['id']] = $done->fetchAll();
-            $more[(int) $status['id']] = max(0, (int) $status['ticket_count'] - count($columns[(int) $status['id']]));
+            $done->execute($parameters + ['done_status' => $id]);
+            $columns[$id] = $done->fetchAll();
+            $doneCount->execute($parameters + ['done_status' => $id]);
+            $counts[$id] = (int) $doneCount->fetchColumn();
+            $more[$id] = max(0, $counts[$id] - count($columns[$id]));
         }
 
-        return ['columns' => $columns, 'more' => $more];
+        return ['columns' => $columns, 'more' => $more, 'counts' => $counts];
     }
 
     /**

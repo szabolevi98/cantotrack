@@ -24,7 +24,7 @@
                     <select id="parent_id" class="field" name="parent_id">
                         <option value="">{{ 'The top of the project'|t }}</option>
                         {% for parent in parents %}
-                            <option value="{{ parent.id }}"{{ values.parent_id|default(0) == parent.id ? ' selected' : '' }}>{{ '— '|repeat(parent.depth) }}{{ parent.title }}</option>
+                            <option value="{{ parent.id }}"{{ values.parent_id|default(0) == parent.id ? ' selected' : '' }}>{% if parent.depth > 0 %}{% for step in 1..parent.depth %}— {% endfor %}{% endif %}{{ parent.title }}</option>
                         {% endfor %}
                     </select>
                 </div>

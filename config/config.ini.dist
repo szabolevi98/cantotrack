@@ -41,11 +41,19 @@ minimum_minutes = 15
 
 [mail]
 ; Where email goes: notifications, and the link for a lost password.
-;   smtp://user:password@smtp.example.com:587   a real mail server
-;   file                                         written to var/mail, for development
-;   (empty)                                      no email at all
-dsn =
+;   mail   PHP's own mail(), through the machine's sendmail
+;   smtp   a mail server: the host, port, username, password and encryption below
+;   file   written to var/mail as .eml files, for development
+;   none   no email at all
+transport = none
+host =
+port = 587
+username =
+password =
+; tls (STARTTLS, the usual on 587), ssl (from the start, on 465), or none
+encryption = tls
 from = "cantotrack@example.com"
+from_name = "CantoTrack"
 
 [uploads]
 ; The largest file that can be attached, in megabytes. PHP's own limit

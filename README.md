@@ -216,15 +216,23 @@ in `config.ini` has to be the address the application is opened at, because
 every link is built from it. The built stylesheet and script are committed; after
 changing their sources, `php bin/build_assets.php` builds them again.
 
-For webhooks, one line of cron:
+Email goes out the way `[mail] transport` says: `mail` for PHP's own `mail()`
+through the machine's sendmail, `smtp` for a mail server (`host`, `port`,
+`username`, `password`, `encryption`), `file` to write every message to
+`var/mail` while developing, or `none`.
+
+Cron, for webhooks every minute, the daily automation rules, and the morning
+digests people ask for on their profile:
 
 ```
 * * * * * www-data php /path/to/cantotrack/bin/webhooks.php
+15 7 * * * www-data php /path/to/cantotrack/bin/automation.php
+30 7 * * 1-5 www-data php /path/to/cantotrack/bin/digest.php
 ```
 
-It sends what is waiting and retries what failed. Under PHP-FPM a request sends
-its own messages after answering; under mod_php they wait for the cron job, so
-that nobody waits for a slow receiver.
+The webhook job sends what is waiting and retries what failed. Under PHP-FPM a
+request sends its own messages after answering; under mod_php they wait for the
+cron job, so that nobody waits for a slow receiver.
 
 ### Something to look at
 

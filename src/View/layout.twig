@@ -26,10 +26,18 @@
 <a class="skip-link" href="#main">{{ 'Skip to the content'|t }}</a>
 
 <aside class="sidebar">
-    <a class="sidebar__brand" href="{{ url('/') }}">
-        <span class="sidebar__mark">{% include 'common/logo.twig' with {size: 22} %}</span>
-        <span class="sidebar__name">{{ app_name }}</span>
-    </a>
+    <div class="sidebar__top">
+        <a class="sidebar__brand" href="{{ url('/') }}">
+            <span class="sidebar__mark">{% include 'common/logo.twig' with {size: 22} %}</span>
+            <span class="sidebar__name">{{ app_name }}</span>
+        </a>
+        {# On a phone the menu folds away behind this; without a script it
+           stays open, as it always was. #}
+        <button class="sidebar__toggle" type="button" data-menu-toggle aria-expanded="false" aria-controls="sidebar-menu">
+            <span aria-hidden="true">☰</span> {{ 'Menu'|t }}
+        </button>
+    </div>
+    <div class="sidebar__menu" id="sidebar-menu">
 
     {# Type a ticket's name and be on it; anything else searches the list.
        "/" puts the cursor here from anywhere. #}
@@ -93,6 +101,7 @@
                href="{{ url('/settings/webhooks') }}"><i class="bi bi-broadcast" aria-hidden="true"></i><span>{{ 'Webhooks'|t }}</span></a>
         {% endif %}
     </nav>
+    </div>
 
     {# The running clock, wherever one is: what it runs on, for how long, and
        the button that turns it into hours. #}

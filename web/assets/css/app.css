@@ -349,6 +349,28 @@ button {
     font-weight: 600;
 }
 
+/* The brand, and on a phone the button that opens the menu under it. */
+.sidebar__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+.sidebar__toggle {
+    display: none;
+    align-items: center;
+    gap: 6px;
+    padding: 6px 12px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    border-radius: 999px;
+    background: transparent;
+    color: inherit;
+    font: inherit;
+    font-size: 0.88rem;
+    cursor: pointer;
+}
+
 .content {
     flex: 1;
     min-width: 0;
@@ -417,6 +439,7 @@ button {
 
     .sidebar {
         position: static;
+        align-self: stretch;
         width: auto;
         height: auto;
         padding: 14px 16px;
@@ -425,6 +448,19 @@ button {
     .sidebar__nav {
         flex-direction: row;
         flex-wrap: wrap;
+    }
+
+    .sidebar__toggle {
+        display: inline-flex;
+    }
+
+    /* Folded away until opened — only with a script, which opens it. */
+    .js .sidebar:not(.is-open) .sidebar__menu {
+        display: none;
+    }
+
+    .sidebar.is-open .sidebar__menu {
+        margin-top: 12px;
     }
 
     .sidebar__section {
@@ -630,6 +666,18 @@ code {
 .card--flush {
     padding: 0;
     overflow: hidden;
+}
+
+/* A table wider than a phone scrolls sideways inside its card, rather than
+   being cut off at the card's edge. */
+@media (max-width: 760px) {
+    .card--flush {
+        overflow-x: auto;
+    }
+
+    .card--flush > .table {
+        min-width: 560px;
+    }
 }
 
 .card__title {
@@ -3604,6 +3652,10 @@ a.family:hover {
 
     .user-pill__name {
         display: none;
+    }
+
+    .topbar__log {
+        white-space: nowrap;
     }
 }
 

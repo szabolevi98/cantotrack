@@ -16,6 +16,18 @@
     overflow: hidden;
 }
 
+/* A table wider than a phone scrolls sideways inside its card, rather than
+   being cut off at the card's edge. */
+@media (max-width: 760px) {
+    .card--flush {
+        overflow-x: auto;
+    }
+
+    .card--flush > .table {
+        min-width: 560px;
+    }
+}
+
 .card__title {
     margin-bottom: 8px;
     font-size: 1.05rem;

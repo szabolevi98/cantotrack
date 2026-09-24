@@ -365,6 +365,10 @@
     .user-pill__name {
         display: none;
     }
+
+    .topbar__log {
+        white-space: nowrap;
+    }
 }
 
 /* Changing an entry: its delete is set apart at the far end. */

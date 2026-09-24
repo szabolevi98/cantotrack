@@ -107,6 +107,21 @@
     });
 
     /*
+     * data-menu-toggle — the sidebar's menu on a phone, folded away until
+     * the button opens it.
+     */
+    document.addEventListener('click', function (event) {
+        var toggle = event.target.closest && event.target.closest('[data-menu-toggle]');
+        if (!toggle) {
+            return;
+        }
+        var sidebar = toggle.closest('.sidebar');
+        var open = !sidebar.classList.contains('is-open');
+        sidebar.classList.toggle('is-open', open);
+        toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
+    });
+
+    /*
      * data-menu — a <details> dropdown (the account menu) that closes when
      * somebody clicks anywhere else, or presses Escape, the way a menu does.
      */

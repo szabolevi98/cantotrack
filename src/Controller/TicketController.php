@@ -361,6 +361,32 @@ class TicketController extends Controller
         Auth::requireMember();
 
         $projectId = (int) $this->idQuery('project');
+        $original = $this->idQuery('clone') === null ? null : (new TicketRepository())->find((int) $this->idQuery('clone'));
+
+        // A clone: the new ticket's form, filled in from the one it copies,
+        // for somebody to change what is different before it is made.
+        if ($original !== null) {
+            $id = (int) $original['id'];
+            $this->renderForm(null, (int) $original['project_id'], [
+                'type' => $original['type'],
+                'epic_id' => $original['epic_id'],
+                'release_id' => $original['release_id'],
+                'parent' => $original['parent_id'] === null ? '' : $original['project_code'] . '-' . $original['parent_number'],
+                'title' => __('{title} (copy)', ['title' => $original['title']]),
+                'description' => (string) $original['description'],
+                'priority' => $original['priority'],
+                'assignee_id' => $original['assignee_id'],
+                'estimate_minutes' => $original['estimate_minutes'],
+                'due_on' => $original['due_on'],
+                'story_points' => $original['story_points'],
+                'labels' => implode(', ', (new LabelRepository())->forTicket($id)),
+                'fields' => (new \CantoTrack\Model\CustomFieldRepository())->valuesFor($id),
+                'cloned_from' => $id,
+                'cloned_key' => $original['project_code'] . '-' . $original['number'],
+            ]);
+
+            return;
+        }
 
         $this->renderForm(null, $projectId, [
             'epic_id' => $this->idQuery('epic'),
@@ -378,6 +404,16 @@ class TicketController extends Controller
             $this->renderForm(null, (int) $this->idInput('project_id'), $this->typed(), $e->getMessage(), 422);
 
             return;
+        }
+
+        // A clone says what it was copied from, and the original says so too.
+        $original = $this->idInput('cloned_from') === null ? null : (new TicketRepository())->find((int) $this->idInput('cloned_from'));
+        if ($original !== null) {
+            try {
+                (new LinkService())->link($id, 'relates', $original['project_code'] . '-' . $original['number'], Auth::id());
+            } catch (ValidationError) {
+                // A link that cannot be made does not undo the ticket.
+            }
         }
 
         $this->flash(__('Ticket created.'));
@@ -764,6 +800,8 @@ class TicketController extends Controller
             'story_points' => $this->input('story_points'),
             'labels' => $this->input('labels'),
             'version' => $this->input('version', (string) ($ticket['version'] ?? '')),
+            'cloned_from' => $this->idInput('cloned_from'),
+            'cloned_key' => $this->input('cloned_key'),
         ];
     }
 

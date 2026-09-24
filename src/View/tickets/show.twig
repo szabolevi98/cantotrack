@@ -62,6 +62,7 @@
     </form>
     {% if can_work %}
         {{ ui.move(ticket, statuses, '/tickets/' ~ ticket.id) }}
+        <a class="button" href="{{ url('/tickets/create?clone=' ~ ticket.id) }}" title="{{ 'A new ticket, filled in from this one'|t }}">{{ 'Clone'|t }}</a>
         <a class="button" href="{{ url('/tickets/' ~ ticket.id ~ '/edit') }}">{{ 'Edit'|t }}</a>
     {% endif %}
 {% endblock %}

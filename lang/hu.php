@@ -1389,4 +1389,8 @@ return [
     'Take {name} off your dashboard?' => 'Leveszed a dashboardról: {name}?',
     'The tickets' => 'A ticketek',
     'Urgent bugs' => 'Sürgős hibák',
+    '{title} (copy)' => '{title} (másolat)',
+    'A copy of {key}: change what is different, and it will say it relates to {key}.' => '{key} másolata: írd át, ami eltér, és jelezni fogja, hogy kapcsolódik ehhez: {key}.',
+    'A new ticket, filled in from this one' => 'Új ticket, ennek az adataival kitöltve',
+    'Clone' => 'Klónozás',
 ];

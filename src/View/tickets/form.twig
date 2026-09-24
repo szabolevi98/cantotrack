@@ -44,6 +44,11 @@
                    one is refused instead of undoing somebody else's. #}
                 <input type="hidden" name="version" value="{{ values.version|default(ticket.version) }}">
             {% endif %}
+            {% if values.cloned_from|default(null) %}
+                <input type="hidden" name="cloned_from" value="{{ values.cloned_from }}">
+                <input type="hidden" name="cloned_key" value="{{ values.cloned_key }}">
+                <p class="hint">{{ 'A copy of {key}: change what is different, and it will say it relates to {key}.'|t({key: values.cloned_key}) }}</p>
+            {% endif %}
 
             <div class="form__row form__row--title">
                 <div>

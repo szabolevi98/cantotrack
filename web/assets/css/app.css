@@ -1887,16 +1887,30 @@ summary.link-button::-webkit-details-marker {
 
 .ticket-card__foot {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: space-between;
-    gap: 8px;
+    gap: 6px 8px;
     font-size: 0.82rem;
+}
+
+/* In a narrow column the name gives way — cut short — and the figures move
+   under it, rather than out of the card. */
+.ticket-card__foot > :first-child {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .ticket-card__meta {
     display: inline-flex;
-    gap: 8px;
+    flex-wrap: wrap;
+    flex-shrink: 0;
+    gap: 6px 8px;
     align-items: center;
+    justify-content: flex-end;
+    margin-left: auto;
 }
 
 /*

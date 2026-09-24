@@ -426,6 +426,9 @@ if ($email === null || $password === null) {
         'status ' . $panel['status']
     );
 
+    $cloneForm = request($baseUrl . '/tickets/create?clone=' . $ticketId, [], $jar)['body'];
+    check('a ticket can be cloned: the form comes filled in from it', str_contains($cloneForm, 'Smoke test ticket (copy)') && str_contains($cloneForm, 'name="cloned_from"'));
+
     $flow = request($baseUrl . '/projects/' . $projectId . '/flow?weeks=4', [], $jar);
     check('the project shows how its work flows', $flow['status'] === 200 && str_contains($flow['body'], 'chart__band--done'), 'status ' . $flow['status']);
 

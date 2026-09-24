@@ -1836,4 +1836,7 @@ Az E-mail oldalról küldted.',
     '{name} is deleted.' => '{name} törölve.',
     '{name} still has projects or statements, so it stays.' => '{name} ügyfélnek még vannak projektjei vagy elszámolásai, ezért megmarad.',
     '“{value}” is not an email address.' => '„{value}” nem e-mail cím.',
+    'Download PDF' => 'PDF letöltése',
+    'Print' => 'Nyomtatás',
+    'Page {PAGE_NUM} of {PAGE_COUNT}' => '{PAGE_NUM}. oldal / {PAGE_COUNT}',
 ];

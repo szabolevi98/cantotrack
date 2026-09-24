@@ -31,7 +31,7 @@ jobs:
       - uses: shivammathur/setup-php@v2
         with:
           php-version: '8.4'
-          extensions: pdo_mysql, mbstring, gd, zip, curl, fileinfo, iconv
+          extensions: pdo_mysql, mbstring, gd, zip, curl, fileinfo, iconv, dom
           coverage: none
 
       - name: Install dependencies

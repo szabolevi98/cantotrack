@@ -288,6 +288,7 @@ $router->post('/billing/statements', static fn() => (new BillingController())->c
 $router->post('/billing/letterhead', static fn() => (new BillingController())->letterhead());
 $router->get('/billing/statements/{id}', static fn($id) => (new BillingController())->show((int) $id));
 $router->get('/billing/statements/{id}/export', static fn($id) => (new BillingController())->export((int) $id));
+$router->get('/billing/statements/{id}/pdf', static fn($id) => (new BillingController())->pdf((int) $id));
 $router->post('/billing/statements/{id}/refresh', static fn($id) => (new BillingController())->refresh((int) $id));
 $router->post('/billing/statements/{id}/issue', static fn($id) => (new BillingController())->issue((int) $id));
 $router->post('/billing/statements/{id}/reopen', static fn($id) => (new BillingController())->reopen((int) $id));

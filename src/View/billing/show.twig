@@ -20,7 +20,8 @@
 {% endblock %}
 
 {% block actions %}
-    <button class="button" type="button" data-print><i class="bi bi-printer" aria-hidden="true"></i> {{ 'Print or save as PDF'|t }}</button>
+    <a class="button" href="{{ url('/billing/statements/' ~ statement.id ~ '/pdf') }}">{{ 'Download PDF'|t }}</a>
+    <button class="button button--icon" type="button" data-print title="{{ 'Print'|t }}" aria-label="{{ 'Print'|t }}"><i class="bi bi-printer" aria-hidden="true"></i></button>
     <a class="button" href="{{ url('/billing/statements/' ~ statement.id ~ '/export') }}">{{ 'Download Excel'|t }}</a>
     {% if manage and draft %}
         <form method="post" action="{{ url('/billing/statements/' ~ statement.id ~ '/issue') }}"

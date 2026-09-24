@@ -82,6 +82,29 @@ final class StatementsTest extends DatabaseTestCase
         self::assertNull(ClientRepository::billTo(['name' => 'Nobody yet', 'billing_address' => '', 'tax_number' => null]));
     }
 
+    public function testAStatementIsAPdfWithItsAccentsAndADraftSaysSo(): void
+    {
+        $this->log($this->ticket, '2h');
+        $id = $this->service->draft($this->client, $this->from, $this->to, $this->me);
+        $statement = (array) $this->statements->find($id);
+
+        $html = \CantoTrack\Core\View::twig()->render('billing/pdf.twig', [
+            'statement' => $statement,
+            'entries' => $this->statements->entries($id),
+            'summary' => [],
+            'minutes' => 120,
+            'amount' => 40000.0,
+            'currency' => 'HUF',
+            'letterhead' => ['from' => "Canto Digital Kft.\n7621 Pécs", 'footer' => null],
+        ]);
+        self::assertStringContainsString('7621 Pécs', $html);
+        self::assertStringContainsString('class="draft"', $html);
+
+        $pdf = \CantoTrack\Service\StatementPdf::render($statement, $this->statements->entries($id), 'HUF');
+        self::assertStringStartsWith('%PDF-', $pdf);
+        self::assertGreaterThan(5000, strlen($pdf));
+    }
+
     public function testAnHourGoesOnOneStatementOnly(): void
     {
         $this->log($this->ticket, '2h');

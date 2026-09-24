@@ -70,6 +70,10 @@ test('a client’s month becomes a draft, is corrected, and is thrown away again
 
     await expect(page.locator('[data-print]')).toBeVisible();
 
+    // And as a PDF, named for it.
+    const [download] = await Promise.all([page.waitForEvent('download'), page.locator('a[href$="/pdf"]').click()]);
+    expect(download.suggestedFilename()).toMatch(/^statement-draft-\d+-Browser-test-client\.pdf$/);
+
     await Promise.all([page.waitForURL(/billing\?month=/), page.locator('form[action$="/delete"] button').click()]);
     await expect(page.locator('#unbilled tr', { hasText: CLIENT })).toContainText('1.5');
 });

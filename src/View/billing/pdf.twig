@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+{#
+    A statement as a PDF, for StatementPdf: A4, black on white, in DejaVu
+    Sans. Written for the PDF library's CSS, which is CSS 2 — tables rather
+    than flex, and every style here rather than in the application's sheet.
+#}
+{% set draft = statement.state == 'draft' %}
+<html lang="{{ locale|default('en') }}">
+<head>
+    <meta charset="utf-8">
+    <title>{{ 'Statement'|t }} {{ statement.number ?: 'Draft'|t }} — {{ statement.client }}</title>
+    <style>
+        @page { margin: 22mm 18mm 20mm; }
+        body { font-family: "DejaVu Sans", sans-serif; font-size: 9pt; color: #1b2230; line-height: 1.45; }
+        table { width: 100%; border-collapse: collapse; }
+        .head td { vertical-align: top; }
+        .from { width: 55%; }
+        .what { text-align: right; }
+        h1 { margin: 0 0 6px; font-size: 20pt; letter-spacing: 0.5px; color: #1d4ed8; }
+        .facts td { padding: 1px 0 1px 12px; text-align: right; }
+        .facts .label { color: #6b7280; }
+        .to { margin: 22px 0 18px; padding: 10px 12px; border-left: 3px solid #1d4ed8; background: #eef3ff; }
+        .label-small { color: #6b7280; font-size: 7pt; font-weight: bold; letter-spacing: 0.8px; text-transform: uppercase; }
+        .lines th { padding: 6px 8px; border-bottom: 1px solid #c9ced8; background: #f3f5f9; color: #4b5563; font-size: 7pt; letter-spacing: 0.6px; text-align: left; text-transform: uppercase; }
+        .lines td { padding: 5px 8px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+        .lines .number { text-align: right; white-space: nowrap; }
+        .total td, .total th { padding: 7px 8px; border-top: 2px solid #1b2230; border-bottom: 0; background: none; color: #1b2230; font-size: 9.5pt; font-weight: bold; }
+        .lines .day { white-space: nowrap; }
+        .detail { color: #6b7280; font-size: 7.5pt; }
+        .key { font-family: "DejaVu Sans Mono", monospace; font-size: 8pt; }
+        h2 { margin: 22px 0 6px; color: #6b7280; font-size: 7pt; letter-spacing: 0.8px; text-transform: uppercase; }
+        .note { margin: 12px 0 0; }
+        .foot { margin-top: 26px; padding-top: 10px; border-top: 1px solid #c9ced8; color: #6b7280; font-size: 8pt; }
+        .draft { position: fixed; top: 38%; left: 0; width: 100%; z-index: -1; text-align: center; font-size: 70pt; color: #c0392b; opacity: 0.12; transform: rotate(-30deg); }
+    </style>
+</head>
+<body>
+    {% if draft %}<div class="draft">{{ 'Draft'|t|upper }}</div>{% endif %}
+
+    <table class="head">
+        <tr>
+            <td class="from">{% if letterhead.from %}{{ letterhead.from|nl2br }}{% else %}<strong>{{ app_name }}</strong>{% endif %}</td>
+            <td class="what">
+                <h1>{{ 'Statement'|t }}</h1>
+                <table class="facts">
+                    <tr><td class="label">{{ 'Number'|t }}</td><td>{{ statement.number ?: 'Draft'|t }}</td></tr>
+                    <tr><td class="label">{{ 'Period'|t }}</td><td>{{ statement.period_from|day }} — {{ statement.period_to|day }}</td></tr>
+                    {% if statement.issued_at %}<tr><td class="label">{{ 'Issued'|t }}</td><td>{{ statement.issued_at|day }}</td></tr>{% endif %}
+                </table>
+            </td>
+        </tr>
+    </table>
+
+    <div class="to">
+        <div class="label-small">{{ 'Billed to'|t }}</div>
+        {{ (statement.bill_to ?: statement.client)|nl2br }}
+    </div>
+
+    <table class="lines">
+        <thead>
+        <tr>
+            <th>{{ 'By project'|t }}</th>
+            <th class="number">{{ 'Hours'|t }}</th>
+            <th class="number">{{ 'Rate'|t }}</th>
+            <th class="number">{{ 'Amount'|t }}</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for row in summary %}
+            <tr>
+                <td>{{ row.label }}</td>
+                <td class="number">{{ row.minutes|hours }}</td>
+                <td class="number">{{ row.rate is not null ? row.rate|money(currency) : '—' }}</td>
+                <td class="number">{{ row.amount|money(currency) }}</td>
+            </tr>
+        {% endfor %}
+        <tr class="total">
+            <th>{{ 'Total'|t }}</th>
+            <td class="number">{{ minutes|hours }}</td>
+            <td></td>
+            <td class="number">{{ amount|money(currency) }}</td>
+        </tr>
+        </tbody>
+    </table>
+
+    {% if statement.note %}<p class="note">{{ statement.note|nl2br }}</p>{% endif %}
+
+    <h2>{{ 'The entries'|t }}</h2>
+    <table class="lines">
+        <thead>
+        <tr>
+            <th>{{ 'Date'|t }}</th>
+            <th>{{ 'Ticket'|t }}</th>
+            <th>{{ 'Person'|t }}</th>
+            <th class="number">{{ 'Hours'|t }}</th>
+            <th class="number">{{ 'Amount'|t }}</th>
+        </tr>
+        </thead>
+        <tbody>
+        {% for entry in entries %}
+            <tr>
+                <td class="day">{{ entry.work_date|day }}</td>
+                <td>
+                    <span class="key">{{ entry.ticket_key }}</span> {{ entry.ticket_title }}
+                    {% if entry.work_type or entry.note %}<div class="detail">{{ entry.work_type }}{{ entry.work_type and entry.note ? ' · ' : '' }}{{ entry.note }}</div>{% endif %}
+                </td>
+                <td>{{ entry.person }}</td>
+                <td class="number">{{ entry.minutes|hours }}</td>
+                <td class="number">{{ entry.amount|money(currency) }}</td>
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+
+    {% if letterhead.footer %}<div class="foot">{{ letterhead.footer|nl2br }}</div>{% endif %}
+</body>
+</html>

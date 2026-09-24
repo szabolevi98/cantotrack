@@ -218,6 +218,24 @@ class BillingController extends Controller
         exit;
     }
 
+    /** The statement as a PDF, to attach to an email or keep. */
+    public function pdf(int $id): void
+    {
+        Auth::require();
+
+        $statement = $this->statementOr404($id);
+        $bytes = \CantoTrack\Service\StatementPdf::render($statement, (new StatementRepository())->entries($id), $statement['currency'] ?? Money::currency());
+        $name = 'statement-' . ($statement['number'] ?? 'draft-' . $id) . '-' . trim((string) preg_replace('/[^A-Za-z0-9]+/', '-', (string) $statement['client']), '-');
+
+        header('Content-Type: application/pdf');
+        header('Content-Disposition: attachment; filename="' . $name . '.pdf"');
+        header('Content-Length: ' . strlen($bytes));
+        header('Cache-Control: private, no-store');
+        header('X-Content-Type-Options: nosniff');
+        echo $bytes;
+        exit;
+    }
+
     /**
      * A statement the person may read: any, for an administrator; an issued
      * one of their own client whose every hour is in a project they see, for

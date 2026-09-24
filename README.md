@@ -197,9 +197,9 @@ deploy with `git pull`.
 - **Billing a month**: the clients with billable hours not yet billed, and a
   statement for each in one click — a draft first, to check, correct and
   word, then issued: numbered within the year, its rates written down so a
-  later raise does not change it, and its hours closed. It is printed or
-  saved as a PDF straight from the browser, downloaded as a spreadsheet, and
-  read by the client's own guests. An hour goes on one statement only, and
+  later raise does not change it, and its hours closed. It is downloaded as
+  a PDF (a draft says it is one across every page) or a spreadsheet,
+  printed straight from the browser, and read by the client's own guests. An hour goes on one statement only, and
   one issued by mistake is opened again and reissued under its number.
 - **Clients**, each with a page of its own: its billing address, tax number,
   contact and a note — what its statements are addressed to — beside its

@@ -426,6 +426,13 @@ if ($email === null || $password === null) {
         'status ' . $panel['status']
     );
 
+    $suggested = request($baseUrl . '/suggest?kind=tickets&q=' . $code . '-', [], $jar);
+    check(
+        'typing the start of a key offers the tickets it could be',
+        $suggested['status'] === 200 && str_contains($suggested['body'], '"value":"' . $code . '-1"'),
+        'status ' . $suggested['status']
+    );
+
     $lanes = request($baseUrl . '/projects/' . $projectId . '?lanes=epic&type=task', [], $jar);
     check('the board can be split into lanes and narrowed', $lanes['status'] === 200 && str_contains($lanes['body'], 'board__lane-title'));
 

@@ -64,6 +64,7 @@ $bundles = [
             'query.js',
             'pages.js',
             'inline.js',
+            'suggest.js',
         ],
     ],
 ];

@@ -37,6 +37,7 @@ use CantoTrack\Controller\RoadmapController;
 use CantoTrack\Controller\SearchController;
 use CantoTrack\Controller\SettingsController;
 use CantoTrack\Controller\SprintController;
+use CantoTrack\Controller\SuggestController;
 use CantoTrack\Controller\TicketController;
 use CantoTrack\Controller\TimerController;
 use CantoTrack\Controller\TimesheetController;
@@ -76,6 +77,7 @@ $router->post('/tickets/{id}/favourite', static fn($id) => (new TicketController
 $router->post('/tickets/{id}/watch', static fn($id) => (new NotificationController())->toggleWatch((int) $id));
 
 $router->get('/search', static fn() => (new SearchController())->search());
+$router->get('/suggest', static fn() => (new SuggestController())->suggest());
 $router->post('/filters', static fn() => (new SearchController())->saveFilter());
 $router->post('/filters/{id}/delete', static fn($id) => (new SearchController())->deleteFilter((int) $id));
 

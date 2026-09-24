@@ -19,7 +19,7 @@
                    maxlength="200" required autofocus>
 
             <label for="description">{{ 'Description'|t }}</label>
-            <textarea id="description" class="field" name="description" rows="5">{{ epic.description|default('') }}</textarea>
+            <textarea id="description" class="field" name="description" rows="5" data-suggest>{{ epic.description|default('') }}</textarea>
 
             <div class="form__row">
                 <div>

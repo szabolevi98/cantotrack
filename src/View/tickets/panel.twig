@@ -75,7 +75,8 @@
         <form class="comment-form" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/comments') }}">
             <input type="hidden" name="_token" value="{{ csrf_token }}">
             <label for="panel-body-{{ ticket.id }}">{{ 'Add a comment'|t }}</label>
-            <textarea id="panel-body-{{ ticket.id }}" class="field" name="body" rows="3" required
+            <textarea id="panel-body-{{ ticket.id }}" class="field" name="body" rows="3" required data-suggest
+                      data-paste-upload="{{ url('/tickets/' ~ ticket.id ~ '/attachments') }}"
                       placeholder="{{ 'Markdown works. CT-14 links to that ticket, @name tells somebody.'|t }}"></textarea>
             <button class="button button--primary button--small" type="submit">{{ 'Comment'|t }}</button>
         </form>

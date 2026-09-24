@@ -270,7 +270,7 @@
                                                         <summary class="link-button link-button--text">{{ 'Edit'|t }}</summary>
                                                         <form method="post" action="{{ url('/comments/' ~ comment.id) }}">
                                                             <input type="hidden" name="_token" value="{{ csrf_token }}">
-                                                            <textarea class="field" name="body" rows="4" required>{{ comment.body }}</textarea>
+                                                            <textarea class="field" name="body" rows="4" required data-suggest>{{ comment.body }}</textarea>
                                                             <button class="button button--small button--primary" type="submit">{{ 'Save'|t }}</button>
                                                         </form>
                                                     </details>
@@ -299,7 +299,7 @@
                     <form class="comment-form" id="comment-form" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/comments') }}">
                         <input type="hidden" name="_token" value="{{ csrf_token }}">
                         <label for="body">{{ 'Add a comment'|t }}</label>
-                        <textarea id="body" class="field" name="body" rows="4" required data-paste-upload="{{ url('/tickets/' ~ ticket.id ~ '/attachments') }}"
+                        <textarea id="body" class="field" name="body" rows="4" required data-suggest data-paste-upload="{{ url('/tickets/' ~ ticket.id ~ '/attachments') }}"
                                   placeholder="{{ 'Markdown works. CT-14 links to that ticket, @name tells somebody.'|t }}"></textarea>
                         <button class="button button--primary" type="submit">{{ 'Comment'|t }}</button>
                     </form>

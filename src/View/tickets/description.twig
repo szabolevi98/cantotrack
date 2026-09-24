@@ -12,7 +12,8 @@
         {% endblock %}
         {% block control %}
             <label class="card__title" for="description-{{ ticket.id }}">{{ 'Description'|t }}</label>
-            <textarea id="description-{{ ticket.id }}" class="field" name="value" rows="10">{{ ticket.description }}</textarea>
+            <textarea id="description-{{ ticket.id }}" class="field" name="value" rows="10" data-suggest
+                      data-paste-upload="{{ url('/tickets/' ~ ticket.id ~ '/attachments') }}">{{ ticket.description }}</textarea>
             <p class="hint">{{ 'Markdown works: **bold**, `code`, lists, and CT-14 becomes a link.'|t }}</p>
         {% endblock %}
     {% endembed %}

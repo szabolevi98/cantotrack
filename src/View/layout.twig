@@ -16,6 +16,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     {# For the few requests the page's own script sends; forms carry theirs. #}
     <meta name="csrf-token" content="{{ csrf_token }}">
+    {% if current_user %}<meta name="suggest-url" content="{{ url('/suggest') }}">{% endif %}
     <meta name="base-url" content="{{ base_url }}">
     <title>{% block title %}{{ app_name }}{% endblock %}</title>
     <link rel="icon" href="{{ asset('favicon.svg') }}" type="image/svg+xml">

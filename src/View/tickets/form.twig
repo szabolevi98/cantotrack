@@ -120,7 +120,8 @@
             </select>
 
             <label for="description">{{ 'Description'|t }}</label>
-            <textarea id="description" class="field" name="description" rows="8">{{ values.description|default('') }}</textarea>
+            <textarea id="description" class="field" name="description" rows="8" data-suggest
+                      {% if ticket.id|default(null) %}data-paste-upload="{{ url('/tickets/' ~ ticket.id ~ '/attachments') }}"{% endif %}>{{ values.description|default('') }}</textarea>
             <p class="hint">{{ 'Markdown works: **bold**, lists, `code`, tables. CT-14 links to that ticket.'|t }}</p>
 
             <div class="form__row">

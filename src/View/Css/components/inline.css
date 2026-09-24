@@ -93,6 +93,51 @@
 }
 
 /* ---------------------------------------------------------------------------
+ * What a text box offers while somebody types "@" or "#" in it.
+ * ------------------------------------------------------------------------- */
+
+.suggest {
+    position: absolute;
+    z-index: 80;
+    width: 320px;
+    max-width: calc(100vw - 32px);
+    margin: 4px 0 0;
+    padding: 4px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-sm);
+    background: var(--ct-surface);
+    box-shadow: var(--ct-shadow-lg);
+    list-style: none;
+}
+
+.suggest__item {
+    display: flex;
+    gap: 8px;
+    align-items: baseline;
+    padding: 6px 8px;
+    border-radius: 6px;
+    cursor: pointer;
+}
+
+.suggest__item.is-active {
+    background: var(--ct-primary-soft);
+}
+
+.suggest__hint {
+    flex: none;
+    color: var(--ct-primary);
+    font-family: var(--ct-mono);
+    font-size: 0.82rem;
+}
+
+.suggest__label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* ---------------------------------------------------------------------------
  * The panel
  * ------------------------------------------------------------------------- */
 

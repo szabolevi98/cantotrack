@@ -36,7 +36,7 @@
                     <button type="button" class="segmented__item" data-page-tab="preview">{{ 'Preview'|t }}</button>
                 </nav>
                 <label class="visually-hidden" for="body">{{ 'Text'|t }}</label>
-                <textarea id="body" class="field field--code page-editor__text" name="body" rows="22" data-page-text>{{ values.body|default('') }}</textarea>
+                <textarea id="body" class="field field--code page-editor__text" name="body" rows="22" data-page-text data-suggest>{{ values.body|default('') }}</textarea>
                 <div class="card page-body page-editor__preview" data-page-preview hidden></div>
             </div>
             <p class="hint">{{ 'Markdown: # headings, **bold**, lists, tables, `code`. CT-14 links to that ticket, [[Another page]] to a page of the project, and a line {{tickets category != done ORDER BY priority DESC}} shows those tickets, read fresh each time.'|t }}</p>

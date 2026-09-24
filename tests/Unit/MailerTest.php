@@ -17,6 +17,17 @@ final class MailerTest extends TestCase
         self::assertSame('none', Mailer::transport(['transport' => 'carrier pigeon']));
     }
 
+    public function testNoMailIsSentWhereNoneCanArrive(): void
+    {
+        self::assertTrue(Mailer::reachable('szabolevi98@gmail.com'));
+        self::assertTrue(Mailer::reachable('anna@mecsek.hu'));
+        self::assertFalse(Mailer::reachable('anna@cantotrack.demo'));
+        self::assertFalse(Mailer::reachable('someone@example.test'));
+        self::assertFalse(Mailer::reachable('root@localhost'));
+        self::assertFalse(Mailer::reachable('levente@cantotrack.local'));
+        self::assertFalse(Mailer::reachable('no-at-sign'));
+    }
+
     public function testTheServerIsWrittenFromItsFields(): void
     {
         self::assertSame(

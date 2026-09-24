@@ -33,6 +33,22 @@ class Mailer
 
     public const TRANSPORTS = ['mail', 'smtp', 'file', 'none'];
 
+    /**
+     * Endings of addresses no mail can reach — the names kept for examples,
+     * tests and machines of one's own, and the demo's made-up companies. A
+     * message to one would only come back as a bounce.
+     */
+    private const NOWHERE = ['test', 'example', 'invalid', 'localhost', 'local', 'demo'];
+
+    /** Whether an address is somewhere mail can actually go. */
+    public static function reachable(string $address): bool
+    {
+        $domain = strtolower((string) substr((string) strrchr($address, '@'), 1));
+        $ending = (string) substr((string) strrchr('.' . $domain, '.'), 1);
+
+        return $domain !== '' && !in_array($ending, self::NOWHERE, true);
+    }
+
     public static function isConfigured(): bool
     {
         try {
@@ -113,9 +129,15 @@ class Mailer
             ->text($text);
 
         self::$sent[] = $email;
+        $transport = self::transport($config);
+
+        // Written to a file, anything goes; sent for real, not to nowhere.
+        if ($transport !== 'file' && !self::reachable($toAddress)) {
+            return false;
+        }
 
         try {
-            return match (self::transport($config)) {
+            return match ($transport) {
                 'file' => self::toFile($email),
                 'mail' => self::withMail($email, $from),
                 default => self::toServer($email, self::serverDsn($config)),

@@ -445,6 +445,22 @@ if ($email === null || $password === null) {
     );
     check('and a made-up address is not one', request($baseUrl . '/calendar/' . str_repeat('0', 48) . '.ics')['status'] === 404);
 
+    // The project's settings, saved: what the cards show and a budget
+    // stick, and the record says who changed them.
+    $settingsSaved = request($baseUrl . '/projects/' . $projectId, [
+        '_token' => $token, 'name' => 'Smoke test project', 'description' => '', 'client' => '', 'billable_default' => '1',
+        'visibility' => 'team', 'card_fields_shown' => '1', 'card_fields' => ['assignee', 'due'],
+        'budget_shown' => '1', 'hourly_rate' => '', 'budget_hours' => '120', 'budget_amount' => '', 'budget_alert' => '80',
+    ], $jar);
+    $settingsPage = request($baseUrl . '/projects/' . $projectId . '/edit', [], $jar)['body'];
+    check(
+        'a project’s settings keep what its cards show and its budget',
+        $settingsSaved['status'] === 302 && str_contains($settingsPage, 'value="due" checked') && !str_contains($settingsPage, 'value="points" checked')
+        && str_contains($settingsPage, 'name="budget_hours"') && str_contains($settingsPage, 'value="120"')
+    );
+    $audit = request($baseUrl . '/settings/audit?group=projects', [], $jar);
+    check('and the audit log says who changed them', $audit['status'] === 200 && str_contains($audit['body'], 'audit__row--project_updated'), 'status ' . $audit['status']);
+
     $flow = request($baseUrl . '/projects/' . $projectId . '/flow?weeks=4', [], $jar);
     check('the project shows how its work flows', $flow['status'] === 200 && str_contains($flow['body'], 'chart__band--done'), 'status ' . $flow['status']);
 

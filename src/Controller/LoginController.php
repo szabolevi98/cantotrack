@@ -71,6 +71,7 @@ class LoginController extends Controller
 
         if ($user === null) {
             $throttle->recordFailure($email, $ip);
+            \CantoTrack\Service\AuditLog::record('signin_failed', 'user', null, mb_substr($email, 0, 160));
 
             // 401 rather than 200, so that the failure is visible to anything
             // reading the response rather than only to a person looking at it.

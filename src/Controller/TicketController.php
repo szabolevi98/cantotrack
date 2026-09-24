@@ -728,6 +728,7 @@ class TicketController extends Controller
             $this->redirect('/tickets/' . $id);
         }
 
+        \CantoTrack\Service\AuditLog::record('ticket_deleted', 'ticket', $id, $ticket['project_code'] . '-' . $ticket['number'] . ' ' . $ticket['title']);
         $this->flash(__('{key} was deleted.', ['key' => $ticket['project_code'] . '-' . $ticket['number']]), 'warning');
         $this->redirect('/projects/' . $ticket['project_id']);
     }

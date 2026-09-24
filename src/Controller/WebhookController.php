@@ -58,6 +58,7 @@ class WebhookController extends Controller
         }
 
         $id = (new WebhookRepository())->create($name, $url, $events, $projectId, Auth::id());
+        \CantoTrack\Service\AuditLog::record('webhook_created', 'webhook', $id, $name, $url);
 
         $this->flash(__('Webhook added. Its secret is below, for the receiving end to check the signatures with.'));
         $this->redirect('/settings/webhooks/' . $id);
@@ -77,6 +78,7 @@ class WebhookController extends Controller
         }
 
         (new WebhookRepository())->update($id, $name, $url, $events, $projectId, isset($_POST['is_active']));
+        \CantoTrack\Service\AuditLog::record('webhook_updated', 'webhook', $id, $name, $url);
 
         $this->flash(__('Saved.'));
         $this->redirect('/settings/webhooks/' . $id);
@@ -86,8 +88,9 @@ class WebhookController extends Controller
     {
         Auth::requireAdmin();
 
-        $this->hookOr404($id);
+        $hook = $this->hookOr404($id);
         (new WebhookRepository())->delete($id);
+        \CantoTrack\Service\AuditLog::record('webhook_deleted', 'webhook', $id, (string) ($hook['name'] ?? '#' . $id));
 
         $this->flash(__('Webhook deleted, with its log.'), 'warning');
         $this->redirect('/settings/webhooks');

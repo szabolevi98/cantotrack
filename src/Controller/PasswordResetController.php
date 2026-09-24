@@ -116,6 +116,7 @@ class PasswordResetController extends Controller
         DatabaseConnection::get()->prepare('UPDATE password_resets SET used_at = NOW() WHERE id = :id')
             ->execute(['id' => $reset['id']]);
         (new LoginThrottle())->clear((string) $user['email']);
+        \CantoTrack\Service\AuditLog::record('password_reset', 'user', (int) $user['id'], (string) $user['email'], '', $user);
 
         $this->flash(__('Your password is changed. Sign in with the new one.'));
         $this->redirect('/login');

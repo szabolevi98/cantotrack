@@ -51,7 +51,7 @@
                 {{ 'Hours logged here are billable, unless the entry says otherwise'|t }}
             </label>
 
-            {% if editing %}
+            {% if editing and is_admin %}
                 <fieldset class="choice">
                     <legend>{{ 'Who sees it'|t }}</legend>
                     <label class="check">
@@ -93,6 +93,9 @@
                     </div>
                     <p class="hint">{{ 'The project’s rate counts instead of each person’s. Every hour logged counts against the hours; the billable ones, at their rate, against the money.'|t }}</p>
                 </fieldset>
+            {% endif %}
+
+            {% if editing %}
 
                 {# What a card on the board shows — fewer, on a board that
                    has a lot of them. #}
@@ -131,13 +134,24 @@
                 {{ project.visibility == 'private'
                     ? 'Only these people, and the administrators, can see the project.'|t
                     : 'Every member of the team sees this project. Add guests here — somebody from the client, say — to let them read and comment on it.'|t }}
+                {{ 'A lead runs the project’s settings — its columns, members and fields — without being an administrator.'|t }}
             </p>
             {% if members is not empty %}
                 <ul class="split-list">
                     {% for member in members %}
                         <li>
-                            <span>{{ member.name }}{% if member.role == 'guest' %} <span class="badge badge--amber">{{ 'Guest'|t }}</span>{% endif %}{% if not member.is_active %} <span class="badge badge--muted">{{ 'Deactivated'|t }}</span>{% endif %}</span>
+                            <span>{{ member.name }}{% if member.role == 'guest' %} <span class="badge badge--amber">{{ 'Guest'|t }}</span>{% endif %}{% if member.project_role == 'lead' %} <span class="badge badge--blue">{{ 'Lead'|t }}</span>{% endif %}{% if not member.is_active %} <span class="badge badge--muted">{{ 'Deactivated'|t }}</span>{% endif %}</span>
                             <span class="muted">{{ member.email }}</span>
+                            {% if member.role != 'guest' %}
+                                <form class="move" method="post" action="{{ url('/projects/' ~ project.id ~ '/members/' ~ member.id ~ '/role') }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                    <select class="field field--inline" name="role" data-autosubmit aria-label="{{ 'Role of {name}'|t({name: member.name}) }}">
+                                        <option value="member"{{ member.project_role != 'lead' ? ' selected' : '' }}>{{ 'Member'|t }}</option>
+                                        <option value="lead"{{ member.project_role == 'lead' ? ' selected' : '' }}>{{ 'Lead — runs its settings'|t }}</option>
+                                    </select>
+                                    <button class="button button--small autosubmit__button" type="submit">{{ 'Save'|t }}</button>
+                                </form>
+                            {% endif %}
                             <form method="post" action="{{ url('/projects/' ~ project.id ~ '/members/' ~ member.id ~ '/delete') }}">
                                 <input type="hidden" name="_token" value="{{ csrf_token }}">
                                 <button class="link-button" type="submit" aria-label="{{ 'Take {name} off the project'|t({name: member.name}) }}">×</button>
@@ -290,6 +304,7 @@
             </form>
         </section>
 
+        {% if is_admin %}
         <section class="card card--narrow">
             <h2 class="card__title">{{ 'Delete this project'|t }}</h2>
             <p class="card__body">
@@ -301,5 +316,6 @@
                 <button class="button button--danger" type="submit">{{ 'Delete {code}'|t({code: project.code}) }}</button>
             </form>
         </section>
+        {% endif %}
     {% endif %}
 {% endblock %}

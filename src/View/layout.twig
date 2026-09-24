@@ -94,12 +94,14 @@
                href="{{ url('/timesheet/approvals') }}"><i class="bi bi-clipboard-check" aria-hidden="true"></i><span>{{ 'Approvals'|t }}</span>{% set waiting = pending_weeks() %}{% if waiting > 0 %} <span class="sidebar__count">{{ waiting }}</span>{% endif %}</a>
             <a class="sidebar__link{{ current_path starts with '/settings/work-types' ? ' is-active' : '' }}"
                href="{{ url('/settings/work-types') }}"><i class="bi bi-tags" aria-hidden="true"></i><span>{{ 'Work types'|t }}</span></a>
-            <a class="sidebar__link{{ current_path starts with '/settings' and not (current_path starts with '/settings/webhooks') and not (current_path starts with '/settings/work-types') and not (current_path starts with '/settings/automation') ? ' is-active' : '' }}"
+            <a class="sidebar__link{{ current_path starts with '/settings' and not (current_path starts with '/settings/webhooks') and not (current_path starts with '/settings/work-types') and not (current_path starts with '/settings/automation') and not (current_path starts with '/settings/audit') ? ' is-active' : '' }}"
                href="{{ url('/settings') }}"><i class="bi bi-calendar3" aria-hidden="true"></i><span>{{ 'Calendar'|t }}</span></a>
             <a class="sidebar__link{{ current_path starts with '/settings/automation' ? ' is-active' : '' }}"
                href="{{ url('/settings/automation') }}"><i class="bi bi-lightning-charge" aria-hidden="true"></i><span>{{ 'Automation'|t }}</span></a>
             <a class="sidebar__link{{ current_path starts with '/settings/webhooks' ? ' is-active' : '' }}"
                href="{{ url('/settings/webhooks') }}"><i class="bi bi-broadcast" aria-hidden="true"></i><span>{{ 'Webhooks'|t }}</span></a>
+            <a class="sidebar__link{{ current_path starts with '/settings/audit' ? ' is-active' : '' }}"
+               href="{{ url('/settings/audit') }}"><i class="bi bi-shield-lock" aria-hidden="true"></i><span>{{ 'Audit log'|t }}</span></a>
         {% endif %}
     </nav>
     </div>

@@ -13,6 +13,7 @@
 use CantoTrack\Controller\ApiController;
 use CantoTrack\Controller\ApiTokenController;
 use CantoTrack\Controller\AttachmentController;
+use CantoTrack\Controller\AuditController;
 use CantoTrack\Controller\AutomationController;
 use CantoTrack\Controller\AvatarController;
 use CantoTrack\Controller\CalendarExportController;
@@ -140,6 +141,8 @@ $router->post('/sprints/{id}/delete', static fn($id) => (new SprintController())
 $router->post('/projects/{id}/statuses', static fn($id) => (new ProjectController())->createStatus((int) $id));
 $router->post('/statuses/{id}', static fn($id) => (new ProjectController())->updateStatus((int) $id));
 $router->post('/projects/{id}/moves', static fn($id) => (new ProjectController())->saveMoves((int) $id));
+$router->post('/projects/{id}/members/{user}/role', static fn($id, $user) => (new ProjectController())->memberRole((int) $id, (int) $user));
+$router->get('/settings/audit', static fn() => (new AuditController())->index());
 $router->post('/statuses/{id}/move', static fn($id) => (new ProjectController())->moveStatus((int) $id));
 $router->post('/statuses/{id}/delete', static fn($id) => (new ProjectController())->deleteStatus((int) $id));
 

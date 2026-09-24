@@ -77,6 +77,7 @@ class AutomationController extends Controller
 
         $rule = $this->ruleOr404($id);
         (new AutomationRepository())->setActive($id, (int) $rule['is_active'] !== 1);
+        \CantoTrack\Service\AuditLog::record('rule_toggled', 'rule', $id, (string) $rule['name'], (int) $rule['is_active'] === 1 ? 'paused' : 'at work');
 
         $this->flash((int) $rule['is_active'] === 1 ? __('“{name}” is paused.', ['name' => $rule['name']]) : __('“{name}” is at work again.', ['name' => $rule['name']]));
         $this->back('/settings/automation');
@@ -88,6 +89,7 @@ class AutomationController extends Controller
 
         $rule = $this->ruleOr404($id);
         (new AutomationRepository())->delete($id);
+        \CantoTrack\Service\AuditLog::record('rule_deleted', 'rule', $id, (string) $rule['name']);
 
         $this->flash(__('The rule “{name}” is gone.', ['name' => $rule['name']]), 'warning');
         $this->redirect('/settings/automation');
@@ -137,6 +139,7 @@ class AutomationController extends Controller
         }
 
         $id = (new AutomationRepository())->save($rule === null ? null : (int) $rule['id'], $projectId, $name, $trigger, $condition, $actions, Auth::id());
+        \CantoTrack\Service\AuditLog::record($rule === null ? 'rule_created' : 'rule_updated', 'rule', $id, $name, $trigger . ($condition !== '' ? ' · ' . $condition : ''));
 
         $this->flash($rule === null ? __('The rule is at work.') : __('Rule saved.'));
         $this->redirect('/settings/automation/' . $id);

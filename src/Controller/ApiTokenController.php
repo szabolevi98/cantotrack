@@ -52,6 +52,7 @@ class ApiTokenController extends Controller
         }
 
         Session::put('_new_token', (new ApiTokenRepository())->create((int) Auth::id(), $name, $expires ?: null));
+        \CantoTrack\Service\AuditLog::record('token_created', 'token', null, $name, $expires ? 'expires ' . $expires : 'never expires');
 
         $this->flash(__('Token made. Copy it now: it is not shown again.'));
         $this->redirect('/profile/tokens');
@@ -65,6 +66,7 @@ class ApiTokenController extends Controller
             $this->notFound(__('There is no such token of yours.'));
         }
 
+        \CantoTrack\Service\AuditLog::record('token_revoked', 'token', $id, '#' . $id);
         $this->flash(__('Token revoked. Anything still using it is refused from now on.'), 'warning');
         $this->redirect('/profile/tokens');
     }

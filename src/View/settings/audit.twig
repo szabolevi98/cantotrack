@@ -1,0 +1,100 @@
+{% extends 'layout.twig' %}
+
+{% block title %}{{ 'Audit log'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Audit log'|t }}{% endblock %}
+{% block subheading %}<p class="content__sub">{{ 'Who changed what: settings, people, access, deletions, sign-ins.'|t }} {{ plural('{count} entry', '{count} entries', total) }}</p>{% endblock %}
+
+{#
+    The sentence for each thing done. {subject} is what it was done to, as
+    it was called then.
+#}
+{% set sentences = {
+    signin: 'signed in',
+    signin_failed: 'a sign-in failed for {subject}',
+    signout: 'signed out',
+    password_changed: 'changed their password',
+    password_reset: 'reset their password by email',
+    two_factor_on: 'turned two-step sign-in on',
+    two_factor_off: 'turned two-step sign-in off',
+    token_created: 'made the access token {subject}',
+    token_revoked: 'revoked the access token {subject}',
+    person_created: 'added {subject}',
+    person_updated: 'changed {subject}',
+    person_password_reset: 'gave {subject} a new password',
+    project_created: 'created the project {subject}',
+    project_updated: 'changed the settings of {subject}',
+    project_deleted: 'deleted the project {subject}',
+    member_added: 'added a member to {subject}',
+    member_removed: 'took a member off {subject}',
+    member_role: 'changed a member’s role in {subject}',
+    column_created: 'added a column to {subject}',
+    column_updated: 'changed a column of {subject}',
+    column_deleted: 'deleted a column of {subject}',
+    moves_saved: 'changed the moves between the columns of {subject}',
+    field_created: 'added a field to {subject}',
+    field_updated: 'changed a field of {subject}',
+    field_deleted: 'deleted a field of {subject}',
+    ticket_deleted: 'deleted the ticket {subject}',
+    page_deleted: 'deleted the page {subject}',
+    settings_lock: 'closed the hours up to {subject}',
+    settings_currency: 'set the currency to {subject}',
+    holiday_added: 'added the holiday {subject}',
+    holiday_removed: 'removed the holiday {subject}',
+    rule_created: 'made the automation rule {subject}',
+    rule_updated: 'changed the automation rule {subject}',
+    rule_toggled: 'switched the automation rule {subject}',
+    rule_deleted: 'deleted the automation rule {subject}',
+    webhook_created: 'added the webhook {subject}',
+    webhook_updated: 'changed the webhook {subject}',
+    webhook_deleted: 'deleted the webhook {subject}'
+} %}
+
+{% block content %}
+    <form class="filters card" method="get" action="{{ url('/settings/audit') }}">
+        <select class="field field--inline" name="group" aria-label="{{ 'What'|t }}">
+            <option value="">{{ 'Everything'|t }}</option>
+            {% for group in groups %}
+                <option value="{{ group }}"{{ filters.group == group ? ' selected' : '' }}>{{ {access: 'Access and sign-ins', people: 'People', projects: 'Projects', work: 'Deleted work', settings: 'Settings and rules'}[group]|t }}</option>
+            {% endfor %}
+        </select>
+        <select class="field field--inline" name="person" aria-label="{{ 'Who'|t }}">
+            <option value="">{{ 'Anybody'|t }}</option>
+            {% for person in people %}
+                <option value="{{ person.id }}"{{ filters.user_id == person.id ? ' selected' : '' }}>{{ person.name }}</option>
+            {% endfor %}
+        </select>
+        <input class="field field--inline filters__search" type="search" name="q" value="{{ filters.q }}" placeholder="{{ 'A name, an address…'|t }}" aria-label="{{ 'Search'|t }}">
+        <button class="button" type="submit">{{ 'Show'|t }}</button>
+    </form>
+
+    <section class="card card--flush">
+        {% if entries is empty %}
+            <p class="card__empty">{{ 'Nothing recorded yet.'|t }}</p>
+        {% else %}
+            <table class="table table--compact audit">
+                <thead>
+                    <tr><th>{{ 'When'|t }}</th><th>{{ 'Who'|t }}</th><th>{{ 'What'|t }}</th><th>{{ 'Details'|t }}</th><th>{{ 'From'|t }}</th></tr>
+                </thead>
+                <tbody>
+                    {% for entry in entries %}
+                        <tr class="audit__row audit__row--{{ entry.action }}">
+                            <td class="audit__when"><time datetime="{{ entry.created_at }}">{{ entry.created_at|day }} {{ entry.created_at|date('H:i') }}</time></td>
+                            <td>{{ entry.user_name ?: '—' }}</td>
+                            <td>{{ (sentences[entry.action]|default(entry.action))|t({subject: entry.subject_label ?: '—'}) }}</td>
+                            <td class="audit__details">{{ entry.details }}</td>
+                            <td class="muted">{{ entry.ip }}</td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </section>
+
+    {% if pages > 1 %}
+        <nav class="pager" aria-label="{{ 'Pages'|t }}">
+            {% if page > 1 %}<a class="button" href="{{ url('/settings/audit?' ~ query ~ (query ? '&' : '') ~ 'page=' ~ (page - 1)) }}">← {{ 'Newer'|t }}</a>{% endif %}
+            <span class="muted">{{ '{page} of {pages}'|t({page: page, pages: pages}) }}</span>
+            {% if page < pages %}<a class="button" href="{{ url('/settings/audit?' ~ query ~ (query ? '&' : '') ~ 'page=' ~ (page + 1)) }}">{{ 'Older'|t }} →</a>{% endif %}
+        </nav>
+    {% endif %}
+{% endblock %}

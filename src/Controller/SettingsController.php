@@ -46,6 +46,7 @@ class SettingsController extends Controller
         }
 
         (new SettingRepository())->set(Calendar::LOCK_SETTING, $given === '' ? null : $given);
+        \CantoTrack\Service\AuditLog::record('settings_lock', 'settings', null, $given === '' ? '—' : $given);
 
         $this->flash($given === ''
             ? __('Hours are open again, apart from handed-in weeks.')
@@ -65,6 +66,7 @@ class SettingsController extends Controller
         }
 
         (new SettingRepository())->set(\CantoTrack\Service\Money::SETTING, $code);
+        \CantoTrack\Service\AuditLog::record('settings_currency', 'settings', null, $code);
 
         $this->flash(__('Amounts are in {code} now.', ['code' => $code]));
         $this->back('/settings');
@@ -83,6 +85,7 @@ class SettingsController extends Controller
         }
 
         (new Calendar())->addHoliday($day, $name);
+        \CantoTrack\Service\AuditLog::record('holiday_added', 'settings', null, $day . ' ' . $name);
 
         $this->flash(__('{day} is a holiday now.', ['day' => Format::day($day)]));
         $this->back('/settings?year=' . substr($day, 0, 4));
@@ -115,6 +118,7 @@ class SettingsController extends Controller
 
         $day = $this->input('day');
         (new Calendar())->removeHoliday($day);
+        \CantoTrack\Service\AuditLog::record('holiday_removed', 'settings', null, $day);
 
         $this->flash(__('{day} is a working day again.', ['day' => Format::day($day)]), 'warning');
         $this->back('/settings?year=' . substr($day, 0, 4));

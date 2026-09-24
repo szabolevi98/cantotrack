@@ -20,7 +20,7 @@
         <a class="button" href="{{ url('/projects/' ~ project.id ~ '/import') }}">{{ 'Import'|t }}</a>
         <a class="button button--primary" href="{{ url('/tickets/create?project=' ~ project.id) }}">{{ 'New ticket'|t }}</a>
     {% endif %}
-    {% if is_admin %}
+    {% if can_lead|default(is_admin) %}
         <a class="button" href="{{ url('/projects/' ~ project.id ~ '/edit') }}">{{ 'Settings'|t }}</a>
     {% endif %}
 {% endblock %}

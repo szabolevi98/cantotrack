@@ -59,6 +59,7 @@ class Auth
         Access::reset();
 
         (new UserRepository())->touchLastLogin((int) $user['id']);
+        \CantoTrack\Service\AuditLog::record('signin', 'user', (int) $user['id'], (string) $user['email'], '', $user);
     }
 
     /**
@@ -79,6 +80,12 @@ class Auth
 
     public static function logout(): void
     {
+        if (self::$user !== null || Session::get(self::KEY) !== null) {
+            $leaving = self::user();
+            if ($leaving !== null) {
+                \CantoTrack\Service\AuditLog::record('signout', 'user', (int) $leaving['id'], (string) $leaving['email'], '', $leaving);
+            }
+        }
         self::$user = null;
         Access::reset();
         Session::destroy();
@@ -168,6 +175,32 @@ class Auth
         if ((self::user()['role'] ?? '') === 'guest') {
             throw HttpError::forbidden(__('Guests can read and comment, but not change the work.'));
         }
+    }
+
+    /**
+     * Refuses anyone who does not run the project's settings: its leads, and
+     * the administrators — see the 0040 migration.
+     */
+    public static function requireProjectLead(int $projectId): void
+    {
+        self::require();
+
+        if (!self::leads($projectId)) {
+            throw HttpError::forbidden(__('The project’s settings are for its leads and the administrators.'));
+        }
+    }
+
+    /** Whether the signed-in person runs the project's settings. */
+    public static function leads(int $projectId): bool
+    {
+        if (self::isAdmin()) {
+            return true;
+        }
+
+        $user = self::user();
+
+        return $user !== null && ($user['role'] ?? '') !== 'guest'
+            && (new \CantoTrack\Model\ProjectRepository())->isLead($projectId, (int) $user['id']);
     }
 
     /** As above, and then refuses anyone who is not an admin. */

@@ -49,7 +49,7 @@ class ProjectRepository
     public function members(int $projectId): array
     {
         $statement = $this->db->prepare(
-            'SELECT u.id, u.name, u.email, u.role, u.is_active, m.added_at
+            'SELECT u.id, u.name, u.email, u.role, u.is_active, m.added_at, m.role AS project_role
              FROM project_members m JOIN users u ON u.id = m.user_id
              WHERE m.project_id = :project ORDER BY u.name'
         );
@@ -62,6 +62,22 @@ class ProjectRepository
     {
         $this->db->prepare('INSERT IGNORE INTO project_members (project_id, user_id) VALUES (:project, :user)')
             ->execute(['project' => $projectId, 'user' => $userId]);
+    }
+
+    /** Whether somebody leads a project: runs its settings. */
+    public function isLead(int $projectId, int $userId): bool
+    {
+        $statement = $this->db->prepare('SELECT EXISTS (SELECT 1 FROM project_members WHERE project_id = :project AND user_id = :user AND role = \'lead\')');
+        $statement->execute(['project' => $projectId, 'user' => $userId]);
+
+        return (bool) $statement->fetchColumn();
+    }
+
+    /** A member's role in a project: lead, or member. */
+    public function setMemberRole(int $projectId, int $userId, string $role): void
+    {
+        $this->db->prepare('UPDATE project_members SET role = :role WHERE project_id = :project AND user_id = :user')
+            ->execute(['role' => $role === 'lead' ? 'lead' : 'member', 'project' => $projectId, 'user' => $userId]);
     }
 
     public function removeMember(int $projectId, int $userId): void

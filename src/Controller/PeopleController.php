@@ -72,7 +72,8 @@ class PeopleController extends Controller
         }
 
         $password = UserRepository::newPassword();
-        $users->create($name, $email, $password, $role);
+        $newId = $users->create($name, $email, $password, $role);
+        \CantoTrack\Service\AuditLog::record('person_created', 'user', $newId, $name . ' <' . $email . '>', 'role: ' . $role);
 
         // Shown on the next page and never again: it is not stored in readable
         // form anywhere, which is the point.
@@ -132,6 +133,10 @@ class PeopleController extends Controller
         }
 
         $users->update($id, $name, $email, $role, $isActive);
+        \CantoTrack\Service\AuditLog::record('person_updated', 'user', $id, $name, \CantoTrack\Service\AuditLog::changes(
+            ['name' => $person['name'], 'email' => $person['email'], 'role' => $person['role'], 'active' => (int) $person['is_active'] === 1],
+            ['name' => $name, 'email' => $email, 'role' => $role, 'active' => $isActive]
+        ));
         $users->setWorkingWeek($id, $this->workingWeek());
 
         try {
@@ -156,6 +161,7 @@ class PeopleController extends Controller
         (new UserRepository())->setPassword($id, $password);
 
         Session::put('_new_password', ['email' => $person['email'], 'password' => $password]);
+        \CantoTrack\Service\AuditLog::record('person_password_reset', 'user', $id, (string) $person['name']);
         Session::flash(__('A new password for {name} is below.', ['name' => $person['name']]));
 
         $this->redirect('/people');

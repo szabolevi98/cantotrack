@@ -68,6 +68,7 @@ class TwoFactorController extends Controller
         Session::put(self::NEW_CODES, $codes);
         Auth::refresh();
 
+        \CantoTrack\Service\AuditLog::record('two_factor_on', 'user', Auth::id(), (string) (Auth::user()['email'] ?? ''));
         $this->flash(__('Two-step sign-in is on. Keep the recovery codes below somewhere safe.'));
         $this->redirect('/profile/two-factor');
     }
@@ -88,6 +89,7 @@ class TwoFactorController extends Controller
         (new TwoFactor())->disable((int) Auth::id());
         Auth::refresh();
 
+        \CantoTrack\Service\AuditLog::record('two_factor_off', 'user', Auth::id(), (string) (Auth::user()['email'] ?? ''));
         $this->flash(__('Two-step sign-in is off. The password alone signs you in again.'), 'warning');
         $this->redirect('/profile/two-factor');
     }
@@ -115,6 +117,7 @@ class TwoFactorController extends Controller
         }
 
         (new TwoFactor())->disable($userId);
+        \CantoTrack\Service\AuditLog::record('two_factor_off', 'user', $userId, (string) $person['email'], 'by an administrator');
 
         $this->flash(__('Two-step sign-in is off for {name}. They can turn it on again from their profile.', ['name' => $person['name']]), 'warning');
         $this->redirect('/people/' . $userId . '/edit');

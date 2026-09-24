@@ -17,14 +17,14 @@ class FieldController extends Controller
 {
     public function index(int $projectId): void
     {
-        Auth::requireAdmin();
+        Auth::requireProjectLead($projectId);
 
         $this->show($this->projectOr404($projectId));
     }
 
     public function create(int $projectId): void
     {
-        Auth::requireAdmin();
+        Auth::requireProjectLead($projectId);
 
         $project = $this->projectOr404($projectId);
 
@@ -36,15 +36,18 @@ class FieldController extends Controller
             return;
         }
 
+        \CantoTrack\Service\AuditLog::record('field_created', 'project', $projectId, $project['code'] . ' — ' . $project['name'], $this->input('name') . ' (' . $this->input('kind') . ')');
         $this->flash(__('Field added. Tickets of the project show it from now on.'));
         $this->redirect('/projects/' . $projectId . '/fields');
     }
 
     public function update(int $id): void
     {
-        Auth::requireAdmin();
+        Auth::require();
 
         $field = $this->fieldOr404($id);
+        Auth::requireProjectLead((int) $field['project_id']);
+        \CantoTrack\Service\AuditLog::record('field_updated', 'project', (int) $field['project_id'], (string) $field['name']);
 
         try {
             (new CustomFields())->define((int) $field['project_id'], $this->input('name'), (string) $field['kind'], $this->input('options'), isset($_POST['is_required']), $field);
@@ -58,9 +61,10 @@ class FieldController extends Controller
 
     public function move(int $id): void
     {
-        Auth::requireAdmin();
+        Auth::require();
 
         $field = $this->fieldOr404($id);
+        Auth::requireProjectLead((int) $field['project_id']);
         (new CustomFieldRepository())->move($field, $this->input('direction') === 'up' ? -1 : 1);
 
         $this->redirect('/projects/' . $field['project_id'] . '/fields');
@@ -68,10 +72,12 @@ class FieldController extends Controller
 
     public function delete(int $id): void
     {
-        Auth::requireAdmin();
+        Auth::require();
 
         $field = $this->fieldOr404($id);
+        Auth::requireProjectLead((int) $field['project_id']);
         (new CustomFieldRepository())->delete($id);
+        \CantoTrack\Service\AuditLog::record('field_deleted', 'project', (int) $field['project_id'], (string) $field['name']);
 
         $this->flash(__('The field “{field}” is gone, and its values with it.', ['field' => $field['name']]), 'warning');
         $this->redirect('/projects/' . $field['project_id'] . '/fields');

@@ -74,6 +74,7 @@ class ProjectController extends Controller
         $board = (new TicketRepository())->board($id, $statuses, $filters);
 
         $this->render('projects/show.twig', [
+            'can_lead' => Auth::leads($id),
             'budget' => (new \CantoTrack\Service\Budget())->of($project),
             'project' => $project,
             'board' => $board['columns'],
@@ -240,26 +241,8 @@ class ProjectController extends Controller
 
         $id = $projects->create($code, $name, $this->input('description'));
         $projects->setBilling($id, (new ClientRepository())->findOrCreate($this->input('client')), isset($_POST['billable_default']));
-
-        if (isset($_POST['budget_shown'])) {
-            try {
-                $projects->setBudget(
-                    $id,
-                    \CantoTrack\Service\Money::parse($this->input('hourly_rate')),
-                    \CantoTrack\Service\Money::parse($this->input('budget_hours')),
-                    \CantoTrack\Service\Money::parse($this->input('budget_amount')),
-                    (int) ($this->input('budget_alert') ?: 80)
-                );
-            } catch (\CantoTrack\Core\ValidationError $e) {
-                $this->flash($e->getMessage(), 'danger');
-                $this->redirect('/projects/' . $id . '/edit#budget');
-            }
-        }
-
-        if (isset($_POST['card_fields_shown'])) {
-            $projects->setCardFields($id, array_values(array_map('strval', (array) ($_POST['card_fields'] ?? []))));
-        }
         $projects->setVisibility($id, $this->input('visibility'));
+        \CantoTrack\Service\AuditLog::record('project_created', 'project', $id, $code . ' — ' . $name);
 
         $this->flash(__('Project {code} created.', ['code' => $code]));
         $this->redirect('/projects/' . $id);
@@ -267,7 +250,7 @@ class ProjectController extends Controller
 
     public function editForm(int $id): void
     {
-        Auth::requireAdmin();
+        Auth::requireProjectLead($id);
 
         $this->renderForm([
             'project' => $this->projectOr404($id),
@@ -279,7 +262,7 @@ class ProjectController extends Controller
     /** Adds somebody to a project: for a private one, or for a guest. */
     public function addMember(int $id): void
     {
-        Auth::requireAdmin();
+        Auth::requireProjectLead($id);
 
         $this->projectOr404($id);
         $person = (new UserRepository())->findActive((int) $this->idInput('user_id'));
@@ -290,6 +273,7 @@ class ProjectController extends Controller
         }
 
         (new ProjectRepository())->addMember($id, (int) $person['id']);
+        \CantoTrack\Service\AuditLog::record('member_added', 'project', $id, $this->label($id), (string) $person['name']);
 
         $this->flash(__('{name} is a member of the project now.', ['name' => $person['name']]));
         $this->redirect('/projects/' . $id . '/edit#members');
@@ -297,13 +281,48 @@ class ProjectController extends Controller
 
     public function removeMember(int $id, int $userId): void
     {
-        Auth::requireAdmin();
+        Auth::requireProjectLead($id);
 
         $this->projectOr404($id);
         (new ProjectRepository())->removeMember($id, $userId);
+        \CantoTrack\Service\AuditLog::record('member_removed', 'project', $id, $this->label($id), (string) ((new UserRepository())->find($userId)['name'] ?? '#' . $userId));
 
         $this->flash(__('Taken off the project.'), 'warning');
         $this->redirect('/projects/' . $id . '/edit#members');
+    }
+
+    /**
+     * A member's role in the project: its lead runs its settings. Guests
+     * read and comment, and lead nothing.
+     */
+    public function memberRole(int $id, int $userId): void
+    {
+        Auth::requireProjectLead($id);
+
+        $this->projectOr404($id);
+        $person = (new UserRepository())->find($userId);
+        $role = $this->input('role') === 'lead' ? 'lead' : 'member';
+
+        if ($person === null || ($role === 'lead' && $person['role'] === 'guest')) {
+            $this->flash(__('A guest cannot lead a project.'), 'danger');
+            $this->redirect('/projects/' . $id . '/edit#members');
+        }
+
+        (new ProjectRepository())->setMemberRole($id, $userId, $role);
+        \CantoTrack\Service\AuditLog::record('member_role', 'project', $id, $this->label($id), $person['name'] . ': ' . $role);
+
+        $this->flash($role === 'lead'
+            ? __('{name} leads the project now.', ['name' => $person['name']])
+            : __('{name} is a member of the project, not its lead.', ['name' => $person['name']]));
+        $this->redirect('/projects/' . $id . '/edit#members');
+    }
+
+    /** What the record calls a project: its code and name. */
+    private function label(int $id): string
+    {
+        $project = (new ProjectRepository())->find($id);
+
+        return $project === null ? '#' . $id : $project['code'] . ' — ' . $project['name'];
     }
 
     /** The settings form, with the clients it offers. */
@@ -320,7 +339,7 @@ class ProjectController extends Controller
 
     public function update(int $id): void
     {
-        Auth::requireAdmin();
+        Auth::requireProjectLead($id);
 
         $project = $this->projectOr404($id);
         $name = $this->input('name');
@@ -338,6 +357,38 @@ class ProjectController extends Controller
         $projects = new ProjectRepository();
         $projects->update($id, $name, $this->input('description'), isset($_POST['is_archived']));
         $projects->setBilling($id, (new ClientRepository())->findOrCreate($this->input('client')), isset($_POST['billable_default']));
+
+        if (isset($_POST['card_fields_shown'])) {
+            $projects->setCardFields($id, array_values(array_map('strval', (array) ($_POST['card_fields'] ?? []))));
+        }
+
+        // Who sees it, and what its hours are worth, stay the administrators'.
+        if (Auth::isAdmin()) {
+            if (in_array($this->input('visibility'), ['team', 'private'], true)) {
+                $projects->setVisibility($id, $this->input('visibility'));
+            }
+
+            if (isset($_POST['budget_shown'])) {
+                try {
+                    $projects->setBudget(
+                        $id,
+                        \CantoTrack\Service\Money::parse($this->input('hourly_rate')),
+                        \CantoTrack\Service\Money::parse($this->input('budget_hours')),
+                        \CantoTrack\Service\Money::parse($this->input('budget_amount')),
+                        (int) ($this->input('budget_alert') ?: 80)
+                    );
+                } catch (\CantoTrack\Core\ValidationError $e) {
+                    $this->flash($e->getMessage(), 'danger');
+                    $this->redirect('/projects/' . $id . '/edit#budget');
+                }
+            }
+        }
+
+        $after = (array) $projects->find($id);
+        \CantoTrack\Service\AuditLog::record('project_updated', 'project', $id, $project['code'] . ' — ' . $name, \CantoTrack\Service\AuditLog::changes(
+            array_intersect_key($project, array_flip(['name', 'visibility', 'is_archived', 'hourly_rate', 'budget_hours', 'budget_amount', 'card_fields'])),
+            array_intersect_key($after, array_flip(['name', 'visibility', 'is_archived', 'hourly_rate', 'budget_hours', 'budget_amount', 'card_fields']))
+        ));
 
         $this->flash(__('Project saved.'));
         $this->redirect('/projects/' . $id);
@@ -366,6 +417,7 @@ class ProjectController extends Controller
         );
         $projects->delete($id);
         AttachmentService::unlinkAll($files);
+        \CantoTrack\Service\AuditLog::record('project_deleted', 'project', $id, $project['code'] . ' — ' . $project['name']);
 
         $this->flash(__('Project {code} and its tickets were deleted.', ['code' => $project['code']]), 'warning');
         $this->redirect('/projects');
@@ -377,7 +429,7 @@ class ProjectController extends Controller
 
     public function createStatus(int $id): void
     {
-        Auth::requireAdmin();
+        Auth::requireProjectLead($id);
 
         $this->projectOr404($id);
         $name = $this->input('name');
@@ -395,15 +447,17 @@ class ProjectController extends Controller
             $this->idInput('wip_limit')
         );
 
+        \CantoTrack\Service\AuditLog::record('column_created', 'project', $id, $this->label($id), $name);
         $this->flash(__('Column {name} added.', ['name' => $name]));
         $this->redirect('/projects/' . $id . '/edit#workflow');
     }
 
     public function updateStatus(int $statusId): void
     {
-        Auth::requireAdmin();
+        Auth::require();
 
         $status = $this->statusOr404($statusId);
+        Auth::requireProjectLead((int) $status['project_id']);
         $name = $this->input('name');
         $statuses = new StatusRepository();
 
@@ -422,6 +476,7 @@ class ProjectController extends Controller
 
         $statuses->update($statusId, mb_substr($name, 0, 60), $category, $this->input('colour', 'slate'), $this->idInput('wip_limit'));
 
+        \CantoTrack\Service\AuditLog::record('column_updated', 'project', (int) $status['project_id'], $this->label((int) $status['project_id']), $status['name'] . ($status['name'] !== $name ? ' → ' . $name : '') . ', ' . $category);
         $this->flash(__('Column {name} saved.', ['name' => $name]));
         $this->redirect('/projects/' . $status['project_id'] . '/edit#workflow');
     }
@@ -429,7 +484,7 @@ class ProjectController extends Controller
     /** Which column a ticket may go to from which — the grid on the settings page. */
     public function saveMoves(int $id): void
     {
-        Auth::requireAdmin();
+        Auth::requireProjectLead($id);
 
         $this->projectOr404($id);
         $statuses = new StatusRepository();
@@ -445,15 +500,17 @@ class ProjectController extends Controller
             $statuses->setMoves($id, is_array($_POST['moves'] ?? null) ? $_POST['moves'] : []);
             $this->flash(__('The moves are saved.'));
         }
+        \CantoTrack\Service\AuditLog::record('moves_saved', 'project', $id, $this->label($id), $this->input('reset') !== '' ? 'every move allowed' : '');
 
         $this->redirect('/projects/' . $id . '/edit#moves');
     }
 
     public function moveStatus(int $statusId): void
     {
-        Auth::requireAdmin();
+        Auth::require();
 
         $status = $this->statusOr404($statusId);
+        Auth::requireProjectLead((int) $status['project_id']);
         (new StatusRepository())->move($statusId, $this->input('direction') === 'left' ? -1 : 1);
 
         $this->redirect('/projects/' . $status['project_id'] . '/edit#workflow');
@@ -461,9 +518,10 @@ class ProjectController extends Controller
 
     public function deleteStatus(int $statusId): void
     {
-        Auth::requireAdmin();
+        Auth::require();
 
         $status = $this->statusOr404($statusId);
+        Auth::requireProjectLead((int) $status['project_id']);
         $projectId = (int) $status['project_id'];
         $statuses = new StatusRepository();
         $columns = $statuses->forProject($projectId);

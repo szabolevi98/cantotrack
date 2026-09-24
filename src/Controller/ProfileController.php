@@ -194,6 +194,7 @@ class ProfileController extends Controller
         }
 
         (new UserRepository())->setPassword((int) $me['id'], $new);
+        \CantoTrack\Service\AuditLog::record('password_changed', 'user', (int) $me['id'], (string) $me['email']);
 
         $this->flash(__('Your password is changed.'));
         $this->redirect('/profile');

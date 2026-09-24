@@ -173,6 +173,7 @@ class PageController extends Controller
         $page = $this->pageOr404($id);
         (new Pages())->delete($page);
 
+        \CantoTrack\Service\AuditLog::record('page_deleted', 'page', (int) $page['id'], (string) $page['title']);
         $this->flash(__('The page “{title}” is gone; the pages under it moved up.', ['title' => $page['title']]), 'warning');
         $this->redirect('/projects/' . $page['project_id'] . '/pages');
     }

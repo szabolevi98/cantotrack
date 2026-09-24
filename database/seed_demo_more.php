@@ -1164,6 +1164,16 @@ $budgets->setBudget($projectOf['BIKE'], null, (float) round($loggedIn($projectOf
 $budgets->setBudget($projectOf['CLINIC'], 19000.0, (float) round($loggedIn($projectOf['CLINIC']) * 1.8), null, 80);
 $budgets->setBudget($projectOf['WINE'], null, null, 12000000.0, 85);
 
+// Two projects run by their own leads: the bike app by Zsófia, the
+// clinic's by Gergő — their settings theirs, without being administrators.
+$leads = new CantoTrack\Model\ProjectRepository();
+foreach (['BIKE' => 'zsofia', 'CLINIC' => 'gergo'] as $leadCode => $leadHandle) {
+    if (isset($who[$leadHandle])) {
+        $leads->addMember($projectOf[$leadCode], $who[$leadHandle]);
+        $leads->setMemberRole($projectOf[$leadCode], $who[$leadHandle], 'lead');
+    }
+}
+
 // A dashboard of their own, for the two people most likely to be looked
 // at first.
 $database->prepare('DELETE FROM dashboard_gadgets WHERE user_id IN (:me, :anna)')->execute(['me' => $who['me'], 'anna' => $who['anna']]);

@@ -151,3 +151,21 @@
     margin-right: 12px;
     font-size: 0.85rem;
 }
+
+/* The audit log: when on one line, the details in small type. */
+.audit__when {
+    white-space: nowrap;
+}
+
+.audit__details {
+    max-width: 28rem;
+    color: var(--ct-muted);
+    font-size: 0.84rem;
+    word-break: break-word;
+}
+
+.audit__row--signin_failed td,
+.audit__row--project_deleted td,
+.audit__row--ticket_deleted td {
+    background: var(--ct-danger-soft, rgba(220, 38, 38, 0.06));
+}

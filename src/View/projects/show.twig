@@ -137,6 +137,7 @@
         select on every card does the same without a mouse, on a phone, or
         without a line of JavaScript.
     #}
+    {% set shows = project.card_fields ? project.card_fields|split(',') : ['priority', 'epic', 'labels', 'family', 'assignee', 'due', 'points', 'logged'] %}
     <div class="board" style="--columns: {{ statuses|length }}"
          data-move-url="{{ url('/tickets/{id}/move') }}" data-move-failed="{{ 'The move did not go through.'|t }}" data-board>
         <div class="board__row board__row--heads">
@@ -174,28 +175,29 @@
                                         {% if ticket.blocked_by > 0 and ticket.status_category != 'done' %}
                                             <span class="badge badge--red" title="{{ 'Blocked by an unfinished ticket'|t }}">{{ 'Blocked'|t }}</span>
                                         {% endif %}
-                                        {{ ui.priority(ticket.priority) }}
+                                        {% if 'priority' in shows %}{{ ui.priority(ticket.priority) }}{% endif %}
                                     </span>
                                 </div>
 
                                 <a class="ticket-card__title" href="{{ url('/tickets/' ~ ticket.id) }}" draggable="false" data-panel>{{ ticket.title }}</a>
 
-                                {% if ticket.epic_title or ticket.label_names or ticket.parent_id or ticket.subtask_count > 0 %}
+                                {% set tags = ('epic' in shows and ticket.epic_title and lanes_by != 'epic') or ('labels' in shows and ticket.label_names) or ('family' in shows and (ticket.parent_id or ticket.subtask_count > 0)) %}
+                                {% if tags %}
                                     <div class="ticket-card__tags">
-                                        {{ ui.family(ticket) }}
-                                        {% if ticket.epic_title and lanes_by != 'epic' %}<span class="ticket-card__epic">{{ ticket.epic_title }}</span>{% endif %}
-                                        {{ ui.labels(ticket.label_names|lines, false) }}
+                                        {% if 'family' in shows %}{{ ui.family(ticket) }}{% endif %}
+                                        {% if 'epic' in shows and ticket.epic_title and lanes_by != 'epic' %}<span class="ticket-card__epic">{{ ticket.epic_title }}</span>{% endif %}
+                                        {% if 'labels' in shows %}{{ ui.labels(ticket.label_names|lines, false) }}{% endif %}
                                     </div>
                                 {% endif %}
 
                                 <div class="ticket-card__foot">
-                                    {% if lanes_by != 'assignee' %}{{ ui.person(ticket.assignee_name, ticket.assignee_id) }}{% else %}<span></span>{% endif %}
+                                    {% if lanes_by != 'assignee' and 'assignee' in shows %}{{ ui.person(ticket.assignee_name, ticket.assignee_id) }}{% else %}<span></span>{% endif %}
                                     <span class="ticket-card__meta">
-                                        {{ ui.due(ticket.due_on, ticket.status_category == 'done') }}
-                                        {% if ticket.story_points is not null %}
+                                        {% if 'due' in shows %}{{ ui.due(ticket.due_on, ticket.status_category == 'done') }}{% endif %}
+                                        {% if 'points' in shows and ticket.story_points is not null %}
                                             <span class="points" title="{{ 'Story points'|t }}">{{ ticket.story_points }}</span>
                                         {% endif %}
-                                        {% if ticket.logged_minutes > 0 %}
+                                        {% if 'logged' in shows and ticket.logged_minutes > 0 %}
                                             <span class="muted">{{ ticket.logged_minutes|duration }}</span>
                                         {% endif %}
                                     </span>

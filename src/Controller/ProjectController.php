@@ -239,6 +239,10 @@ class ProjectController extends Controller
 
         $id = $projects->create($code, $name, $this->input('description'));
         $projects->setBilling($id, (new ClientRepository())->findOrCreate($this->input('client')), isset($_POST['billable_default']));
+
+        if (isset($_POST['card_fields_shown'])) {
+            $projects->setCardFields($id, array_values(array_map('strval', (array) ($_POST['card_fields'] ?? []))));
+        }
         $projects->setVisibility($id, $this->input('visibility'));
 
         $this->flash(__('Project {code} created.', ['code' => $code]));

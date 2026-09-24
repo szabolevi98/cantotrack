@@ -105,6 +105,38 @@ class ProjectRepository
         return $id;
     }
 
+    /** What a card on the board can show, in the order the settings list it. */
+    public const CARD_FIELDS = ['priority', 'epic', 'labels', 'family', 'assignee', 'due', 'points', 'logged'];
+
+    /**
+     * What the project's cards show — see the 0038 migration. Every one of
+     * them, the way it always was, means nothing is kept.
+     *
+     * @param list<string> $fields
+     */
+    public function setCardFields(int $id, array $fields): void
+    {
+        $kept = array_values(array_intersect(self::CARD_FIELDS, $fields));
+
+        $this->db->prepare('UPDATE projects SET card_fields = :fields WHERE id = :id')->execute([
+            'fields' => count($kept) === count(self::CARD_FIELDS) ? null : implode(',', $kept),
+            'id' => $id,
+        ]);
+    }
+
+    /**
+     * What a project's cards show.
+     *
+     * @param array<string, mixed> $project
+     * @return list<string>
+     */
+    public static function cardFields(array $project): array
+    {
+        $kept = $project['card_fields'] ?? null;
+
+        return $kept === null ? self::CARD_FIELDS : array_values(array_filter(explode(',', (string) $kept)));
+    }
+
     public function update(int $id, string $name, ?string $description, bool $isArchived): void
     {
         // The code is not editable. It is printed on every ticket this project

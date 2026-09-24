@@ -1504,4 +1504,8 @@ return [
     'the field’s name = its value, such as Site = Pécs' => 'a mező neve = az értéke, például Site = Pécs',
     'a name or an e-mail address; reporter; actor' => 'egy név vagy e-mail-cím; reporter; actor',
     'its title; {key} and {title} are filled in' => 'a címe; a {key} és a {title} kitöltődik',
+    'On the board’s cards' => 'A board kártyáin',
+    'Parent and subtasks' => 'Szülő és részfeladatok',
+    'Due date' => 'Határidő',
+    'Hours logged' => 'Rögzített órák',
 ];

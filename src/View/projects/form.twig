@@ -64,6 +64,23 @@
                     </label>
                 </fieldset>
 
+                {# What a card on the board shows — fewer, on a board that
+                   has a lot of them. #}
+                <fieldset class="choice card-fields">
+                    <legend>{{ 'On the board’s cards'|t }}</legend>
+                    <input type="hidden" name="card_fields_shown" value="1">
+                    {% set shown = project.card_fields ? project.card_fields|split(',') : ['priority', 'epic', 'labels', 'family', 'assignee', 'due', 'points', 'logged'] %}
+                    {% for field, label in {
+                        priority: 'Priority', epic: 'Epic', labels: 'Labels', family: 'Parent and subtasks',
+                        assignee: 'Assignee', due: 'Due date', points: 'Story points', logged: 'Hours logged'
+                    } %}
+                        <label class="check">
+                            <input type="checkbox" name="card_fields[]" value="{{ field }}"{{ field in shown ? ' checked' : '' }}>
+                            {{ label|t }}
+                        </label>
+                    {% endfor %}
+                </fieldset>
+
                 <label class="check">
                     <input type="checkbox" name="is_archived" value="1"{{ project.is_archived ? ' checked' : '' }}>
                     {{ 'Archived — hidden from the lists, and takes no new tickets'|t }}

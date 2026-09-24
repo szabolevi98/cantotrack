@@ -97,6 +97,39 @@ class AttachmentService
             throw new ValidationError(__('There is no such ticket.'));
         }
 
+        $id = $this->attachments->create(['ticket_id' => $ticketId, 'user_id' => $userId] + $this->keep($upload));
+        $stored = (array) $this->attachments->find($id);
+
+        $this->activity->happened($ticket, $userId, 'attached', 'attachment', null, (string) $stored['original_name']);
+
+        return $stored;
+    }
+
+    /**
+     * Takes one uploaded file onto a page — a picture pasted into the page
+     * being written. The caller has made sure the page is one the person
+     * may change.
+     *
+     * @param array<string, mixed> $upload
+     * @throws ValidationError
+     */
+    public function storeOnPage(int $pageId, int $userId, array $upload): array
+    {
+        $id = $this->attachments->create(['page_id' => $pageId, 'user_id' => $userId] + $this->keep($upload));
+
+        return (array) $this->attachments->find($id);
+    }
+
+    /**
+     * Checks an upload and moves it into the uploads folder: what it is,
+     * how big, and where it is kept now.
+     *
+     * @param array<string, mixed> $upload
+     * @return array{original_name: string, stored_path: string, mime: string, size: int, width: ?int, height: ?int}
+     * @throws ValidationError
+     */
+    private function keep(array $upload): array
+    {
         $error = (int) ($upload['error'] ?? UPLOAD_ERR_NO_FILE);
         $tmp = (string) ($upload['tmp_name'] ?? '');
         $name = self::cleanName((string) ($upload['name'] ?? 'file'));
@@ -131,20 +164,14 @@ class AttachmentService
         $size = (int) filesize($target);
         $dimensions = in_array($mime, self::INLINE, true) ? @getimagesize($target) : false;
 
-        $id = $this->attachments->create([
-            'ticket_id' => $ticketId,
-            'user_id' => $userId,
+        return [
             'original_name' => $name,
             'stored_path' => $relative,
             'mime' => $mime,
             'size' => $size,
             'width' => $dimensions === false ? null : min(65535, (int) $dimensions[0]),
             'height' => $dimensions === false ? null : min(65535, (int) $dimensions[1]),
-        ]);
-
-        $this->activity->happened($ticket, $userId, 'attached', 'attachment', null, $name);
-
-        return (array) $this->attachments->find($id);
+        ];
     }
 
     public function remove(array $attachment, ?int $actorId): void
@@ -152,7 +179,7 @@ class AttachmentService
         $this->attachments->delete((int) $attachment['id']);
         self::unlink((string) $attachment['stored_path']);
 
-        $ticket = $this->tickets->find((int) $attachment['ticket_id']);
+        $ticket = $attachment['ticket_id'] === null ? null : $this->tickets->find((int) $attachment['ticket_id']);
         if ($ticket !== null) {
             $this->activity->happened($ticket, $actorId, 'detached', 'attachment', (string) $attachment['original_name']);
         }

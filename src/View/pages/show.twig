@@ -1,4 +1,5 @@
 {% extends 'layout.twig' %}
+{% import 'common/macros.twig' as ui %}
 {% set search_project = {id: project.id, code: project.code} %}
 
 {% block title %}{{ page.title }} — {{ project.code }} — {{ app_name }}{% endblock %}
@@ -31,6 +32,45 @@
                     {% include 'pages/body.twig' with {parts: parts} only %}
                 {% endif %}
             </article>
+
+            {#
+                What people said about the page, under it — a question about
+                a decision, "this is out of date".
+            #}
+            <section class="card" id="comments">
+                <h2 class="card__title">{{ 'Comments'|t }}{% if comments is not empty %} <span class="muted">{{ comments|length }}</span>{% endif %}</h2>
+                {% if comments is not empty %}
+                    <ol class="timeline">
+                        {% for comment in comments %}
+                            <li class="timeline__comment" id="page-comment-{{ comment.id }}">
+                                {{ ui.face(comment.user_name, comment.user_id, 'avatar avatar--small') }}
+                                <div class="comment">
+                                    <header class="comment__head">
+                                        <strong>{{ comment.user_name }}</strong>
+                                        <time class="muted" datetime="{{ comment.created_at }}">{{ comment.created_at|day }} {{ comment.created_at|date('H:i') }}</time>
+                                    </header>
+                                    <div class="prose markdown">{{ comment.body|markdown }}</div>
+                                    {% if comment.user_id == current_user.id or is_admin %}
+                                        <div class="comment__actions">
+                                            <form method="post" action="{{ url('/page-comments/' ~ comment.id ~ '/delete') }}" data-confirm="{{ 'Delete this comment?'|t }}">
+                                                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                                <button class="link-button link-button--text" type="submit">{{ 'Delete'|t }}</button>
+                                            </form>
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </li>
+                        {% endfor %}
+                    </ol>
+                {% endif %}
+                <form class="comment-form" method="post" action="{{ url('/pages/' ~ page.id ~ '/comments') }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                    <label for="page-comment">{{ 'Add a comment'|t }}</label>
+                    <textarea id="page-comment" class="field" name="body" rows="3" required data-suggest
+                              placeholder="{{ 'Markdown works. CT-14 links to that ticket, @name tells somebody.'|t }}"></textarea>
+                    <button class="button button--primary" type="submit">{{ 'Comment'|t }}</button>
+                </form>
+            </section>
 
             {% if children is not empty %}
                 <section class="card">

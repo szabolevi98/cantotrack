@@ -28,8 +28,36 @@ class AttachmentController extends Controller
             $this->notFound(__('There is no such ticket.'));
         }
 
+        $this->receive(
+            fn(array $file): array => (new AttachmentService())->store($ticketId, (int) Auth::id(), $file),
+            '/tickets/' . $ticketId . '#attachments'
+        );
+    }
+
+    /** Pictures pasted into a page being written — answered like the ticket's. */
+    public function uploadToPage(int $pageId): void
+    {
+        Auth::requireMember();
+
+        if ((new \CantoTrack\Model\PageRepository())->find($pageId) === null) {
+            $this->notFound(__('There is no such page.'));
+        }
+
+        $this->receive(
+            fn(array $file): array => (new AttachmentService())->storeOnPage($pageId, (int) Auth::id(), $file),
+            '/pages/' . $pageId . '/edit'
+        );
+    }
+
+    /**
+     * Every file of an upload, each through `$store`: JSON back for the
+     * page's own script, a redirect with a message for the form.
+     *
+     * @param callable(array<string, mixed>): array<string, mixed> $store
+     */
+    private function receive(callable $store, string $back): never
+    {
         $wantsJson = str_contains((string) ($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json');
-        $service = new AttachmentService();
         $stored = [];
         $errors = [];
 
@@ -41,7 +69,7 @@ class AttachmentController extends Controller
 
         foreach (self::files() as $file) {
             try {
-                $stored[] = $service->store($ticketId, (int) Auth::id(), $file);
+                $stored[] = $store($file);
             } catch (ValidationError $e) {
                 $errors[] = $e->getMessage();
             }
@@ -65,7 +93,7 @@ class AttachmentController extends Controller
             $this->flash(__n('{count} file attached.', '{count} files attached.', count($stored)));
         }
 
-        $this->redirect('/tickets/' . $ticketId . '#attachments');
+        $this->redirect($back);
     }
 
     /**
@@ -122,7 +150,7 @@ class AttachmentController extends Controller
         (new AttachmentService())->remove($attachment, Auth::id());
 
         $this->flash(__('{name} removed.', ['name' => $attachment['original_name']]), 'warning');
-        $this->redirect('/tickets/' . $attachment['ticket_id'] . '#attachments');
+        $this->redirect($attachment['page_id'] !== null ? '/pages/' . $attachment['page_id'] : '/tickets/' . $attachment['ticket_id'] . '#attachments');
     }
 
     private function address(array $attachment): string

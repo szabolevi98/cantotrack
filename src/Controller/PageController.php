@@ -52,7 +52,51 @@ class PageController extends Controller
             'ancestors' => $pages->ancestors($page),
             'tree' => $pages->tree((int) $page['project_id']),
             'children' => array_values(array_filter($pages->forProject((int) $page['project_id']), static fn(array $p): bool => (int) $p['parent_id'] === $id)),
+            'comments' => $pages->comments($id),
         ]);
+    }
+
+    /**
+     * Something said under a page — by anybody who can read it, a guest
+     * included, the same as under a ticket.
+     */
+    public function comment(int $id): void
+    {
+        Auth::require();
+
+        $page = $this->pageOr404($id);
+        $body = trim((string) ($_POST['body'] ?? ''));
+
+        if ($body === '') {
+            $this->flash(__('A comment needs some words.'), 'danger');
+            $this->redirect('/pages/' . $id . '#comments');
+        }
+
+        $commentId = (new PageRepository())->addComment((int) $page['id'], (int) Auth::id(), mb_substr($body, 0, 20000));
+
+        $this->redirect('/pages/' . $id . '#page-comment-' . $commentId);
+    }
+
+    /** Takes a comment back: the one who wrote it, or an administrator. */
+    public function deleteComment(int $id): void
+    {
+        Auth::require();
+
+        $pages = new PageRepository();
+        $comment = $pages->findComment($id);
+
+        if ($comment === null) {
+            $this->notFound(__('There is no such comment.'));
+        }
+
+        if ((int) $comment['user_id'] !== (int) Auth::id() && !Auth::isAdmin()) {
+            $this->forbidden(__('Only the person who wrote a comment, or an administrator, can delete it.'));
+        }
+
+        $pages->deleteComment($id);
+
+        $this->flash(__('Comment deleted.'), 'warning');
+        $this->redirect('/pages/' . $comment['page_id'] . '#comments');
     }
 
     public function createForm(int $projectId): void

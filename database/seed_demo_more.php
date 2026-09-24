@@ -1135,6 +1135,21 @@ on the week's calendar, or write a query on the ticket list:
 MD, $who['me']);
 }
 
+// A few words under the pages, the way people leave them.
+$pageComments = new CantoTrack\Model\PageRepository();
+foreach ([
+    ['Support', 'reka', 'Should weekends count towards "within a working day"? A client asked on Friday evening.'],
+    ['Support', 'tamas', 'No — working days only. I will add a line about it.'],
+    ['The tracker, tracked in itself', 'anna', 'The query example is the one I use every morning, thanks @levente.'],
+] as [$pageTitle, $pageHandle, $pageSaid]) {
+    $found = $database->prepare('SELECT id FROM pages WHERE title = :title ORDER BY id DESC LIMIT 1');
+    $found->execute(['title' => $pageTitle]);
+    $pageId = (int) $found->fetchColumn();
+    if ($pageId > 0 && isset($who[$pageHandle])) {
+        $pageComments->addComment($pageId, $who[$pageHandle], $pageSaid);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // A few automation rules, and one morning of the daily ones
 // ---------------------------------------------------------------------------

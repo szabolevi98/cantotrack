@@ -888,6 +888,23 @@ if ($email === null || $password === null) {
     check('a page can be written, with a list of tickets in it', $pageId > 0 && str_contains($pageShown, 'page-tickets') && str_contains($pageShown, 'Smoke test ticket'));
     check('and the ticket says where it is written about', str_contains(request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'], 'Smoke page'));
 
+    // A picture pasted into the page, and a word said under it.
+    $pixel = tempnam(sys_get_temp_dir(), 'ct-page-png-');
+    file_put_contents($pixel, base64_decode('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNkYPhfDwAChwGA60e6kgAAAABJRU5ErkJggg=='));
+    $pagePicture = upload($baseUrl . '/pages/' . $pageId . '/attachments', $token, [
+        ['path' => $pixel, 'name' => 'diagram.png', 'type' => 'image/png'],
+    ], $jar, true);
+    $pageFiles = json_decode($pagePicture['body'], true)['files'] ?? [];
+    check(
+        'a picture can be pasted into a page, and is served to whoever reads it',
+        $pagePicture['status'] === 200 && count($pageFiles) === 1 && request($pageFiles[0]['url'], [], $jar)['status'] === 200,
+        'status ' . $pagePicture['status']
+    );
+    @unlink($pixel);
+
+    request($baseUrl . '/pages/' . $pageId . '/comments', ['_token' => $token, 'body' => 'Is this still true, @nobody?'], $jar);
+    check('a comment can be left under a page', str_contains(request($baseUrl . '/pages/' . $pageId, [], $jar)['body'], 'Is this still true'));
+
     // The search box finds pages as well as tickets, and the list comes
     // out as a spreadsheet with the same query.
     check('the search box finds tickets and pages', str_contains(request($baseUrl . '/search?q=' . urlencode('Smoke'), [], $jar)['body'], 'Smoke page'));

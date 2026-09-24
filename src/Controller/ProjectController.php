@@ -340,7 +340,10 @@ class ProjectController extends Controller
             $this->redirect('/projects/' . $id . '/edit');
         }
 
-        $files = (new AttachmentRepository())->pathsForTickets('t.project_id = :id', ['id' => $id]);
+        $files = array_merge(
+            (new AttachmentRepository())->pathsForTickets('t.project_id = :id', ['id' => $id]),
+            (new AttachmentRepository())->pathsForPages('pg.project_id = :id', ['id' => $id])
+        );
         $projects->delete($id);
         AttachmentService::unlinkAll($files);
 

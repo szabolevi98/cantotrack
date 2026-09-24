@@ -1339,4 +1339,7 @@ return [
     'Markdown works: **bold**, `code`, lists, and CT-14 becomes a link.' => 'Markdown használható: **félkövér**, `kód`, listák, és a CT-14 linkké válik.',
     'Nobody' => 'Senki',
     'the last {count} of {total}' => '{total} közül az utolsó {count}',
+    'A comment needs some words.' => 'Egy kommenthez kell néhány szó.',
+    'Only the person who wrote a comment, or an administrator, can delete it.' => 'Kommentet csak az írója vagy egy adminisztrátor törölhet.',
+    'Paste a picture into the text to put it on the page.' => 'Illessz be egy képet a szövegbe, és rákerül az oldalra.',
 ];

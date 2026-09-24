@@ -86,7 +86,11 @@ class Pages
     {
         $this->db->prepare('UPDATE pages SET parent_id = :parent WHERE parent_id = :id')
             ->execute(['parent' => $page['parent_id'], 'id' => $page['id']]);
+
+        // Its pictures: the rows go with the page, the files would stay.
+        $files = (new \CantoTrack\Model\AttachmentRepository($this->db))->pathsForPages('pg.id = :id', ['id' => $page['id']]);
         $this->pages->delete((int) $page['id']);
+        \CantoTrack\Service\AttachmentService::unlinkAll($files);
     }
 
     /**

@@ -280,6 +280,42 @@ class PageRepository
         }
     }
 
+    /** @return list<array<string, mixed>> what was said under a page, the oldest first */
+    public function comments(int $pageId): array
+    {
+        $statement = $this->db->prepare(
+            'SELECT c.*, u.name AS user_name FROM page_comments c JOIN users u ON u.id = c.user_id
+             WHERE c.page_id = :page ORDER BY c.created_at, c.id'
+        );
+        $statement->execute(['page' => $pageId]);
+
+        return array_values($statement->fetchAll());
+    }
+
+    public function addComment(int $pageId, int $userId, string $body): int
+    {
+        $this->db->prepare('INSERT INTO page_comments (page_id, user_id, body) VALUES (:page, :user, :body)')
+            ->execute(['page' => $pageId, 'user' => $userId, 'body' => $body]);
+
+        return (int) $this->db->lastInsertId();
+    }
+
+    /** A comment under a page the person may see, or null. */
+    public function findComment(int $id): ?array
+    {
+        $statement = $this->db->prepare(
+            'SELECT c.* FROM page_comments c JOIN pages pg ON pg.id = c.page_id WHERE c.id = :id' . Access::sql('pg.project_id')
+        );
+        $statement->execute(['id' => $id]);
+
+        return $statement->fetch() ?: null;
+    }
+
+    public function deleteComment(int $id): void
+    {
+        $this->db->prepare('DELETE FROM page_comments WHERE id = :id')->execute(['id' => $id]);
+    }
+
     /** @return list<array<string, mixed>> the pages that mention a ticket, the ones the person may see */
     public function mentioning(int $ticketId): array
     {

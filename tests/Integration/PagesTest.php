@@ -94,4 +94,17 @@ final class PagesTest extends DatabaseTestCase
 
         self::assertNull($this->repository->find($home));
     }
+
+    public function testCommentsUnderAPageGoWithIt(): void
+    {
+        $home = $this->pages->create($this->project, null, 'Home', '', $this->me);
+        $id = $this->repository->addComment($home, $this->me, 'Is this still true?');
+
+        self::assertSame(['Is this still true?'], array_column($this->repository->comments($home), 'body'));
+        self::assertSame($home, (int) $this->repository->findComment($id)['page_id']);
+
+        $this->pages->delete((array) $this->repository->find($home));
+
+        self::assertNull($this->repository->findComment($id));
+    }
 }

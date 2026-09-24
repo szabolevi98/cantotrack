@@ -29,8 +29,12 @@ class AttachmentRepository
 
     public function find(int $id): ?array
     {
+        // A ticket's or a page's, and only where the person may look.
         $statement = $this->db->prepare(
-            'SELECT a.* FROM attachments a JOIN tickets t ON t.id = a.ticket_id WHERE a.id = :id' . Access::sql('t.project_id')
+            'SELECT a.* FROM attachments a
+             LEFT JOIN tickets t ON t.id = a.ticket_id
+             LEFT JOIN pages pg ON pg.id = a.page_id
+             WHERE a.id = :id' . Access::sql('COALESCE(t.project_id, pg.project_id)')
         );
         $statement->execute(['id' => $id]);
 
@@ -40,10 +44,11 @@ class AttachmentRepository
     public function create(array $data): int
     {
         $this->db->prepare(
-            'INSERT INTO attachments (ticket_id, user_id, original_name, stored_path, mime, size, width, height)
-             VALUES (:ticket, :user, :name, :path, :mime, :size, :width, :height)'
+            'INSERT INTO attachments (ticket_id, page_id, user_id, original_name, stored_path, mime, size, width, height)
+             VALUES (:ticket, :page, :user, :name, :path, :mime, :size, :width, :height)'
         )->execute([
-            'ticket' => $data['ticket_id'],
+            'ticket' => $data['ticket_id'] ?? null,
+            'page' => $data['page_id'] ?? null,
             'user' => $data['user_id'],
             'name' => $data['original_name'],
             'path' => $data['stored_path'],
@@ -59,6 +64,22 @@ class AttachmentRepository
     public function delete(int $id): void
     {
         $this->db->prepare('DELETE FROM attachments WHERE id = :id')->execute(['id' => $id]);
+    }
+
+    /**
+     * Where the files of some pages are stored — read before the pages go,
+     * for the same reason as the tickets' below.
+     *
+     * @return list<string>
+     */
+    public function pathsForPages(string $where, array $parameters): array
+    {
+        $statement = $this->db->prepare(
+            'SELECT a.stored_path FROM attachments a JOIN pages pg ON pg.id = a.page_id WHERE ' . $where
+        );
+        $statement->execute($parameters);
+
+        return array_values(array_map('strval', $statement->fetchAll(PDO::FETCH_COLUMN)));
     }
 
     /**

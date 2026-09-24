@@ -28,8 +28,8 @@ use Throwable;
  */
 final class Automation
 {
-    public const TRIGGERS = ['created', 'moved', 'assigned', 'commented', 'logged', 'subtasks_done', 'daily'];
-    public const ACTIONS = ['status', 'assign', 'priority', 'add_label', 'remove_label', 'comment', 'sprint'];
+    public const TRIGGERS = ['created', 'moved', 'assigned', 'changed', 'commented', 'linked', 'logged', 'subtasks_done', 'daily'];
+    public const ACTIONS = ['status', 'resolution', 'assign', 'priority', 'due', 'add_label', 'remove_label', 'field', 'watch', 'comment', 'subtask', 'sprint'];
 
     /** @var list<array{0: int, 1: string, 2: ?int}> ticket id, trigger, who set it off */
     private static array $queue = [];
@@ -72,7 +72,11 @@ final class Automation
             $kind === 'created' => 'created',
             $kind === 'status' => 'moved',
             $kind === 'changed' && $field === 'assignee' => 'assigned',
+            // Any other of its fields — the priority, the due date, a field
+            // of the project's own — but not its history's own bookkeeping.
+            $kind === 'changed' && $field !== null && $field !== 'description' => 'changed',
             $kind === 'commented' => 'commented',
+            $kind === 'linked' => 'linked',
             $kind === 'logged' => 'logged',
             default => null,
         };
@@ -300,6 +304,47 @@ final class Automation
 
                 return $person === null ? __('unassigned') : __('assigned to {value}', ['value' => (string) ((new UserRepository($this->db))->find($person)['name'] ?? $value)]);
 
+            case 'resolution':
+                $service->resolve($id, $value, $actor);
+
+                return __('resolved as {value}', ['value' => $value]);
+
+            case 'due':
+                $due = self::due($value, new \DateTimeImmutable('today'));
+                $service->update($id, ['due_on' => $due ?? ''], $actor);
+
+                return $due === null ? __('no due date') : __('due {value}', ['value' => $due]);
+
+            case 'field':
+                [$name, $given] = array_map('trim', explode('=', $value, 2) + [1 => '']);
+                $known = array_filter(
+                    (new CustomFieldRepository($this->db))->forProject((int) $ticket['project_id']),
+                    static fn(array $f): bool => mb_strtolower((string) $f['name']) === mb_strtolower($name)
+                );
+                if ($known === []) {
+                    throw new ValidationError(__('The project has no field called “{value}”.', ['value' => $name]));
+                }
+                $service->update($id, ['fields' => [$name => $given]], $actor);
+
+                return $name . ' = ' . $given;
+
+            case 'watch':
+                $person = $this->person($value, $ticket, $triggeredBy);
+                if ($person === null) {
+                    throw new ValidationError(__('Nobody to follow it: name somebody.'));
+                }
+                (new \CantoTrack\Model\NotificationRepository($this->db))->watch($id, $person);
+
+                return __('followed by {value}', ['value' => (string) ((new UserRepository($this->db))->find($person)['name'] ?? $value)]);
+
+            case 'subtask':
+                if ($actor === null) {
+                    throw new ValidationError(__('A subtask needs somebody to make it: the rule has no maker any more.'));
+                }
+                $service->addSubtask($ticket, $this->filled($value, $ticket), null, $actor);
+
+                return __('added a subtask');
+
             case 'priority':
                 if (!in_array(strtolower($value), TicketRepository::PRIORITIES, true)) {
                     throw new ValidationError(__('“{value}” is not a priority: low, normal, high or urgent.', ['value' => $value]));
@@ -322,13 +367,7 @@ final class Automation
                 if ($actor === null) {
                     throw new ValidationError(__('A comment needs somebody to write it: the rule has no maker any more.'));
                 }
-                $text = strtr($value, [
-                    '{key}' => $ticket['project_code'] . '-' . $ticket['number'],
-                    '{title}' => (string) $ticket['title'],
-                    '{assignee}' => (string) ($ticket['assignee_name'] ?? ''),
-                    '{due}' => (string) ($ticket['due_on'] ?? ''),
-                ]);
-                (new CommentService($this->db))->add($id, $actor, $text);
+                (new CommentService($this->db))->add($id, $actor, $this->filled($value, $ticket));
 
                 return __('commented');
 
@@ -372,6 +411,43 @@ final class Automation
         }
 
         throw new ValidationError(__('Nobody active is called “{value}”.', ['value' => $value]));
+    }
+
+    /** An action's words with the ticket's own filled in: {key}, {title}, {assignee}, {due}. */
+    private function filled(string $value, array $ticket): string
+    {
+        return strtr($value, [
+            '{key}' => $ticket['project_code'] . '-' . $ticket['number'],
+            '{title}' => (string) $ticket['title'],
+            '{assignee}' => (string) ($ticket['assignee_name'] ?? ''),
+            '{due}' => (string) ($ticket['due_on'] ?? ''),
+        ]);
+    }
+
+    /**
+     * A due date as a rule gives it: "today", "+3d", "+2w", "-1d", a date,
+     * or "none" for no date at all.
+     *
+     * @throws ValidationError
+     */
+    public static function due(string $value, \DateTimeImmutable $today): ?string
+    {
+        $value = strtolower(trim($value));
+
+        if (in_array($value, ['', 'none', 'nothing'], true)) {
+            return null;
+        }
+        if ($value === 'today') {
+            return $today->format('Y-m-d');
+        }
+        if (preg_match('/^([+-]\d{1,3})\s*([dw])$/', $value, $m) === 1) {
+            return $today->modify(((int) $m[1] * ($m[2] === 'w' ? 7 : 1)) . ' days')->format('Y-m-d');
+        }
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $value) === 1 && strtotime($value) !== false) {
+            return $value;
+        }
+
+        throw new ValidationError(__('“{value}” is not a due date: today, +3d, +2w, a date, or none.', ['value' => $value]));
     }
 
     private function subtasksAllDone(int $parentId): bool

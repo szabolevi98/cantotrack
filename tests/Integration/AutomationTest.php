@@ -77,6 +77,54 @@ final class AutomationTest extends DatabaseTestCase
         self::assertSame('CT-1 needs a look.', (new CommentRepository($this->db))->forTicket($urgent)[0]['body']);
     }
 
+    public function testAChangedFieldSetsOffTheNewActions(): void
+    {
+        $other = $this->person('Réka Horváth');
+        $this->rules->save(null, null, 'Urgent: due soon, followed, broken down', 'changed', 'priority = urgent', [
+            ['type' => 'due', 'value' => '+2d'],
+            ['type' => 'watch', 'value' => 'Réka Horváth'],
+            ['type' => 'subtask', 'value' => 'Find out why {key} is urgent'],
+        ], $this->me);
+
+        $id = $this->service->create(['project_id' => $this->project, 'title' => 'Checkout'], $this->me);
+        (new Automation($this->db))->runQueued();
+        self::assertNull($this->tickets->find($id)['due_on'], 'made, not changed: nothing yet');
+
+        $this->service->update($id, ['priority' => 'urgent'], $this->me);
+        (new Automation($this->db))->runQueued();
+
+        $ticket = (array) $this->tickets->find($id);
+        self::assertSame((new \DateTimeImmutable('today +2 days'))->format('Y-m-d'), $ticket['due_on']);
+        self::assertSame(['Find out why CT-1 is urgent'], array_column($this->tickets->subtasks($id), 'title'));
+        self::assertTrue((new \CantoTrack\Model\NotificationRepository($this->db))->isWatching($id, $other));
+    }
+
+    public function testADueDateReadsLikeARuleWritesIt(): void
+    {
+        $today = new \DateTimeImmutable('2026-09-24');
+
+        self::assertSame('2026-09-24', Automation::due('today', $today));
+        self::assertSame('2026-09-27', Automation::due('+3d', $today));
+        self::assertSame('2026-10-08', Automation::due('+2w', $today));
+        self::assertSame('2026-09-23', Automation::due('-1d', $today));
+        self::assertSame('2026-12-01', Automation::due('2026-12-01', $today));
+        self::assertNull(Automation::due('none', $today));
+
+        $this->expectException(\CantoTrack\Core\ValidationError::class);
+        Automation::due('soonish', $today);
+    }
+
+    public function testAFinishedTicketCanBeResolvedByARule(): void
+    {
+        $this->rules->save(null, null, 'Duplicates', 'moved', 'category = done AND labels = duplicate', [['type' => 'resolution', 'value' => 'duplicate']], $this->me);
+        $id = $this->service->create(['project_id' => $this->project, 'title' => 'Same again', 'labels' => 'duplicate'], $this->me);
+
+        $this->service->changeStatus($id, 'done', $this->me);
+        (new Automation($this->db))->runQueued();
+
+        self::assertSame('duplicate', $this->tickets->find($id)['resolution']);
+    }
+
     public function testWhatARuleDoesDoesNotSetOffAnother(): void
     {
         // Two rules that would undo each other for ever, if one heard the other.

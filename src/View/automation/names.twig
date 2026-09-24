@@ -7,7 +7,9 @@
         created: 'A ticket is created',
         moved: 'A ticket moves to another column',
         assigned: 'A ticket is given to somebody',
+        changed: 'One of its fields changes',
         commented: 'Somebody comments',
+        linked: 'It is linked to another ticket',
         logged: 'Time is logged',
         subtasks_done: 'Its last subtask is done',
         daily: 'Every morning'
@@ -17,11 +19,16 @@
 {% macro action(key) -%}
     {{ ({
         status: 'Move it to',
+        resolution: 'Set its resolution to',
         assign: 'Give it to',
         priority: 'Set its priority to',
+        due: 'Set its due date to',
         add_label: 'Add the label',
         remove_label: 'Take off the label',
+        field: 'Set a field of its own',
+        watch: 'Have it followed by',
         comment: 'Comment',
+        subtask: 'Add a subtask',
         sprint: 'Put it in the sprint'
     }[key]|default(key))|t }}
 {%- endmacro %}

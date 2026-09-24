@@ -1,0 +1,12 @@
+{% extends 'layout.twig' %}
+
+{# A client's guest: the statements they were sent. #}
+{% block title %}{{ 'Statements'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Statements'|t }}{% endblock %}
+{% block subheading %}<p class="content__sub">{{ 'What your work with us was billed for, month by month.'|t }}</p>{% endblock %}
+
+{% block content %}
+    <section class="card card--flush">
+        {% include 'billing/table.twig' %}
+    </section>
+{% endblock %}

@@ -1292,6 +1292,38 @@ foreach (array_values($finishedIds) as $i => $t) {
     }
 }
 
+// ---------------------------------------------------------------------------
+// Last month billed: the clinic's statement issued, the bikes' still a
+// draft, and what every statement says at its top and its foot.
+// ---------------------------------------------------------------------------
+$billingSettings = new CantoTrack\Model\SettingRepository();
+if ($billingSettings->get(CantoTrack\Service\Statements::FROM_SETTING) === null) {
+    (new CantoTrack\Service\Statements())->setLetterhead(
+        'Canto Digital Kft.
+7621 Pécs, Király utca 12.
+Tax number: 12345678-2-02',
+        'Payment within 15 days by bank transfer, quoting the statement number. Account: 11700000-12345678-00000000.'
+    );
+}
+$lastMonthFrom = (new DateTimeImmutable('first day of last month'))->format('Y-m-d');
+$lastMonthTo = (new DateTimeImmutable('last day of last month'))->format('Y-m-d');
+$billing = new CantoTrack\Service\Statements();
+$billed = new CantoTrack\Model\StatementRepository();
+foreach (['Mecsek Clinic' => 'Mecsek Clinic Zrt.
+7624 Pécs, Szigeti út 3.', 'Balaton Bikes Kft.' => 'Balaton Bikes Kft.
+8230 Balatonfüred, Tagore sétány 1.'] as $clientName => $billTo) {
+    $clientId = $clients->findOrCreate($clientName);
+    try {
+        $statementId = $billing->draft((int) $clientId, $lastMonthFrom, $lastMonthTo, $who['tamas']);
+    } catch (CantoTrack\Core\ValidationError) {
+        continue;
+    }
+    $billed->setWording($statementId, $billTo, null);
+    if ($clientName === 'Mecsek Clinic') {
+        $billing->issue((array) $billed->find($statementId), $who['tamas']);
+    }
+}
+
 $moreSummary = [
     'projects' => count($catalogue),
     'tickets' => count($made2),

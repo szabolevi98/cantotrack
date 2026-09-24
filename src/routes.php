@@ -16,6 +16,7 @@ use CantoTrack\Controller\AttachmentController;
 use CantoTrack\Controller\AuditController;
 use CantoTrack\Controller\AutomationController;
 use CantoTrack\Controller\AvatarController;
+use CantoTrack\Controller\BillingController;
 use CantoTrack\Controller\CalendarExportController;
 use CantoTrack\Controller\CommentController;
 use CantoTrack\Controller\DashboardController;
@@ -262,6 +263,17 @@ $router->post('/absences/{id}/delete', static fn($id) => (new TimesheetControlle
 $router->get('/reports', static fn() => (new ReportController())->index());
 $router->get('/reports/export', static fn() => (new ReportController())->export());
 $router->get('/reports/missing', static fn() => (new ReportController())->missing());
+$router->get('/billing', static fn() => (new BillingController())->index());
+$router->post('/billing/statements', static fn() => (new BillingController())->create());
+$router->post('/billing/letterhead', static fn() => (new BillingController())->letterhead());
+$router->get('/billing/statements/{id}', static fn($id) => (new BillingController())->show((int) $id));
+$router->get('/billing/statements/{id}/export', static fn($id) => (new BillingController())->export((int) $id));
+$router->post('/billing/statements/{id}/refresh', static fn($id) => (new BillingController())->refresh((int) $id));
+$router->post('/billing/statements/{id}/issue', static fn($id) => (new BillingController())->issue((int) $id));
+$router->post('/billing/statements/{id}/reopen', static fn($id) => (new BillingController())->reopen((int) $id));
+$router->post('/billing/statements/{id}/delete', static fn($id) => (new BillingController())->delete((int) $id));
+$router->post('/billing/statements/{id}/wording', static fn($id) => (new BillingController())->reword((int) $id));
+$router->post('/billing/statements/{id}/entries/{entry}/off', static fn($id, $entry) => (new BillingController())->takeOff((int) $id, (int) $entry));
 $router->get('/projects/{id}/flow', static fn($id) => (new FlowController())->show((int) $id));
 
 $router->post('/tickets/{id}/timer', static fn($id) => (new TimerController())->start((int) $id));

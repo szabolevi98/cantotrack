@@ -97,6 +97,10 @@ if ($reset) {
                 'DELETE w FROM worklogs w JOIN tickets t ON t.id = w.ticket_id WHERE t.project_id = :project'
             )->execute(['project' => (int) $existing['id']]);
 
+            // And its client's statements, which were made of those hours.
+            $database->prepare('DELETE s FROM statements s JOIN projects p ON p.client_id = s.client_id WHERE p.id = :project')
+                ->execute(['project' => (int) $existing['id']]);
+
             // The project then takes its epics, sprints and tickets with it.
             $projects->delete((int) $existing['id']);
             printf('  removed %s and everything in it%s', $code, PHP_EOL);

@@ -1063,6 +1063,12 @@ if ($email === null || $password === null) {
     @unlink($sheetFile);
     check('and as a spreadsheet', $xlsx['status'] === 200 && str_contains($sheet, $code . '-1'));
 
+    // Billing: the month's clients and statements, for an administrator;
+    // a statement that is not there is not there.
+    $billing = request($baseUrl . '/billing', [], $jar);
+    check('the billing page answers', $billing['status'] === 200 && str_contains($billing['body'], 'id="unbilled"') && str_contains($billing['body'], 'id="letterhead"'));
+    check('and a statement that does not exist is not found', request($baseUrl . '/billing/statements/99999999', [], $jar)['status'] === 404);
+
     $planned = request($baseUrl . '/planning', [
         '_token' => $token,
         'ticket' => $code . '-1',

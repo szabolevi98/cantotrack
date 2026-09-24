@@ -35,6 +35,16 @@
     });
 
     /*
+     * data-print — the browser's print dialog, where a page is also saved
+     * as a PDF. The page's print stylesheet leaves only the document.
+     */
+    document.addEventListener('click', function (event) {
+        if (event.target.closest && event.target.closest('[data-print]')) {
+            window.print();
+        }
+    });
+
+    /*
      * data-select-on-focus — a value to be copied (a new token) is selected
      * whole the moment it is clicked into.
      */

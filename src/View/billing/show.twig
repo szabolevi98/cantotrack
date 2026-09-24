@@ -1,0 +1,207 @@
+{% extends 'layout.twig' %}
+
+{#
+    One statement: the document itself — who it is from and to, its number
+    and its month, what it adds up to, every entry — the way it is printed
+    (or saved as a PDF from the print dialog), and beside it, for the
+    administrators, what can be done with it.
+#}
+{% set draft = statement.state == 'draft' %}
+{% set by_labels = {project: 'By project', person: 'By person', type: 'By work type', ticket: 'By ticket'} %}
+
+{% block title %}{{ statement.number ?: 'Draft'|t }} · {{ statement.client }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ statement.client }}{% endblock %}
+{% block subheading %}
+    <p class="content__sub">
+        {% if draft %}<span class="badge badge--amber">{{ 'Draft'|t }}</span>{% else %}<span class="badge badge--done">{{ 'Issued'|t }}</span>{% endif %}
+        {{ statement.period_from|day }} — {{ statement.period_to|day }}
+        {% if manage %}· <a href="{{ url('/billing?month=' ~ statement.period_from|slice(0, 7)) }}">{{ 'Billing'|t }}</a>{% endif %}
+    </p>
+{% endblock %}
+
+{% block actions %}
+    <button class="button" type="button" data-print><i class="bi bi-printer" aria-hidden="true"></i> {{ 'Print or save as PDF'|t }}</button>
+    <a class="button" href="{{ url('/billing/statements/' ~ statement.id ~ '/export') }}">{{ 'Download Excel'|t }}</a>
+    {% if manage and draft %}
+        <form method="post" action="{{ url('/billing/statements/' ~ statement.id ~ '/issue') }}"
+              data-confirm="{{ 'Issue it? It gets its number, and its hours no longer change.'|t }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <button class="button button--primary" type="submit">{{ 'Issue'|t }}</button>
+        </form>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    <div class="split">
+        <div class="split__main">
+            <article class="card statement">
+                <header class="statement__head">
+                    <div class="statement__from">
+                        {% if letterhead.from %}{{ letterhead.from|nl2br }}{% else %}<strong>{{ app_name }}</strong>{% endif %}
+                    </div>
+                    <div class="statement__what">
+                        <h2 class="statement__title">{{ 'Statement'|t }}</h2>
+                        <dl class="statement__facts">
+                            <dt>{{ 'Number'|t }}</dt><dd>{{ statement.number ?: 'Draft'|t }}</dd>
+                            <dt>{{ 'Period'|t }}</dt><dd>{{ statement.period_from|day }} — {{ statement.period_to|day }}</dd>
+                            {% if statement.issued_at %}<dt>{{ 'Issued'|t }}</dt><dd>{{ statement.issued_at|day }}</dd>{% endif %}
+                        </dl>
+                    </div>
+                </header>
+
+                <div class="statement__to">
+                    <span class="statement__label">{{ 'Billed to'|t }}</span>
+                    <div>{{ (statement.bill_to ?: statement.client)|nl2br }}</div>
+                </div>
+
+                <nav class="segmented no-print" aria-label="{{ 'Add up by'|t }}">
+                    {% for value, label in by_labels %}
+                        <a class="segmented__item{{ group == value ? ' is-active' : '' }}" href="{{ url('/billing/statements/' ~ statement.id ~ (value == 'project' ? '' : '?by=' ~ value)) }}"
+                           {{ group == value ? 'aria-current="true"' : '' }}>{{ label|t }}</a>
+                    {% endfor %}
+                </nav>
+
+                <table class="table statement__summary">
+                    <thead>
+                    <tr>
+                        <th>{{ by_labels[group]|t }}</th>
+                        <th class="table__number">{{ 'Hours'|t }}</th>
+                        <th class="table__number">{{ 'Rate'|t }}</th>
+                        <th class="table__number">{{ 'Amount'|t }}</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for row in summary %}
+                        <tr>
+                            <td>{{ row.label ?: '—' }}</td>
+                            <td class="table__number">{{ row.minutes|hours }}</td>
+                            <td class="table__number">{{ row.rate is not null ? row.rate|money(currency) : '—' }}</td>
+                            <td class="table__number">{{ row.amount|money(currency) }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                    <tfoot>
+                    <tr class="statement__total">
+                        <th>{{ 'Total'|t }}</th>
+                        <td class="table__number">{{ minutes|hours }}</td>
+                        <td></td>
+                        <td class="table__number">{{ amount|money(currency) }}</td>
+                    </tr>
+                    </tfoot>
+                </table>
+
+                {% if statement.note %}<p class="statement__note">{{ statement.note|nl2br }}</p>{% endif %}
+
+                <h3 class="statement__subtitle" id="entries">{{ 'The entries'|t }}</h3>
+                <table class="table statement__entries">
+                    <thead>
+                    <tr>
+                        <th>{{ 'Date'|t }}</th>
+                        <th>{{ 'Ticket'|t }}</th>
+                        <th>{{ 'Person'|t }}</th>
+                        <th class="table__number">{{ 'Hours'|t }}</th>
+                        <th class="table__number">{{ 'Amount'|t }}</th>
+                        {% if manage and draft %}<th class="no-print"></th>{% endif %}
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for entry in entries %}
+                        <tr>
+                            <td class="statement__day">{{ entry.work_date|day }}</td>
+                            <td>
+                                <span class="ticket-key">{{ entry.ticket_key }}</span> {{ entry.ticket_title }}
+                                {% if entry.work_type or entry.note %}
+                                    <div class="muted statement__detail">{{ entry.work_type }}{{ entry.work_type and entry.note ? ' · ' : '' }}{{ entry.note }}</div>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {{ entry.person }}
+                                {% if manage and entry.week_state != 'approved' %}<span class="badge badge--amber no-print" title="{{ 'The week is not approved yet'|t }}">!</span>{% endif %}
+                            </td>
+                            <td class="table__number">{{ entry.minutes|hours }}</td>
+                            <td class="table__number">{{ entry.amount|money(currency) }}</td>
+                            {% if manage and draft %}
+                                <td class="no-print table__actions">
+                                    <form method="post" action="{{ url('/billing/statements/' ~ statement.id ~ '/entries/' ~ entry.id ~ '/off') }}"
+                                          data-confirm="{{ 'Take this entry off? It is not billed, now or later.'|t }}">
+                                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                        <button class="link-button" type="submit" aria-label="{{ 'Take it off the statement'|t }}" title="{{ 'Take it off the statement'|t }}">×</button>
+                                    </form>
+                                </td>
+                            {% endif %}
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+
+                {% if letterhead.footer %}<footer class="statement__foot">{{ letterhead.footer|nl2br }}</footer>{% endif %}
+            </article>
+        </div>
+
+        {% if manage %}
+            <aside class="split__side no-print">
+                <section class="card">
+                    <dl class="facts">
+                        <dt>{{ 'Made'|t }}</dt>
+                        <dd>{{ statement.created_at|day }}{% if statement.created_by_name %} · {{ statement.created_by_name }}{% endif %}</dd>
+                        {% if statement.issued_at %}
+                            <dt>{{ 'Issued'|t }}</dt>
+                            <dd>{{ statement.issued_at|day }}{% if statement.issued_by_name %} · {{ statement.issued_by_name }}{% endif %}</dd>
+                        {% endif %}
+                        <dt>{{ 'Entries'|t }}</dt>
+                        <dd>{{ entries|length }}</dd>
+                        <dt>{{ 'Not approved'|t }}</dt>
+                        <dd>{% if unapproved > 0 %}<span class="badge badge--amber">{{ unapproved|hours }} h</span>{% else %}—{% endif %}</dd>
+                    </dl>
+                    {% if draft and unapproved > 0 %}
+                        <p class="hint">{{ 'Some of these hours are in weeks nobody has approved yet. They can still be billed; approving them first is safer.'|t }}</p>
+                    {% endif %}
+                </section>
+
+                {% if draft %}
+                    <section class="card">
+                        <h2 class="card__title">{{ 'Wording'|t }}</h2>
+                        <form method="post" action="{{ url('/billing/statements/' ~ statement.id ~ '/wording') }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                            <label for="bill_to">{{ 'Billed to'|t }}</label>
+                            <textarea id="bill_to" class="field" name="bill_to" rows="4" maxlength="2000">{{ statement.bill_to }}</textarea>
+                            <label for="note">{{ 'A note on it'|t }}</label>
+                            <textarea id="note" class="field" name="note" rows="3" maxlength="2000">{{ statement.note }}</textarea>
+                            <div class="form__actions"><button class="button" type="submit">{{ 'Save'|t }}</button></div>
+                        </form>
+                    </section>
+
+                    <section class="card">
+                        <h2 class="card__title">{{ 'Hours since'|t }}</h2>
+                        <p class="card__body">{{ 'Hours logged or changed since the draft was made are taken in, and the ones that no longer belong go off it.'|t }}</p>
+                        <form method="post" action="{{ url('/billing/statements/' ~ statement.id ~ '/refresh') }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                            <button class="button" type="submit"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> {{ 'Bring it up to date'|t }}</button>
+                        </form>
+                    </section>
+
+                    {% if not statement.number %}
+                        <section class="card">
+                            <h2 class="card__title">{{ 'Delete'|t }}</h2>
+                            <form method="post" action="{{ url('/billing/statements/' ~ statement.id ~ '/delete') }}"
+                                  data-confirm="{{ 'Delete this draft? Its hours can go on another.'|t }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                <button class="button button--danger" type="submit">{{ 'Delete the draft'|t }}</button>
+                            </form>
+                        </section>
+                    {% endif %}
+                {% else %}
+                    <section class="card">
+                        <h2 class="card__title">{{ 'A mistake on it?'|t }}</h2>
+                        <p class="card__body">{{ 'Opened again it is a draft, its hours can change, and it is issued again under the same number.'|t }}</p>
+                        <form method="post" action="{{ url('/billing/statements/' ~ statement.id ~ '/reopen') }}"
+                              data-confirm="{{ 'Open {number} again?'|t({number: statement.number}) }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                            <button class="button" type="submit">{{ 'Open it again'|t }}</button>
+                        </form>
+                    </section>
+                {% endif %}
+            </aside>
+        {% endif %}
+    </div>
+{% endblock %}

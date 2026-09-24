@@ -187,6 +187,13 @@ deploy with `git pull`.
   project; a project's budget in hours, in money or both, shown as used under
   its tabs and on the administrators' dashboard once past its warning. The
   reports say what the billable hours are worth, to the administrators.
+- **Billing a month**: the clients with billable hours not yet billed, and a
+  statement for each in one click — a draft first, to check, correct and
+  word, then issued: numbered within the year, its rates written down so a
+  later raise does not change it, and its hours closed. It is printed or
+  saved as a PDF straight from the browser, downloaded as a spreadsheet, and
+  read by the client's own guests. An hour goes on one statement only, and
+  one issued by mistake is opened again and reissued under its number.
 - **One's own dates in one's calendar**: a private address a calendar
   subscribes to, with the days one's tickets are due, the releases coming and
   the sprints' last days.
@@ -200,6 +207,8 @@ deploy with `git pull`.
 ![Weeks handed in and waiting for approval](docs/approvals.png)
 
 ![Reports, and the exports](docs/reports.png)
+
+![A client's statement for a month: issued, numbered, and ready to print or save as a PDF](docs/statement.png)
 
 ### Automation
 

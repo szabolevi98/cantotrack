@@ -28,11 +28,13 @@ class WorklogService
     private Activity $activity;
     private Calendar $calendar;
     private \CantoTrack\Model\WorkTypeRepository $workTypes;
+    private \CantoTrack\Model\StatementRepository $statements;
 
     public function __construct(?PDO $db = null)
     {
         $db ??= DatabaseConnection::get();
 
+        $this->statements = new \CantoTrack\Model\StatementRepository($db);
         $this->workTypes = new \CantoTrack\Model\WorkTypeRepository($db);
         $this->worklogs = new WorklogRepository($db);
         $this->tickets = new TicketRepository($db);
@@ -122,6 +124,7 @@ class WorklogService
         $day = $this->day($date);
 
         // Both ends of a move: out of a closed day, and into one.
+        $this->ensureUnbilled($worklog);
         $this->calendar->ensureOpen((int) $worklog['user_id'], (string) $worklog['work_date']);
         $this->calendar->ensureOpen((int) $worklog['user_id'], $day);
 
@@ -195,9 +198,25 @@ class WorklogService
     /** @throws ValidationError when its day is closed */
     public function remove(array $worklog): void
     {
+        $this->ensureUnbilled($worklog);
         $this->calendar->ensureOpen((int) $worklog['user_id'], (string) $worklog['work_date']);
 
         $this->worklogs->delete((int) $worklog['id']);
+    }
+
+    /**
+     * Refuses a change to an hour a client has been billed for: the
+     * statement says what it said when it was sent.
+     *
+     * @throws ValidationError
+     */
+    private function ensureUnbilled(array $worklog): void
+    {
+        $statement = $this->statements->issuedFor((int) $worklog['id']);
+
+        if ($statement !== null) {
+            throw new ValidationError(__('This entry was billed on statement {number}; it no longer changes.', ['number' => $statement['number']]));
+        }
     }
 
     /** Whether a person may change an entry: their own, or anybody's as an administrator. */

@@ -1,0 +1,85 @@
+{% extends 'layout.twig' %}
+
+{#
+    Billing a month: the clients with billable hours in it that are on no
+    statement yet, a draft made for each in one click, and every statement
+    so far. What the statements say at their top and their foot is kept
+    here too.
+#}
+{% block title %}{{ 'Billing'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Billing'|t }}{% endblock %}
+{% block subheading %}<p class="content__sub">{{ from|day }} — {{ to|day }}</p>{% endblock %}
+
+{% block content %}
+    <nav class="report-months" aria-label="{{ 'Months'|t }}">
+        {% for each in months %}
+            <a class="segmented__item{{ each == month ? ' is-active' : '' }}" href="{{ url('/billing?month=' ~ each) }}"
+               {{ each == month ? 'aria-current="true"' : '' }}>{{ each }}</a>
+        {% endfor %}
+    </nav>
+
+    <section class="card card--flush" id="unbilled">
+        <h2 class="card__title billing__title">{{ 'Not billed yet'|t }}</h2>
+        {% if unbilled is empty %}
+            <p class="card__empty">{{ 'Every billable hour of this month is on a statement — or nobody logged any for a client.'|t }}</p>
+        {% else %}
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>{{ 'Client'|t }}</th>
+                    <th class="table__number">{{ 'Hours'|t }}</th>
+                    <th class="table__number">{{ 'Worth'|t }}</th>
+                    <th>{{ 'Approved'|t }}</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for row in unbilled %}
+                    <tr>
+                        <td><strong>{{ row.client }}</strong> <span class="muted">· {{ plural('{count} entry', '{count} entries', row.entries) }}</span></td>
+                        <td class="table__number">{{ row.minutes|hours }}</td>
+                        <td class="table__number">{{ row.amount|money }}</td>
+                        <td>
+                            {% if row.unapproved == 0 %}
+                                <span class="badge badge--done">{{ 'All of it'|t }}</span>
+                            {% else %}
+                                <span class="badge badge--amber" title="{{ 'Hours in weeks nobody has approved yet'|t }}">{{ '{hours} h not yet'|t({hours: row.unapproved|hours}) }}</span>
+                            {% endif %}
+                        </td>
+                        <td class="table__actions">
+                            <form method="post" action="{{ url('/billing/statements') }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                <input type="hidden" name="client_id" value="{{ row.client_id }}">
+                                <input type="hidden" name="from" value="{{ from }}">
+                                <input type="hidden" name="to" value="{{ to }}">
+                                <button class="button button--small button--primary" type="submit">{{ 'Make a draft'|t }}</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </section>
+
+    <section class="card card--flush" id="statements">
+        <h2 class="card__title billing__title">{{ 'Statements'|t }}</h2>
+        {% include 'billing/table.twig' %}
+    </section>
+
+    <section class="card card--narrow" id="letterhead">
+        <h2 class="card__title">{{ 'On every statement'|t }}</h2>
+        <form method="post" action="{{ url('/billing/letterhead') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <label for="billing-from">{{ 'Who it is from'|t }}</label>
+            <textarea id="billing-from" class="field" name="from" rows="4" maxlength="1000"
+                      placeholder="{{ 'The team’s name, address and tax number, as they are printed at the top'|t }}">{{ letterhead.from }}</textarea>
+            <label for="billing-footer">{{ 'At the foot'|t }}</label>
+            <textarea id="billing-footer" class="field" name="footer" rows="3" maxlength="1000"
+                      placeholder="{{ 'Payment terms, the bank account — whatever every statement ends with'|t }}">{{ letterhead.footer }}</textarea>
+            <div class="form__actions">
+                <button class="button" type="submit">{{ 'Save'|t }}</button>
+            </div>
+        </form>
+    </section>
+{% endblock %}

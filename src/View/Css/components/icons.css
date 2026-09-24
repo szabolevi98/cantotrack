@@ -65,3 +65,5 @@
 .bi-info-circle::before { content: "\f431"; }
 .bi-arrow-counterclockwise::before { content: "\f117"; }
 .bi-plus-lg::before { content: "\f64d"; }
+.bi-receipt::before { content: "\f50f"; }
+.bi-printer::before { content: "\f501"; }

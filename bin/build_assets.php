@@ -46,6 +46,7 @@ $bundles = [
             'components/calendar.css',
             'components/roadmap.css',
             'components/inline.css',
+            'components/billing.css',
             'pages/auth.css',
         ],
     ],

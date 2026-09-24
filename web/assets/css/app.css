@@ -541,6 +541,18 @@ img.face {
     align-items: start;
 }
 
+/* Two halves of the same weight: two charts side by side. */
+.split--even {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    margin-top: var(--ct-gap);
+}
+
+@media (max-width: 1000px) {
+    .split--even {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 .split__main,
 .split__side {
     min-width: 0;
@@ -663,6 +675,11 @@ code {
     box-shadow: var(--ct-shadow);
 }
 
+.card__subtitle {
+    margin: 16px 0 6px;
+    font-size: 0.92rem;
+}
+
 .card--flush {
     padding: 0;
     overflow: hidden;
@@ -755,6 +772,11 @@ code {
     font-size: 1.7rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
+}
+
+.stat__note {
+    margin-top: 2px;
+    font-size: 0.82rem;
 }
 
 /* After a save that lost a race: what the other person saved, marked so it
@@ -3080,6 +3102,36 @@ a.label:hover {
     fill: var(--ct-primary);
 }
 
+/* The flow: done, under way, waiting — the palette's three strengths. */
+.chart__band--done {
+    fill: var(--ct-primary);
+}
+
+.chart__band--in_progress {
+    fill: var(--ct-primary-border);
+}
+
+.chart__band--todo {
+    fill: var(--ct-primary-soft);
+    stroke: var(--ct-primary-border);
+    stroke-width: 1;
+}
+
+.chart__bar--created {
+    fill: var(--ct-primary-border);
+}
+
+.chart__bar--resolved {
+    fill: var(--ct-primary);
+}
+
+.chart__dot {
+    fill: var(--ct-primary);
+    fill-opacity: 0.7;
+    stroke: var(--ct-surface);
+    stroke-width: 1;
+}
+
 .chart__legend {
     display: flex;
     flex-wrap: wrap;
@@ -3103,8 +3155,20 @@ a.label:hover {
     background: var(--ct-primary-fill);
 }
 
-.chart__key--committed {
+.chart__key--committed,
+.chart__key--created,
+.chart__key--in_progress {
     background: var(--ct-primary-border);
+}
+
+.chart__key--resolved,
+.chart__key--done {
+    background: var(--ct-primary);
+}
+
+.chart__key--todo {
+    background: var(--ct-primary-soft);
+    border: 1px solid var(--ct-primary-border);
 }
 
 .chart__key--ideal {

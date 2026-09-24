@@ -19,6 +19,7 @@ use CantoTrack\Controller\CommentController;
 use CantoTrack\Controller\DashboardController;
 use CantoTrack\Controller\EpicController;
 use CantoTrack\Controller\FieldController;
+use CantoTrack\Controller\FlowController;
 use CantoTrack\Controller\ImportController;
 use CantoTrack\Controller\IntegrationController;
 use CantoTrack\Controller\LinkController;
@@ -239,6 +240,7 @@ $router->post('/absences/{id}/delete', static fn($id) => (new TimesheetControlle
 $router->get('/reports', static fn() => (new ReportController())->index());
 $router->get('/reports/export', static fn() => (new ReportController())->export());
 $router->get('/reports/missing', static fn() => (new ReportController())->missing());
+$router->get('/projects/{id}/flow', static fn($id) => (new FlowController())->show((int) $id));
 
 $router->post('/tickets/{id}/timer', static fn($id) => (new TimerController())->start((int) $id));
 $router->post('/timer/stop', static fn() => (new TimerController())->stop());

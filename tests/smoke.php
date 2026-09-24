@@ -426,6 +426,9 @@ if ($email === null || $password === null) {
         'status ' . $panel['status']
     );
 
+    $flow = request($baseUrl . '/projects/' . $projectId . '/flow?weeks=4', [], $jar);
+    check('the project shows how its work flows', $flow['status'] === 200 && str_contains($flow['body'], 'chart__band--done'), 'status ' . $flow['status']);
+
     $suggested = request($baseUrl . '/suggest?kind=tickets&q=' . $code . '-', [], $jar);
     check(
         'typing the start of a key offers the tickets it could be',

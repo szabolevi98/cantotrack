@@ -74,7 +74,34 @@ class ReleaseController extends Controller
             )),
             'notes' => (new ReleaseService())->notes($release),
             'statuses' => (new StatusRepository())->forProject((int) $release['project_id']),
+            'burnup' => $this->burnup($release),
         ]);
+    }
+
+    /**
+     * The release's scope and what of it is done, from when it started (or
+     * its first ticket was written down) to when it is due or went out —
+     * or null while there is nothing in it to draw.
+     */
+    private function burnup(array $release): ?string
+    {
+        $tickets = (new \CantoTrack\Model\ReportRepository())->flowTickets(null, (int) $release['id']);
+
+        if ($tickets === []) {
+            return null;
+        }
+
+        $today = new \DateTimeImmutable('today');
+        $from = new \DateTimeImmutable(substr((string) ($release['starts_on'] ?: min(array_column($tickets, 'created_at'))), 0, 10));
+        $end = $release['released_at'] ?: ($release['release_on'] ?: null);
+        $to = $end === null ? $today : new \DateTimeImmutable(substr((string) $end, 0, 10));
+        $to = $to < $today && $release['released_at'] === null ? $today : $to;
+
+        if ($from >= $to) {
+            $from = $to->modify('-7 days');
+        }
+
+        return \CantoTrack\Core\Chart::burnup(\CantoTrack\Service\Flow::burnup($tickets, $from, $to, $today));
     }
 
     public function editForm(int $id): void

@@ -63,6 +63,17 @@
 
             {# The notes: what is finished in it, by kind — to be copied into a
                changelog or an email as they are. #}
+            {% if burnup %}
+                <section class="card">
+                    <h2 class="card__title">{{ 'Burnup'|t }}</h2>
+                    <p class="chart__legend">
+                        <span class="chart__key chart__key--ideal"></span> {{ 'In it'|t }}
+                        <span class="chart__key chart__key--line"></span> {{ 'Done'|t }}
+                    </p>
+                    {{ burnup|raw }}
+                </section>
+            {% endif %}
+
             <section class="card" id="notes">
                 <h2 class="card__title">{{ 'Release notes'|t }}</h2>
                 <div class="card__body markdown">{{ notes|markdown }}</div>

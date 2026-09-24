@@ -9,6 +9,7 @@
         releases: {path: '/releases', label: 'Releases'},
         roadmap: {path: '/roadmap', label: 'Roadmap'},
         pages: {path: '/pages', label: 'Pages'},
+        flow: {path: '/flow', label: 'Flow'},
     } %}
         <a class="project-tabs__item{{ active == key ? ' is-active' : '' }}" href="{{ url('/projects/' ~ project.id ~ tab.path) }}"
            {{ active == key ? 'aria-current="page"' : '' }}>{{ tab.label|t }}</a>

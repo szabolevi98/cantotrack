@@ -14,6 +14,18 @@
     align-items: start;
 }
 
+/* Two halves of the same weight: two charts side by side. */
+.split--even {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    margin-top: var(--ct-gap);
+}
+
+@media (max-width: 1000px) {
+    .split--even {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
 .split__main,
 .split__side {
     min-width: 0;

@@ -503,6 +503,9 @@ foreach ($catalogue as $code => $project) {
                 // The running sprint: some finished already, the rest on the way.
                 foreach ($top as $i => $t) {
                     $state = ['done', 'done', 'review', 'in_progress', 'in_progress', 'todo'][$i % 6];
+                    if ($state !== 'todo' && $state !== 'in_progress') {
+                        $ticketService->changeStatus($t, 'in_progress', $me);
+                    }
                     $ticketService->changeStatus($t, $state, $me);
                     $firstDay = $ymd($from->modify('+' . mt_rand(0, 2) . ' days'));
                     $window[$t] = [$firstDay, $state === 'done' ? $ymd($from->modify('+' . mt_rand(2, 4) . ' days')) : $todayYmd];
@@ -528,6 +531,7 @@ foreach ($catalogue as $code => $project) {
                     continue;
                 }
                 $doneOn = $from->modify('+' . mt_rand(3, 11) . ' days');
+                $ticketService->changeStatus($t, 'in_progress', $me);
                 $ticketService->changeStatus($t, 'done', $me);
                 $window[$t] = [$ymd($firstDay), $ymd(max($doneOn, $firstDay))];
                 $finishedOn[$t] = $window[$t][1];
@@ -916,7 +920,11 @@ foreach (array_keys($made2) as $t) {
     if (isset($finishedOn[$t])) {
         $doneAt = $finishedOn[$t] . sprintf(' %02d:%02d:00', mt_rand(14, 18), mt_rand(0, 59));
         $set('UPDATE tickets SET closed_at = :at WHERE id = :id', ['at' => $doneAt, 'id' => $t]);
-        $set("UPDATE ticket_events SET created_at = :at WHERE ticket_id = :id AND kind = 'status'", ['at' => $doneAt, 'id' => $t]);
+        // Picked up on its first day, finished on its last: the moves in
+        // between on the first, the last one when it was done.
+        $pickedUp = max($ymd($created), $window[$t][0] ?? $finishedOn[$t]);
+        $set("UPDATE ticket_events SET created_at = :at WHERE ticket_id = :id AND kind = 'status'", ['at' => min($pickedUp . ' 09:30:00', $doneAt), 'id' => $t]);
+        $set("UPDATE ticket_events SET created_at = :at WHERE ticket_id = :id AND kind = 'status' ORDER BY id DESC LIMIT 1", ['at' => $doneAt, 'id' => $t]);
     } else {
         $moved = $window[$t][0] ?? $ymd($created);
         $set("UPDATE ticket_events SET created_at = :at WHERE ticket_id = :id AND kind = 'status'", ['at' => $moved . ' 09:30:00', 'id' => $t]);

@@ -33,6 +33,59 @@ class ReportRepository
         $this->db = $db ?? DatabaseConnection::get();
     }
 
+    /**
+     * Each ticket's three moments, for the flow charts (see Flow): made,
+     * first out of the to-do columns, finished. Top-level tickets only — a
+     * subtask is a step of its parent's work, not a piece of work of its own.
+     *
+     * @return list<array{id: int, key: string, title: string, created_at: string, started_at: ?string, closed_at: ?string, resolution: ?string}>
+     */
+    public function flowTickets(?int $projectId, ?int $releaseId = null): array
+    {
+        $where = ['t.parent_id IS NULL'];
+        $parameters = [];
+
+        if ($projectId !== null) {
+            $where[] = 't.project_id = :project';
+            $parameters['project'] = $projectId;
+        }
+
+        if ($releaseId !== null) {
+            $where[] = 't.release_id = :release';
+            $parameters['release'] = $releaseId;
+        }
+
+        // Started: the first move into a column that is not a to-do one —
+        // or, for a ticket made straight into one, when it was made.
+        $statement = $this->db->prepare(
+            'SELECT t.id, CONCAT(p.code, \'-\', t.number) AS `key`, t.title, t.created_at, t.closed_at, t.resolution,
+                    COALESCE(
+                        (SELECT MIN(e.created_at) FROM ticket_events e
+                           JOIN statuses es ON es.project_id = t.project_id AND es.name = e.new_value
+                          WHERE e.ticket_id = t.id AND e.kind = \'status\' AND es.category <> \'todo\'),
+                        CASE WHEN s.category <> \'todo\' THEN t.created_at END
+                    ) AS started_at
+             FROM tickets t
+             JOIN projects p ON p.id = t.project_id
+             JOIN statuses s ON s.id = t.status_id
+             WHERE ' . implode(' AND ', $where) . Access::sql('t.project_id') . '
+             ORDER BY t.created_at'
+        );
+        $statement->execute($parameters);
+
+        return array_values(array_map(static fn(array $row): array => [
+            'id' => (int) $row['id'],
+            'key' => (string) $row['key'],
+            'title' => (string) $row['title'],
+            'created_at' => (string) $row['created_at'],
+            // Moved on before it was finished, whatever the history says.
+            'started_at' => $row['started_at'] === null ? null
+                : ($row['closed_at'] !== null && $row['started_at'] > $row['closed_at'] ? (string) $row['closed_at'] : (string) $row['started_at']),
+            'closed_at' => $row['closed_at'] === null ? null : (string) $row['closed_at'],
+            'resolution' => $row['resolution'] === null ? null : (string) $row['resolution'],
+        ], $statement->fetchAll()));
+    }
+
     /** @return list<array{key: mixed, label: string, minutes: int, billable: int, entries: int}> */
     public function summary(array $filters, string $group): array
     {

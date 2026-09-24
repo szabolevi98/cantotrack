@@ -11,6 +11,11 @@
     box-shadow: var(--ct-shadow);
 }
 
+.card__subtitle {
+    margin: 16px 0 6px;
+    font-size: 0.92rem;
+}
+
 .card--flush {
     padding: 0;
     overflow: hidden;
@@ -103,6 +108,11 @@
     font-size: 1.7rem;
     font-weight: 600;
     font-variant-numeric: tabular-nums;
+}
+
+.stat__note {
+    margin-top: 2px;
+    font-size: 0.82rem;
 }
 
 /* After a save that lost a race: what the other person saved, marked so it

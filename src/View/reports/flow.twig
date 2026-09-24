@@ -1,0 +1,104 @@
+{% extends 'layout.twig' %}
+{% set search_project = {id: project.id, code: project.code} %}
+
+{% block title %}{{ 'Flow'|t }} — {{ project.code }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ project.name }}{% endblock %}
+{% block subheading %}
+    <p class="content__sub"><span class="project__code">{{ project.code }}</span> {{ from|day }} — {{ to|day }}</p>
+{% endblock %}
+
+{% block actions %}
+    <nav class="segmented" aria-label="{{ 'Span'|t }}">
+        {% for span in spans %}
+            <a class="segmented__item{{ span == weeks ? ' is-active' : '' }}" href="{{ url('/projects/' ~ project.id ~ '/flow?weeks=' ~ span) }}"
+               {{ span == weeks ? 'aria-current="true"' : '' }}>{{ '{count} weeks'|t({count: span}) }}</a>
+        {% endfor %}
+    </nav>
+{% endblock %}
+
+{#
+    How the work moves: what is waiting, under way and done; how long a
+    ticket takes; what comes in against what goes out. Each chart is drawn
+    on the server (see Chart), and its numbers are beside it.
+#}
+{% block content %}
+    {% include 'common/project_tabs.twig' with {project: project, active: 'flow'} only %}
+
+    <div class="stats">
+        <div class="stat">
+            <div class="stat__label">{{ 'Under way now'|t }}</div>
+            <div class="stat__value">{{ now.in_progress }}</div>
+            <div class="stat__note muted">{{ '{count} waiting'|t({count: now.todo}) }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat__label">{{ 'Cycle time, 85%'|t }}</div>
+            <div class="stat__value">{{ '{days} d'|t({days: cycle.p85}) }}</div>
+            <div class="stat__note muted">{{ 'middle {days} d, from starting to done'|t({days: cycle.median}) }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat__label">{{ 'Lead time, 85%'|t }}</div>
+            <div class="stat__value">{{ '{days} d'|t({days: lead.p85}) }}</div>
+            <div class="stat__note muted">{{ 'middle {days} d, from written down to done'|t({days: lead.median}) }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat__label">{{ 'In and out'|t }}</div>
+            <div class="stat__value">{{ created }} / {{ resolved }}</div>
+            <div class="stat__note muted">{{ created > resolved ? 'more came in than went out'|t : 'as much went out as came in, or more'|t }}</div>
+        </div>
+    </div>
+
+    <section class="card">
+        <h2 class="card__title">{{ 'Cumulative flow'|t }}</h2>
+        <p class="card__body muted">{{ 'Every ticket of the project, by what it was on each day. A band that keeps widening is work piling up there.'|t }}</p>
+        <p class="chart__legend">
+            <span class="chart__key chart__key--todo"></span> {{ 'Waiting'|t }}
+            <span class="chart__key chart__key--in_progress"></span> {{ 'Under way'|t }}
+            <span class="chart__key chart__key--done"></span> {{ 'Done'|t }}
+        </p>
+        {{ flow_chart|raw }}
+    </section>
+
+    <div class="split split--even">
+        <section class="card">
+            <h2 class="card__title">{{ 'Cycle time'|t }}</h2>
+            {% if cycle_chart %}
+                <p class="card__body muted">{{ 'Each dot a ticket finished in these weeks: when, and how many days it took from starting. The line is the time 85 of every 100 were done within — the one to promise from.'|t }}</p>
+                {{ cycle_chart|raw }}
+                {% if slowest is not empty %}
+                    <h3 class="card__subtitle">{{ 'The longest'|t }}</h3>
+                    <table class="table table--compact">
+                        <tbody>
+                            {% for time in slowest %}
+                                <tr>
+                                    <td class="table__key"><a class="ticket-key" href="{{ url('/t/' ~ time.key) }}">{{ time.key }}</a></td>
+                                    <td>{{ time.title }}</td>
+                                    <td class="table__number">{{ '{days} d'|t({days: time.cycle}) }}</td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                {% endif %}
+            {% else %}
+                <p class="card__body muted">{{ 'Nothing was finished in these weeks.'|t }}</p>
+            {% endif %}
+        </section>
+
+        <section class="card">
+            <h2 class="card__title">{{ 'Created and resolved'|t }}</h2>
+            <p class="card__body muted">{{ 'Written down and finished, week by week. More coming in than going out, week after week, is a backlog growing.'|t }}</p>
+            <p class="chart__legend">
+                <span class="chart__key chart__key--created"></span> {{ 'Created'|t }}
+                <span class="chart__key chart__key--resolved"></span> {{ 'Resolved'|t }}
+            </p>
+            {{ weekly_chart|raw }}
+            <table class="table table--compact">
+                <thead><tr><th>{{ 'Week'|t }}</th><th class="table__number">{{ 'Created'|t }}</th><th class="table__number">{{ 'Resolved'|t }}</th></tr></thead>
+                <tbody>
+                    {% for week in weekly|reverse|slice(0, 6) %}
+                        <tr><td>{{ week.week|day }}</td><td class="table__number">{{ week.created }}</td><td class="table__number">{{ week.resolved }}</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    </div>
+{% endblock %}

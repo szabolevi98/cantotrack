@@ -17,8 +17,6 @@ the JSON API and the integrations alike — and a stylesheet built by
 concatenating its own sources. Small enough to read in an afternoon, and to
 deploy with `git pull`.
 
-**Demo:** [cantotrack.levente.net](https://cantotrack.levente.net/)
-
 ## What it does
 
 ### Planning

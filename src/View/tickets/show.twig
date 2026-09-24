@@ -499,6 +499,17 @@
                 </dl>
             </section>
 
+            {% if pages is not empty %}
+                <section class="card">
+                    <h2 class="card__title">{{ 'Written about on'|t }}</h2>
+                    <ul class="page-results">
+                        {% for mentioned in pages %}
+                            <li><a href="{{ url('/pages/' ~ mentioned.id) }}">{{ mentioned.title }}</a> <span class="muted">{{ mentioned.project_code }}</span></li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            {% endif %}
+
             {% if is_admin %}
                 <section class="card">
                     <h2 class="card__title">{{ 'Delete'|t }}</h2>

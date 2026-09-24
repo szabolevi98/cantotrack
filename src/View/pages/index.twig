@@ -1,0 +1,43 @@
+{% extends 'layout.twig' %}
+{% set search_project = {id: project.id, code: project.code} %}
+
+{% block title %}{{ 'Pages'|t }} — {{ project.code }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ project.name }}{% endblock %}
+{% block subheading %}<p class="content__sub"><span class="project__code">{{ project.code }}</span> {{ 'What the team knows and has decided.'|t }}</p>{% endblock %}
+
+{% block actions %}
+    {% if can_work %}<a class="button button--primary" href="{{ url('/projects/' ~ project.id ~ '/pages/create') }}">{{ 'New page'|t }}</a>{% endif %}
+{% endblock %}
+
+{% block content %}
+    {% include 'common/project_tabs.twig' with {project: project, active: 'pages'} only %}
+
+    <form class="filters card" method="get" action="{{ url('/projects/' ~ project.id ~ '/pages') }}">
+        <input class="field field--inline filters__search" type="search" name="q" value="{{ words }}" placeholder="{{ 'Search the pages'|t }}" aria-label="{{ 'Search the pages'|t }}">
+        <button class="button" type="submit">{{ 'Search'|t }}</button>
+    </form>
+
+    {% if words %}
+        <section class="card">
+            <h2 class="card__title">{{ plural('{count} page has “{words}”', '{count} pages have “{words}”', found|length, {words: words}) }}</h2>
+            <ul class="page-results">
+                {% for found_page in found %}
+                    <li>
+                        <a href="{{ url('/pages/' ~ found_page.id) }}"><strong>{{ found_page.title }}</strong></a>
+                        <span class="muted">{{ found_page.updated_at|day }}</span>
+                        {% set at = found_page.body|lower|split(words|lower)|first|length %}
+                        <p class="muted page-results__snippet">…{{ found_page.body|slice(max(0, at - 60), 160) }}…</p>
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
+
+    <section class="card">
+        {% if tree is empty %}
+            <p class="card__body muted">{{ 'No pages yet. A page is Markdown: how the project runs, what was decided and why, the notes of a release. [[Another page]] links to one, and a line {{tickets …}} with a query shows those tickets, read fresh each time.'|t }}</p>
+        {% else %}
+            {% include 'pages/tree.twig' with {pages: tree, current: null} only %}
+        {% endif %}
+    </section>
+{% endblock %}

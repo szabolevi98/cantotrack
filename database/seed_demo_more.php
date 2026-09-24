@@ -968,6 +968,174 @@ $database->exec(
 );
 
 // ---------------------------------------------------------------------------
+// The projects' pages: what the team knows and has decided
+// ---------------------------------------------------------------------------
+$pageService = new CantoTrack\Service\Pages();
+$pageRepository = new CantoTrack\Model\PageRepository();
+$keyOf = static function (string $code, int $offset = 0) use ($made2, $ticketRow): string {
+    $ids = array_keys(array_filter($made2, static fn(array $m): bool => $m[0] === $code && $m[1] !== 'meetings'));
+    $row = $ticketRow((int) ($ids[$offset] ?? $ids[0]));
+
+    return $row['project_code'] . '-' . $row['number'];
+};
+
+$bikeHome = $pageService->create($projectOf['BIKE'], null, 'Balaton Bikes — start here', <<<MD
+# Balaton Bikes
+
+A phone app for renting bikes around the lake: find one, unlock it, ride, pay.
+The client is **Balaton Bikes Kft.**; Péter Lakatos is our contact, and reads
+this space.
+
+## Who does what
+
+| | |
+|---|---|
+| App, iOS and Android | Bence, Zsófia |
+| Design | Dóra |
+| Testing | Réka |
+| Lock API, the backend | Márk |
+
+## What is open right now
+
+{{tickets project = BIKE AND category != done AND type != subtask ORDER BY priority DESC}}
+
+## Read next
+
+- [[How we work on the app]]
+- [[Decisions]]
+- [[Release notes]]
+MD, $who['tamas']);
+
+$pageService->create($projectOf['BIKE'], $bikeHome, 'How we work on the app', <<<MD
+# How we work on the app
+
+Two-week sprints, from Monday to the Friday of the next week. Planning on the
+first Monday at ten, the review with Péter on the last Friday at two.
+
+## A ticket's way through
+
+1. **Backlog** — written down, not yet planned.
+2. **To do** — in the sprint, nobody on it yet.
+3. **In progress** — whoever moves it there has it (a rule gives it to them).
+4. **Review** — Réka tests it on the ten phones in the list below.
+5. **Done** — merged, and on the beta track.
+
+## The phones we test on
+
+From last season's analytics: six Samsungs, three iPhones and a Xiaomi. The
+list is in {$keyOf('BIKE', 3)}.
+
+## Bugs
+
+A bug from a rider comes through [[Support]] first. Urgent ones get the
+*triage* label and go straight into the running sprint.
+
+{{tickets project = BIKE AND type = bug AND category != done ORDER BY priority DESC}}
+MD, $who['bence']);
+
+$decisions = $pageService->create($projectOf['BIKE'], $bikeHome, 'Decisions', <<<MD
+# Decisions
+
+What we decided, when, and why — so nobody has to remember.
+
+## No passwords for riders
+
+*July.* A code by text message instead. Riders rent twice a summer; nobody
+remembers a password for that. See {$keyOf('BIKE', 1)}.
+
+## The card stays with the payment provider
+
+*August.* We keep a token and the last four digits, nothing else. Less to
+protect, and no card audit for the client.
+
+## Offline start
+
+*August.* The app opens with the last station list it had, and says how old
+it is. The ferry has no signal.
+MD, $who['zsofia']);
+
+// One page with a history: written, then put right.
+$page = (array) $pageRepository->find($decisions);
+$pageService->update($page, $bikeHome, 'Decisions', (string) $page['body'] . "\n\n## German in the app\n\n*September.* German next to Hungarian and English, because half the summer riders are from Austria and Germany.\n", $who['tamas'], (int) $page['version']);
+
+$notes = $pageService->create($projectOf['BIKE'], $bikeHome, 'Release notes', 'Every release, and what went out in it.', $who['tamas']);
+foreach ((new ReleaseRepository())->forProject($projectOf['BIKE']) as $release) {
+    if ($release['released_at'] !== null) {
+        $pageService->create($projectOf['BIKE'], $notes, 'Release ' . $release['name'], (new ReleaseService())->notes($release), $who['tamas']);
+    }
+}
+
+$clinicHome = $pageService->create($projectOf['CLINIC'], null, 'Mecsek Clinic — overview', <<<MD
+# Mecsek Clinic booking
+
+Online booking for a private clinic in Pécs: doctors' calendars, reminders,
+and the front desk. Kata Fehér runs the front desk and is our contact.
+
+## Phases
+
+- **Phase 1** — booking online, and the front desk's day. *Out.*
+- **Phase 2** — reminders, and the doctors' own calendars.
+- **Phase 3** — search by complaint, and the calendar sync.
+
+## Waiting for the clinic
+
+{{tickets project = CLINIC AND labels IN (gdpr, training) AND category != done}}
+
+## The rest
+
+- [[Front desk training notes]]
+- [[Data protection]]
+MD, $who['tamas']);
+
+$pageService->create($projectOf['CLINIC'], $clinicHome, 'Data protection', <<<MD
+# Data protection
+
+Medical data, so: as little as we can, for as short as we may.
+
+- The booking stores a name, a phone number and an e-mail — never a diagnosis.
+- A doctor's report is downloaded, not e-mailed.
+- A patient's account can be deleted on request; the records stay for the
+  legally required time with the clinic, not with us.
+
+The consent texts are with the clinic's lawyer.
+MD, $who['julia']);
+
+$pageService->create($projectOf['HELP'], null, 'Support', <<<MD
+# Support
+
+How a client's message becomes a ticket, and who answers.
+
+1. Every message is a ticket here, the same day. Nobody unassigned: a rule
+   gives new ones to Réka.
+2. Réka answers within a working day, or says when she will.
+3. Hours are logged against the ticket; the client sees them on the invoice.
+
+## Open, the oldest first
+
+{{tickets project = HELP AND category != done ORDER BY created ASC}}
+MD, $who['reka']);
+
+$ctId2 = (int) ($projects->findByCode('CT')['id'] ?? 0);
+if ($ctId2 > 0) {
+    $pageService->create($ctId2, null, 'The tracker, tracked in itself', <<<MD
+# CantoTrack
+
+The tracker this demo runs on, planned and built in itself.
+
+## This sprint
+
+{{tickets project = CT AND sprint IN openSprints() ORDER BY rank}}
+
+## How to try it
+
+Log in as one of the demo people, open **Log time** at the top, drag an entry
+on the week's calendar, or write a query on the ticket list:
+
+`assignee = me AND category != done ORDER BY priority DESC`
+MD, $who['me']);
+}
+
+// ---------------------------------------------------------------------------
 // A few automation rules, and one morning of the daily ones
 // ---------------------------------------------------------------------------
 $database->exec("DELETE FROM automation_rules WHERE name IN ('Done when its subtasks are', 'Urgent bugs get looked at', 'Whoever starts it, has it', 'A nudge the day after it was due', 'Support tickets start with Réka')");

@@ -1,0 +1,14 @@
+{#
+    A project's pages as a tree, the one shown marked: `pages` the pages at
+    one level, `current` the page shown, if any.
+#}
+<ul class="page-tree">
+    {% for item in pages %}
+        <li>
+            <a class="page-tree__link{{ current == item.id ? ' is-current' : '' }}" href="{{ url('/pages/' ~ item.id) }}">{{ item.title }}</a>
+            {% if item.children is not empty %}
+                {% include 'pages/tree.twig' with {pages: item.children, current: current} only %}
+            {% endif %}
+        </li>
+    {% endfor %}
+</ul>

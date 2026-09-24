@@ -267,3 +267,165 @@
         grid-row: auto;
     }
 }
+
+/* ---------------------------------------------------------------------------
+ * A project's pages: the tree, a page's text, its contents, its editor.
+ * ------------------------------------------------------------------------- */
+.page-tree,
+.page-tree .page-tree {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.page-tree .page-tree {
+    margin-left: 14px;
+    padding-left: 10px;
+    border-left: 1px solid var(--ct-border);
+}
+
+.page-tree__link {
+    display: block;
+    padding: 4px 8px;
+    border-radius: 6px;
+    color: var(--ct-text);
+    font-size: 0.9rem;
+}
+
+.page-tree__link:hover {
+    background: var(--ct-bg);
+    text-decoration: none;
+}
+
+.page-tree__link.is-current {
+    background: var(--ct-primary-soft);
+    color: var(--ct-primary);
+    font-weight: 600;
+}
+
+.page-body {
+    font-size: 0.98rem;
+    line-height: 1.65;
+}
+
+.page-body .markdown h1,
+.page-body .markdown h2,
+.page-body .markdown h3 {
+    scroll-margin-top: 80px;
+}
+
+.page-body__text + .page-body__text,
+.page-tickets + .page-body__text {
+    margin-top: 12px;
+}
+
+.page-tickets {
+    margin: 16px 0;
+    padding: 10px 12px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-sm);
+    background: var(--ct-bg);
+}
+
+.page-tickets__query {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    align-items: baseline;
+    margin-bottom: 6px;
+    font-size: 0.82rem;
+}
+
+.page-tickets__table {
+    background: var(--ct-surface);
+    font-size: 0.88rem;
+}
+
+.page-contents ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.88rem;
+}
+
+.page-contents li {
+    padding: 3px 0;
+}
+
+.page-contents__level-2 {
+    padding-left: 12px !important;
+}
+
+.page-contents__level-3 {
+    padding-left: 24px !important;
+}
+
+.page-results {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.page-results li {
+    padding: 6px 0;
+    border-bottom: 1px solid var(--ct-border);
+}
+
+.page-results li.is-current a {
+    font-weight: 700;
+}
+
+.page-results__snippet {
+    margin: 4px 0 0;
+    font-size: 0.84rem;
+}
+
+.page-editor__tabs {
+    margin-bottom: 8px;
+}
+
+.page-editor__tabs button {
+    border: 0;
+    background: none;
+    font: inherit;
+    cursor: pointer;
+}
+
+.page-editor__text {
+    font-size: 0.9rem;
+    line-height: 1.55;
+}
+
+.page-editor__preview {
+    min-height: 300px;
+    margin-bottom: 14px;
+    box-shadow: none;
+}
+
+.page-version__head {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 16px;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 12px;
+}
+
+.release__keep {
+    margin: 12px 0 0;
+}
+
+.page-body .markdown h1 {
+    margin: 0 0 12px;
+    font-size: 1.55rem;
+}
+
+.page-body .markdown h2 {
+    margin: 24px 0 8px;
+    font-size: 1.2rem;
+}
+
+.page-body .markdown h3 {
+    margin: 18px 0 6px;
+    font-size: 1.02rem;
+}

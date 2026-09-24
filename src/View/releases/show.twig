@@ -66,6 +66,12 @@
             <section class="card" id="notes">
                 <h2 class="card__title">{{ 'Release notes'|t }}</h2>
                 <div class="card__body markdown">{{ notes|markdown }}</div>
+                {% if can_work %}
+                    <form method="post" action="{{ url('/releases/' ~ release.id ~ '/page') }}" class="release__keep">
+                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                        <button class="button button--small" type="submit">{{ 'Keep them as a page of the project'|t }}</button>
+                    </form>
+                {% endif %}
                 <details class="release__source">
                     <summary class="link-button link-button--text">{{ 'As Markdown, to copy'|t }}</summary>
                     <textarea class="field field--code" rows="10" readonly data-select-on-focus aria-label="{{ 'Release notes'|t }}">{{ notes }}</textarea>

@@ -1,0 +1,35 @@
+{#
+    A page's text, drawn: its Markdown, and the lists of tickets its
+    {{ '{{tickets …}}' }} lines ask for, read as whoever is reading.
+#}
+{% import 'common/macros.twig' as ui %}
+{% for part in parts %}
+    {% if part.kind == 'markdown' %}
+        <div class="markdown page-body__text">{{ part.html|raw }}</div>
+    {% else %}
+        <figure class="page-tickets">
+            <figcaption class="page-tickets__query">
+                <a href="{{ url('/tickets?query=' ~ part.query|url_encode) }}"><code>{{ part.query }}</code></a>
+                {% if not part.error %}<span class="muted">{{ plural('{count} ticket', '{count} tickets', part.tickets|length) }}</span>{% endif %}
+            </figcaption>
+            {% if part.error %}
+                <p class="query-form__error">{{ part.error }}</p>
+            {% elseif part.tickets is empty %}
+                <p class="muted">{{ 'Nothing matches that.'|t }}</p>
+            {% else %}
+                <table class="table page-tickets__table">
+                    <tbody>
+                    {% for ticket in part.tickets %}
+                        <tr>
+                            <td class="table__key">{{ ui.type_icon(ticket.type) }} {{ ui.ticket_key(ticket) }}</td>
+                            <td><a href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a>{{ ui.family(ticket) }}</td>
+                            <td>{{ ui.status(ticket.status_name, ticket.status_colour) }}</td>
+                            <td>{{ ui.person(ticket.assignee_name, ticket.assignee_id) }}</td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+        </figure>
+    {% endif %}
+{% endfor %}

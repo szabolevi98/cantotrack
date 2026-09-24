@@ -1,0 +1,43 @@
+{% extends 'layout.twig' %}
+
+{% block title %}{{ 'History'|t }} — {{ page.title }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'History of {title}'|t({title: page.title}) }}{% endblock %}
+{% block subheading %}<p class="content__sub"><a href="{{ url('/pages/' ~ page.id) }}">{{ 'Back to the page'|t }}</a> · {{ 'now at version {version}'|t({version: page.version}) }}</p>{% endblock %}
+
+{% block content %}
+    <div class="split">
+        <div class="split__main">
+            {% if shown %}
+                <article class="card page-body">
+                    <header class="page-version__head">
+                        <h2 class="card__title">{{ 'Version {version}: {title}'|t({version: shown.version, title: shown.title}) }}</h2>
+                        {% if can_work %}
+                            <form method="post" action="{{ url('/pages/' ~ page.id ~ '/restore') }}" data-confirm="{{ 'Bring back version {version}? The page as it is now stays in the history.'|t({version: shown.version}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                <input type="hidden" name="version" value="{{ shown.version }}">
+                                <button class="button button--small" type="submit">{{ 'Bring this version back'|t }}</button>
+                            </form>
+                        {% endif %}
+                    </header>
+                    {% include 'pages/body.twig' with {parts: shown_parts} only %}
+                </article>
+            {% else %}
+                <section class="card"><p class="card__body muted">{{ 'Pick a version to see it as it was.'|t }}</p></section>
+            {% endif %}
+        </div>
+        <aside class="split__side">
+            <section class="card">
+                <h2 class="card__title">{{ 'Versions'|t }}</h2>
+                <ul class="page-results">
+                    <li><a href="{{ url('/pages/' ~ page.id) }}"><strong>{{ 'Version {version}'|t({version: page.version}) }}</strong></a> <span class="muted">{{ 'now'|t }} · {{ page.updated_by_name|default('—') }}</span></li>
+                    {% for version in versions %}
+                        <li class="{{ shown and shown.version == version.version ? 'is-current' : '' }}">
+                            <a href="{{ url('/pages/' ~ page.id ~ '/history?version=' ~ version.version) }}">{{ 'Version {version}'|t({version: version.version}) }}</a>
+                            <span class="muted">{{ version.created_at|day }} · {{ version.user_name|default('—') }}</span>
+                        </li>
+                    {% endfor %}
+                </ul>
+            </section>
+        </aside>
+    </div>
+{% endblock %}

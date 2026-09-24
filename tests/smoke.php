@@ -844,6 +844,16 @@ if ($email === null || $password === null) {
     ], $jar);
     check('and a rule with a condition that cannot be read is refused', $badRule['status'] === 422);
 
+    // A page of the project: written, with a list of tickets in it, and the
+    // ticket saying where it is written about.
+    $pageMade = request($baseUrl . '/projects/' . $projectId . '/pages/create', [
+        '_token' => $token, 'title' => 'Smoke page', 'body' => "# Smoke page\n\nAbout {$code}-1.\n\n{{tickets project = {$code}}}",
+    ], $jar);
+    $pageId = preg_match('#/pages/(\d+)#', $pageMade['headers'], $m) === 1 ? (int) $m[1] : 0;
+    $pageShown = request($baseUrl . '/pages/' . $pageId, [], $jar)['body'];
+    check('a page can be written, with a list of tickets in it', $pageId > 0 && str_contains($pageShown, 'page-tickets') && str_contains($pageShown, 'Smoke test ticket'));
+    check('and the ticket says where it is written about', str_contains(request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'], 'Smoke page'));
+
     $timesheet = request($baseUrl . '/timesheet?view=days', [], $jar);
     check('the timesheet answers', $timesheet['status'] === 200, 'status ' . $timesheet['status']);
     check(

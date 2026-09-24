@@ -1,0 +1,75 @@
+{% extends 'layout.twig' %}
+{% set search_project = {id: project.id, code: project.code} %}
+
+{% block title %}{{ page.title }} — {{ project.code }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ page.title }}{% endblock %}
+{% block subheading %}
+    <p class="content__sub">
+        <a href="{{ url('/projects/' ~ project.id ~ '/pages') }}">{{ 'Pages'|t }}</a>
+        {% for above in ancestors %} › <a href="{{ url('/pages/' ~ above.id) }}">{{ above.title }}</a>{% endfor %}
+        · {{ 'edited by {name} on {day}'|t({name: page.updated_by_name|default('—'), day: page.updated_at|day}) }}
+        · <a href="{{ url('/pages/' ~ page.id ~ '/history') }}">{{ plural('version {count}', 'version {count}', page.version) }}</a>
+    </p>
+{% endblock %}
+
+{% block actions %}
+    {% if can_work %}
+        <a class="button" href="{{ url('/projects/' ~ project.id ~ '/pages/create?parent=' ~ page.id) }}">{{ 'A page under it'|t }}</a>
+        <a class="button button--primary" href="{{ url('/pages/' ~ page.id ~ '/edit') }}">{{ 'Edit'|t }}</a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    {% include 'common/project_tabs.twig' with {project: project, active: 'pages'} only %}
+
+    <div class="split">
+        <div class="split__main">
+            <article class="card page-body">
+                {% if parts is empty %}
+                    <p class="muted">{{ 'Nothing written on it yet.'|t }}</p>
+                {% else %}
+                    {% include 'pages/body.twig' with {parts: parts} only %}
+                {% endif %}
+            </article>
+
+            {% if children is not empty %}
+                <section class="card">
+                    <h2 class="card__title">{{ 'Under this page'|t }}</h2>
+                    <ul class="page-results">
+                        {% for child in children %}
+                            <li><a href="{{ url('/pages/' ~ child.id) }}">{{ child.title }}</a> <span class="muted">{{ child.updated_at|day }}</span></li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            {% endif %}
+        </div>
+
+        <aside class="split__side">
+            {% if contents|length > 1 %}
+                <section class="card page-contents">
+                    <h2 class="card__title">{{ 'On this page'|t }}</h2>
+                    <ul>
+                        {% for heading in contents %}
+                            <li class="page-contents__level-{{ heading.level }}"><a href="#{{ heading.id }}">{{ heading.text }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </section>
+            {% endif %}
+
+            <section class="card">
+                <h2 class="card__title">{{ 'Pages'|t }}</h2>
+                {% include 'pages/tree.twig' with {pages: tree, current: page.id} only %}
+            </section>
+
+            {% if can_work %}
+                <section class="card">
+                    <form method="post" action="{{ url('/pages/' ~ page.id ~ '/delete') }}"
+                          data-confirm="{{ 'Delete “{title}”? The pages under it move up.'|t({title: page.title}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                        <button class="button button--danger" type="submit">{{ 'Delete the page'|t }}</button>
+                    </form>
+                </section>
+            {% endif %}
+        </aside>
+    </div>
+{% endblock %}

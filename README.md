@@ -59,6 +59,18 @@ deploy with `git pull`.
 
 ![A closed sprint: what it committed to, and its burndown](docs/sprint.png)
 
+### What the team knows
+
+- **Pages** for every project, in a tree as deep as it needs: how the project
+  runs, what was decided and why, the notes of every release. Markdown, with
+  `[[links to other pages]]`, ticket keys that link themselves, and lines like
+  `{{tickets project = BIKE AND category != done}}` that list those tickets,
+  read fresh every time the page is.
+- Every save keeps the version before it, a stale edit is refused rather than
+  written over somebody else's, and any version can be brought back. A ticket
+  says which pages write about it, and a release's notes become a page in
+  one click.
+
 ### Talking about the work
 
 - **Comments in Markdown**, with task lists, `@mentions` that notify, and ticket

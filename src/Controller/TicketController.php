@@ -245,6 +245,7 @@ class TicketController extends Controller
             'statuses' => (new StatusRepository())->forProject((int) $ticket['project_id']),
             'worklogs' => (new WorklogRepository())->forTicket($id),
             'subtasks' => (new TicketRepository())->subtasks($id),
+            'pages' => (new \CantoTrack\Model\PageRepository())->mentioning($id),
             'custom_fields' => (new \CantoTrack\Model\CustomFieldRepository())->forProject((int) $ticket['project_id']),
             'field_values' => (new \CantoTrack\Model\CustomFieldRepository())->valuesFor($id),
             'timeline' => $this->timeline($id, $showing),

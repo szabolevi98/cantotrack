@@ -43,6 +43,7 @@ class PageController extends Controller
 
         $page = $this->pageOr404($id);
         $pages = new PageRepository();
+        (new \CantoTrack\Model\RecentRepository())->viewed((int) Auth::id(), 'page', $id);
 
         $this->render('pages/show.twig', [
             'page' => $page,

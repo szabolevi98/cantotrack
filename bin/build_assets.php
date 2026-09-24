@@ -65,6 +65,7 @@ $bundles = [
             'pages.js',
             'inline.js',
             'suggest.js',
+            'palette.js',
         ],
     ],
 ];

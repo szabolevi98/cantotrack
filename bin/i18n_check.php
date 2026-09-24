@@ -113,10 +113,10 @@ foreach (files($root . '/src/View', '.twig') as $file) {
     // template looks a word up in and then translates.
     // Keys that hold something other than words — an icon's name, a path,
     // an element's id, which tab is the active one, which field a form
-    // changes — are left out.
+    // changes, what a command does — are left out.
     preg_match_all("/\\b([a-z_]+):\\s*'([A-Za-z][^'\\\\]*)'/", $code, $m, PREG_SET_ORDER);
     foreach ($m as $hit) {
-        if (!in_array($hit[1], ['icon', 'path', 'id', 'active', 'field'], true)) {
+        if (!in_array($hit[1], ['icon', 'path', 'id', 'active', 'field', 'action'], true)) {
             $note($hit[2], $file);
         }
     }

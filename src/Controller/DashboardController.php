@@ -45,6 +45,7 @@ class DashboardController extends Controller
             'pages' => (new \CantoTrack\Model\PageRepository())->recent(5),
             'starred' => $tickets->favouritesOf((int) Auth::id(), 6),
             'gadgets' => (new Gadgets())->drawn((int) Auth::id()),
+            'looked_at' => (new \CantoTrack\Model\RecentRepository())->latest((int) Auth::id(), 5),
             'gadget_groups' => array_keys(Gadgets::GROUPS),
         ]);
     }

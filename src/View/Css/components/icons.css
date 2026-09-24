@@ -58,3 +58,4 @@
 .bi-pencil::before { content: "\f4cb"; }
 .bi-x-lg::before { content: "\f659"; }
 .bi-box-arrow-up-right::before { content: "\f1c5"; }
+.bi-search::before { content: "\f52a"; }

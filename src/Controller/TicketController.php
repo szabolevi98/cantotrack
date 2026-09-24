@@ -290,6 +290,8 @@ class TicketController extends Controller
         $ticket = $this->ticketOr404($id);
         $showing = in_array($_GET['activity'] ?? '', ['comments', 'history'], true) ? $_GET['activity'] : 'all';
 
+        (new \CantoTrack\Model\RecentRepository())->viewed((int) Auth::id(), 'ticket', $id);
+
         // Looking at the ticket is reading what was said about it.
         $notifications = new \CantoTrack\Model\NotificationRepository();
         $notifications->markTicketRead((int) Auth::id(), $id);

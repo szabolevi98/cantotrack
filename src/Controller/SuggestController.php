@@ -25,8 +25,49 @@ class SuggestController extends Controller
         $this->json(['items' => match ($kind) {
             'people' => $this->people($q),
             'tickets' => $this->tickets($q),
+            'palette' => $this->palette($q),
             default => [],
         }]);
+    }
+
+    /**
+     * What the jump-anywhere box offers (see palette.js): with nothing typed,
+     * what the person opened lately; with words, the tickets, pages and
+     * projects they find. Each with where it is.
+     *
+     * @return list<array{group: string, label: string, hint: string, url: string}>
+     */
+    private function palette(string $q): array
+    {
+        $base = rtrim((string) \CantoTrack\Core\Config::get('app.base_url'), '/');
+
+        if ($q === '') {
+            return array_map(static fn(array $r): array => [
+                'group' => __('Lately'),
+                'label' => $r['label'],
+                'hint' => $r['hint'],
+                'url' => $base . $r['url'],
+            ], (new \CantoTrack\Model\RecentRepository())->latest((int) Auth::id(), 8));
+        }
+
+        $items = [];
+
+        foreach (array_slice($this->tickets($q), 0, 6) as $ticket) {
+            $items[] = ['group' => __('Tickets'), 'label' => $ticket['label'], 'hint' => $ticket['hint'], 'url' => $base . '/t/' . $ticket['value']];
+        }
+
+        foreach ((new \CantoTrack\Model\PageRepository())->searchEverywhere($q, 4) as $page) {
+            $items[] = ['group' => __('Pages'), 'label' => (string) $page['title'], 'hint' => (string) $page['project_code'], 'url' => $base . '/pages/' . $page['id']];
+        }
+
+        $words = mb_strtolower($q);
+        foreach ((new \CantoTrack\Model\ProjectRepository())->allWithCounts() as $project) {
+            if (str_contains(mb_strtolower($project['code'] . ' ' . $project['name']), $words)) {
+                $items[] = ['group' => __('Projects'), 'label' => (string) $project['name'], 'hint' => (string) $project['code'], 'url' => $base . '/projects/' . $project['id']];
+            }
+        }
+
+        return array_slice($items, 0, 14);
     }
 
     /** @return list<array{value: string, label: string, hint: string}> */

@@ -183,6 +183,11 @@
             </div>
         </details>
 
+        <button class="topbar__icon" type="button" data-palette-open
+                title="{{ 'Jump anywhere'|t }} (Ctrl+K)" aria-label="{{ 'Jump anywhere'|t }}">
+            <i class="bi bi-search" aria-hidden="true"></i>
+        </button>
+
         <button class="topbar__icon" type="button" data-shortcut-help
                 title="{{ 'Keyboard shortcuts'|t }}" aria-label="{{ 'Keyboard shortcuts'|t }}">
             <i class="bi bi-question-circle" aria-hidden="true"></i>
@@ -236,6 +241,7 @@
 <dialog class="shortcuts" id="shortcuts" aria-labelledby="shortcuts-title">
     <h2 id="shortcuts-title">{{ 'Keyboard shortcuts'|t }}</h2>
     <dl class="shortcuts__list">
+        <dt><kbd>Ctrl</kbd> <kbd>K</kbd></dt><dd>{{ 'Jump anywhere: a ticket, a page, a project, or something to do'|t }}</dd>
         <dt><kbd>/</kbd></dt><dd>{{ 'Search, or jump to a ticket by its name'|t }}</dd>
         <dt><kbd>c</kbd></dt><dd>{{ 'Create a ticket'|t }}</dd>
         <dt><kbd>g</kbd> <kbd>d</kbd></dt><dd>{{ 'Go to the dashboard'|t }}</dd>
@@ -253,6 +259,60 @@
     </dl>
     <form method="dialog"><button class="button">{{ 'Close'|t }}</button></form>
 </dialog>
+
+{% if current_user %}
+    {#
+        Jump anywhere, opened with Ctrl+K: what was opened lately, the
+        tickets, pages and projects some words find, and the things to do —
+        see palette.js. The things to do are here, in the page's language.
+    #}
+    {% set here = search_project is defined ? search_project : null %}
+    {% set commands = [
+        {label: 'Go to the dashboard'|t, url: url('/')},
+        {label: 'Go to the projects'|t, url: url('/projects')},
+        {label: 'Go to the tickets'|t, url: url('/tickets')},
+        {label: 'Write a query on the ticket list'|t, url: url('/tickets?mode=query')},
+        {label: 'Go to your timesheet'|t, url: url('/timesheet')},
+        {label: 'Go to the roadmap'|t, url: url('/roadmap')},
+        {label: 'Go to the reports'|t, url: url('/reports')},
+        {label: 'Go to the notifications'|t, url: url('/notifications')},
+        {label: 'Go to your profile'|t, url: url('/profile')},
+    ] %}
+    {% if can_work %}
+        {% set commands = [
+            {label: 'Create a ticket'|t, url: url('/tickets/create' ~ (here ? '?project=' ~ here.id : ''))},
+            {label: 'Log time on any ticket'|t, action: 'log'},
+        ]|merge(commands)|merge([{label: 'Go to the planning'|t, url: url('/planning')}]) %}
+    {% endif %}
+    {% if here %}
+        {% set commands = [
+            {label: 'Go to {code}’s board'|t({code: here.code}), url: url('/projects/' ~ here.id)},
+            {label: 'Go to {code}’s backlog'|t({code: here.code}), url: url('/projects/' ~ here.id ~ '/backlog')},
+            {label: 'Go to {code}’s releases'|t({code: here.code}), url: url('/projects/' ~ here.id ~ '/releases')},
+            {label: 'Go to {code}’s pages'|t({code: here.code}), url: url('/projects/' ~ here.id ~ '/pages')},
+            {label: 'See how {code}’s work flows'|t({code: here.code}), url: url('/projects/' ~ here.id ~ '/flow')},
+        ]|merge(commands) %}
+    {% endif %}
+    {% if is_admin %}
+        {% set commands = commands|merge([
+            {label: 'Go to the people'|t, url: url('/people')},
+            {label: 'Go to the automation rules'|t, url: url('/settings/automation')},
+            {label: 'Go to the settings'|t, url: url('/settings')},
+        ]) %}
+    {% endif %}
+    {% set commands = commands|merge([
+        {label: 'Switch between light and dark'|t, action: 'theme'},
+        {label: 'Show the keyboard shortcuts'|t, action: 'shortcuts'},
+    ]) %}
+    <dialog class="palette" id="palette" aria-label="{{ 'Jump anywhere'|t }}"
+            data-palette-url="{{ url('/suggest?kind=palette&q=') }}" data-commands="{{ commands|json_encode }}"
+            data-things-to-do="{{ 'Things to do'|t }}" data-nothing="{{ 'Nothing found.'|t }}">
+        <input class="palette__input" type="search" autocomplete="off" spellcheck="false" data-palette-input
+               aria-label="{{ 'Jump anywhere'|t }}" placeholder="{{ 'A ticket, a page, a project, or something to do…'|t }}">
+        <ul class="palette__list" role="listbox" data-palette-list></ul>
+        <p class="palette__foot muted"><kbd>↑</kbd> <kbd>↓</kbd> {{ 'to move'|t }} · <kbd>Enter</kbd> {{ 'to go'|t }} · <kbd>Esc</kbd> {{ 'to close'|t }}</p>
+    </dialog>
+{% endif %}
 
 {% if can_work %}{% include 'common/quick_log.twig' %}{% endif %}
 {% if current_user %}

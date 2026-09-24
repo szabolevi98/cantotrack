@@ -133,6 +133,21 @@
                 </section>
             {% endif %}
 
+            {% if looked_at is not empty %}
+                <section class="card">
+                    <h2 class="card__title">{{ 'You looked at lately'|t }}</h2>
+                    <ul class="page-results">
+                        {% for item in looked_at %}
+                            <li>
+                                <a href="{{ url(item.url) }}"{{ item.kind == 'ticket' ? ' data-panel' : '' }}>{{ item.label }}</a>
+                                <span class="muted">{{ item.hint }}</span>
+                            </li>
+                        {% endfor %}
+                    </ul>
+                    <p class="hint">{{ 'Ctrl+K jumps to any of them, and to anything else.'|t }}</p>
+                </section>
+            {% endif %}
+
             {% if pages is not empty %}
                 <section class="card">
                     <h2 class="card__title">{{ 'Pages lately'|t }}</h2>

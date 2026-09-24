@@ -130,6 +130,9 @@ if (!$exempt) {
 // Whoever has to hear about a change is told by the Notifier, which listens
 // to every change the services make; so are the webhooks.
 Notifier::register();
+// The rules first: what they change after the request is heard by the
+// webhooks, which send theirs once it is all done.
+CantoTrack\Service\Automation::register();
 Webhooks::register();
 
 /*

@@ -126,6 +126,17 @@ deploy with `git pull`.
 
 ![Reports, and the exports](docs/reports.png)
 
+### Automation
+
+- **Rules** that do the small things nobody should have to remember: when a
+  ticket is created, moved, given to somebody, commented on, logged against,
+  or its last subtask is done — or every morning — and it matches a condition
+  in the query language, move it, give it to somebody, set its priority, add
+  or take off a label, comment, or put it in the running sprint.
+- A rule answers what happened, never another rule, so two rules cannot undo
+  each other for ever; its lines in a ticket's history name it, and its log
+  says what it did and what failed.
+
 ### For other programs
 
 - **A JSON API** under `/api/v1`, with personal access tokens made on the

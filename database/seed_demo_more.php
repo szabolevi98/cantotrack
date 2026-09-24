@@ -967,6 +967,23 @@ $database->exec(
        AND e.id <> (SELECT MAX(e2.id) FROM epics e2 WHERE e2.project_id = e.project_id)"
 );
 
+// ---------------------------------------------------------------------------
+// A few automation rules, and one morning of the daily ones
+// ---------------------------------------------------------------------------
+$database->exec("DELETE FROM automation_rules WHERE name IN ('Done when its subtasks are', 'Urgent bugs get looked at', 'Whoever starts it, has it', 'A nudge the day after it was due', 'Support tickets start with Réka')");
+$automation = new CantoTrack\Model\AutomationRepository();
+$automation->save(null, null, 'Done when its subtasks are', 'subtasks_done', 'category != done', [['type' => 'status', 'value' => 'done'], ['type' => 'comment', 'value' => 'All its subtasks are done, so this is too.']], $who['tamas']);
+$automation->save(null, null, 'Urgent bugs get looked at', 'created', 'type = bug AND priority = urgent', [['type' => 'add_label', 'value' => 'triage'], ['type' => 'sprint', 'value' => 'active']], $who['tamas']);
+$automation->save(null, null, 'Whoever starts it, has it', 'moved', 'category = "in progress" AND assignee IS EMPTY', [['type' => 'assign', 'value' => 'actor']], $who['tamas']);
+$automation->save(null, null, 'A nudge the day after it was due', 'daily', 'due = -1d AND category != done', [['type' => 'comment', 'value' => '{key} was due yesterday and is not finished. Is the date still right?']], $who['tamas']);
+$automation->save(null, $projectOf['HELP'], 'Support tickets start with Réka', 'created', 'assignee IS EMPTY', [['type' => 'assign', 'value' => 'reka@cantotrack.demo']], $who['tamas']);
+
+// A few tickets were due yesterday, for the morning's nudge to find.
+foreach (array_slice($openTickets['BIKE'] ?? [], 0, 2) as $t) {
+    $database->prepare('UPDATE tickets SET due_on = :due WHERE id = :id')->execute(['due' => $ymd($today->modify('-1 day')), 'id' => $t]);
+}
+(new CantoTrack\Service\Automation())->daily();
+
 $moreSummary = [
     'projects' => count($catalogue),
     'tickets' => count($made2),

@@ -13,6 +13,7 @@
 use CantoTrack\Controller\ApiController;
 use CantoTrack\Controller\ApiTokenController;
 use CantoTrack\Controller\AttachmentController;
+use CantoTrack\Controller\AutomationController;
 use CantoTrack\Controller\AvatarController;
 use CantoTrack\Controller\CommentController;
 use CantoTrack\Controller\DashboardController;
@@ -140,6 +141,13 @@ $router->post('/projects/{id}/fields', static fn($id) => (new FieldController())
 $router->post('/fields/{id}', static fn($id) => (new FieldController())->update((int) $id));
 $router->post('/fields/{id}/move', static fn($id) => (new FieldController())->move((int) $id));
 $router->post('/fields/{id}/delete', static fn($id) => (new FieldController())->delete((int) $id));
+$router->get('/settings/automation', static fn() => (new AutomationController())->index());
+$router->get('/settings/automation/create', static fn() => (new AutomationController())->createForm());
+$router->post('/settings/automation', static fn() => (new AutomationController())->create());
+$router->get('/settings/automation/{id}', static fn($id) => (new AutomationController())->editForm((int) $id));
+$router->post('/settings/automation/{id}', static fn($id) => (new AutomationController())->update((int) $id));
+$router->post('/settings/automation/{id}/toggle', static fn($id) => (new AutomationController())->toggle((int) $id));
+$router->post('/settings/automation/{id}/delete', static fn($id) => (new AutomationController())->delete((int) $id));
 $router->get('/projects/{id}/releases', static fn($id) => (new ReleaseController())->index((int) $id));
 $router->post('/projects/{id}/releases', static fn($id) => (new ReleaseController())->create((int) $id));
 $router->get('/releases/{id}', static fn($id) => (new ReleaseController())->show((int) $id));

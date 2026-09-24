@@ -77,3 +77,72 @@
         display: none;
     }
 }
+
+/* The automation rules: a paused one reads quieter. */
+.row--muted {
+    opacity: 0.6;
+}
+
+.automation-templates {
+    display: grid;
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.automation-templates li {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    align-items: baseline;
+}
+
+.automation-actions {
+    margin: 16px 0 0;
+    padding: 0;
+    border: 0;
+}
+
+.automation-actions legend {
+    margin-bottom: 6px;
+    font-weight: 600;
+}
+
+.automation-actions__row {
+    display: grid;
+    grid-template-columns: minmax(160px, 220px) minmax(0, 1fr);
+    gap: 8px;
+}
+
+.automation-actions__row .field {
+    margin-bottom: 8px;
+}
+
+.automation-help ul {
+    margin: 6px 0 0;
+    padding-left: 18px;
+}
+
+.automation-log {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: 0.85rem;
+}
+
+.automation-log__item {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2px 8px;
+    padding: 6px 0;
+    border-bottom: 1px solid var(--ct-border);
+}
+
+.automation-log__item--failed span:last-child {
+    color: var(--ct-danger);
+}
+
+.automation-delete {
+    margin-top: 10px;
+}

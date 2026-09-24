@@ -300,4 +300,5 @@
     {%- else -%}
         {{ '{who} cleared the {field}'|t({who: who, field: field}) }}
     {%- endif -%}
+    {%- if event.via|default(null) %} <span class="muted">· {{ 'by the rule “{rule}”'|t({rule: event.via}) }}</span>{% endif -%}
 {% endmacro %}

@@ -25,12 +25,14 @@ class EventRepository
         string $kind,
         ?string $field = null,
         ?string $old = null,
-        ?string $new = null
+        ?string $new = null,
+        ?string $via = null
     ): void {
         $this->db->prepare(
-            'INSERT INTO ticket_events (ticket_id, user_id, kind, field, old_value, new_value)
-             VALUES (:ticket, :user, :kind, :field, :old, :new)'
+            'INSERT INTO ticket_events (ticket_id, user_id, kind, field, old_value, new_value, via)
+             VALUES (:ticket, :user, :kind, :field, :old, :new, :via)'
         )->execute([
+            'via' => $via,
             'ticket' => $ticketId,
             'user' => $userId,
             'kind' => $kind,

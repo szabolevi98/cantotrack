@@ -1,0 +1,68 @@
+{% extends 'layout.twig' %}
+{% import 'automation/names.twig' as names %}
+
+{% block title %}{{ 'Automation'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Automation'|t }}{% endblock %}
+{% block subheading %}<p class="content__sub">{{ 'Rules that do the small things nobody should have to remember.'|t }}</p>{% endblock %}
+
+{% block actions %}
+    <a class="button button--primary" href="{{ url('/settings/automation/create') }}">{{ 'New rule'|t }}</a>
+{% endblock %}
+
+{% block content %}
+    {% if rules is empty %}
+        <section class="card"><p class="card__body muted">{{ 'No rules yet. Start from one of these, or write your own.'|t }}</p></section>
+    {% else %}
+        <section class="card card--flush">
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>{{ 'Rule'|t }}</th>
+                    <th>{{ 'When'|t }}</th>
+                    <th>{{ 'For'|t }}</th>
+                    <th>{{ 'Does'|t }}</th>
+                    <th class="table__number">{{ 'Ran'|t }}</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for rule in rules %}
+                    <tr class="{{ rule.is_active ? '' : 'row--muted' }}">
+                        <td><a href="{{ url('/settings/automation/' ~ rule.id) }}"><strong>{{ rule.name }}</strong></a>
+                            <div class="muted">{{ rule.project_code ? rule.project_code : 'Every project'|t }}</div></td>
+                        <td>{{ names.trigger(rule.trigger) }}</td>
+                        <td>{% if rule.condition %}<code>{{ rule.condition }}</code>{% else %}<span class="muted">{{ 'every ticket'|t }}</span>{% endif %}</td>
+                        <td>
+                            {% for action in rule.actions %}
+                                <div>{{ names.action(action.type) }}{% if action.value %}: <span class="muted">{{ action.value|length > 60 ? action.value|slice(0, 60) ~ '…' : action.value }}</span>{% endif %}</div>
+                            {% endfor %}
+                        </td>
+                        <td class="table__number">
+                            {{ rule.run_count }}
+                            {% if rule.last_run_at %}<div class="muted">{{ rule.last_run_at|day }}</div>{% endif %}
+                        </td>
+                        <td>
+                            <form method="post" action="{{ url('/settings/automation/' ~ rule.id ~ '/toggle') }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                <button class="button button--small" type="submit">{{ rule.is_active ? 'Pause'|t : 'Start again'|t }}</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </section>
+    {% endif %}
+
+    <section class="card">
+        <h2 class="card__title">{{ 'Start from one of these'|t }}</h2>
+        <ul class="automation-templates">
+            {% for key, template in templates %}
+                <li>
+                    <a href="{{ url('/settings/automation/create?template=' ~ key) }}"><strong>{{ template[0]|t }}</strong></a>
+                    <span class="muted">{{ names.trigger(template[1]) }} · <code>{{ template[2] }}</code></span>
+                </li>
+            {% endfor %}
+        </ul>
+    </section>
+{% endblock %}

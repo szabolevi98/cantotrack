@@ -18,6 +18,9 @@ class Activity
     /** @var list<callable(array, ?int, string, ?string, ?string, ?string): void> */
     private static array $listeners = [];
 
+    /** The automation rule at work, while one is: its lines in the history say so. */
+    public static ?string $via = null;
+
     private EventRepository $events;
 
     public function __construct(private ?PDO $db = null)
@@ -39,7 +42,7 @@ class Activity
         ?string $old = null,
         ?string $new = null
     ): void {
-        $this->events->record((int) $ticket['id'], $actorId, $kind, $field, $old, $new);
+        $this->events->record((int) $ticket['id'], $actorId, $kind, $field, $old, $new, self::$via);
 
         foreach (self::$listeners as $listener) {
             $listener($ticket, $actorId, $kind, $field, $old, $new);

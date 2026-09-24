@@ -1,0 +1,121 @@
+{% extends 'layout.twig' %}
+{% import 'automation/names.twig' as names %}
+
+{% block title %}{{ rule ? rule.name : 'New rule'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ rule ? rule.name : 'New rule'|t }}{% endblock %}
+{% block subheading %}
+    {% if rule %}
+        <p class="content__sub">{{ rule.is_active ? 'At work'|t : 'Paused'|t }} · {{ plural('ran once', 'ran {count} times', rule.run_count) }}{% if rule.creator_name %} · {{ 'its changes are made in the name of {name}'|t({name: rule.creator_name}) }}{% endif %}</p>
+    {% endif %}
+{% endblock %}
+
+{% block actions %}
+    <a class="button" href="{{ url('/settings/automation') }}">{{ 'Every rule'|t }}</a>
+{% endblock %}
+
+{% block content %}
+    {% if error %}<p class="flash flash--danger">{{ error }}</p>{% endif %}
+
+    <div class="split">
+        <div class="split__main">
+            <section class="card">
+                <form method="post" action="{{ rule ? url('/settings/automation/' ~ rule.id) : url('/settings/automation') }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+
+                    <label for="name">{{ 'Name'|t }}</label>
+                    <input id="name" class="field" type="text" name="name" value="{{ values.name|default('') }}" maxlength="120" required>
+
+                    <div class="form__row">
+                        <div>
+                            <label for="trigger">{{ 'When'|t }}</label>
+                            <select id="trigger" class="field" name="trigger">
+                                {% for trigger in triggers %}
+                                    <option value="{{ trigger }}"{{ values.trigger|default('') == trigger ? ' selected' : '' }}>{{ names.trigger(trigger) }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div>
+                            <label for="project_id">{{ 'In'|t }}</label>
+                            <select id="project_id" class="field" name="project_id">
+                                <option value="">{{ 'Every project'|t }}</option>
+                                {% for project in projects %}
+                                    <option value="{{ project.id }}"{{ values.project_id|default(0) == project.id ? ' selected' : '' }}>{{ project.code }} — {{ project.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+
+                    <label for="condition">{{ 'And the ticket matches'|t }}</label>
+                    <input id="condition" class="field field--code" type="text" name="condition" value="{{ values.condition|default('') }}"
+                           placeholder="type = bug AND priority >= high" autocomplete="off" spellcheck="false">
+                    <p class="hint">{{ 'In the query language of the ticket list. Empty: every ticket.'|t }} <a href="{{ url('/tickets?mode=query') }}">{{ 'How to write a query'|t }}</a></p>
+
+                    <fieldset class="automation-actions">
+                        <legend>{{ 'Then'|t }}</legend>
+                        {% set rows = values.actions|default([]) %}
+                        {% for i in 0..3 %}
+                            {% set action = rows[i]|default({type: '', value: ''}) %}
+                            <div class="automation-actions__row">
+                                <select class="field" name="actions[{{ i }}][type]" aria-label="{{ 'Action {n}'|t({n: i + 1}) }}">
+                                    <option value="">—</option>
+                                    {% for type in actions %}
+                                        <option value="{{ type }}"{{ action.type == type ? ' selected' : '' }}>{{ names.action(type) }}</option>
+                                    {% endfor %}
+                                </select>
+                                <input class="field" type="text" name="actions[{{ i }}][value]" value="{{ action.value }}" aria-label="{{ 'What'|t }}">
+                            </div>
+                        {% endfor %}
+                    </fieldset>
+                    <details class="hint automation-help">
+                        <summary>{{ 'What each action takes'|t }}</summary>
+                        <ul>
+                            <li><strong>{{ names.action('status') }}</strong>: {{ 'a column of the project, or to do, in progress, done'|t }}</li>
+                            <li><strong>{{ names.action('assign') }}</strong>: {{ 'a name or an e-mail address; reporter; actor — who set the rule off; nobody'|t }}</li>
+                            <li><strong>{{ names.action('priority') }}</strong>: low, normal, high, urgent</li>
+                            <li><strong>{{ names.action('comment') }}</strong>: {{ 'the words; {key}, {title}, {assignee} and {due} are filled in'|t }}</li>
+                            <li><strong>{{ names.action('sprint') }}</strong>: {{ 'active — the one running — or backlog'|t }}</li>
+                        </ul>
+                    </details>
+
+                    <div class="form__actions">
+                        <button class="button button--primary" type="submit">{{ rule ? 'Save'|t : 'Put the rule to work'|t }}</button>
+                        <a class="button" href="{{ url('/settings/automation') }}">{{ 'Cancel'|t }}</a>
+                    </div>
+                </form>
+            </section>
+        </div>
+
+        {% if rule %}
+            <aside class="split__side">
+                <section class="card">
+                    <h2 class="card__title">{{ 'What it did lately'|t }}</h2>
+                    {% if log is empty %}
+                        <p class="card__body muted">{{ 'Nothing yet.'|t }}</p>
+                    {% else %}
+                        <ul class="automation-log">
+                            {% for entry in log %}
+                                <li class="automation-log__item automation-log__item--{{ entry.outcome }}">
+                                    <span class="muted">{{ entry.created_at|day }} {{ entry.created_at|date('H:i') }}</span>
+                                    {% if entry.ticket_id %}<a class="ticket-key" href="{{ url('/tickets/' ~ entry.ticket_id) }}">{{ entry.project_code }}-{{ entry.ticket_number }}</a>{% endif %}
+                                    <span>{{ entry.outcome == 'done' ? entry.message : 'Failed: {reason}'|t({reason: entry.message}) }}</span>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    {% endif %}
+                </section>
+
+                <section class="card">
+                    <form method="post" action="{{ url('/settings/automation/' ~ rule.id ~ '/toggle') }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                        <input type="hidden" name="back" value="/settings/automation/{{ rule.id }}">
+                        <button class="button" type="submit">{{ rule.is_active ? 'Pause it'|t : 'Start it again'|t }}</button>
+                    </form>
+                    <form method="post" action="{{ url('/settings/automation/' ~ rule.id ~ '/delete') }}" data-confirm="{{ 'Delete the rule “{name}”?'|t({name: rule.name}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                        <button class="button button--danger automation-delete" type="submit">{{ 'Delete the rule'|t }}</button>
+                    </form>
+                </section>
+            </aside>
+        {% endif %}
+    </div>
+{% endblock %}

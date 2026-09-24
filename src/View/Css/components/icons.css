@@ -51,6 +51,7 @@
 .bi-tags::before { content: "\f5b2"; }
 .bi-calendar2-range::before { content: "\f207"; }
 .bi-signpost-split::before { content: "\f549"; }
+.bi-lightning-charge::before { content: "\f46d"; }
 .bi-star::before { content: "\f588"; }
 .bi-star-fill::before { content: "\f586"; }
 .bi-exclamation-circle::before { content: "\f333"; }

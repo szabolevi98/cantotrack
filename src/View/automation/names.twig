@@ -1,0 +1,27 @@
+{#
+    The words for the triggers and the actions, in one place for the list
+    and the form.
+#}
+{% macro trigger(key) -%}
+    {{ ({
+        created: 'A ticket is created',
+        moved: 'A ticket moves to another column',
+        assigned: 'A ticket is given to somebody',
+        commented: 'Somebody comments',
+        logged: 'Time is logged',
+        subtasks_done: 'Its last subtask is done',
+        daily: 'Every morning'
+    }[key]|default(key))|t }}
+{%- endmacro %}
+
+{% macro action(key) -%}
+    {{ ({
+        status: 'Move it to',
+        assign: 'Give it to',
+        priority: 'Set its priority to',
+        add_label: 'Add the label',
+        remove_label: 'Take off the label',
+        comment: 'Comment',
+        sprint: 'Put it in the sprint'
+    }[key]|default(key))|t }}
+{%- endmacro %}

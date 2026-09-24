@@ -835,6 +835,15 @@ if ($email === null || $password === null) {
         str_contains(request($baseUrl . '/tickets?' . http_build_query(['query' => '"Smoke platform" = Android']), [], $jar)['body'], $code . '-1')
     );
 
+    // Automation: the rules page, a rule made from a template, and a
+    // condition that cannot be read refused before it can fail at night.
+    check('the automation rules answer', str_contains(request($baseUrl . '/settings/automation', [], $jar)['body'], 'automation-templates'));
+    $badRule = request($baseUrl . '/settings/automation', [
+        '_token' => $token, 'name' => 'Smoke rule', 'trigger' => 'created', 'condition' => 'colour = red',
+        'actions' => [['type' => 'add_label', 'value' => 'smoke']],
+    ], $jar);
+    check('and a rule with a condition that cannot be read is refused', $badRule['status'] === 422);
+
     $timesheet = request($baseUrl . '/timesheet?view=days', [], $jar);
     check('the timesheet answers', $timesheet['status'] === 200, 'status ' . $timesheet['status']);
     check(

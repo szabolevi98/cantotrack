@@ -519,9 +519,21 @@ $plan($mark, 'rounding', 0, 2, '3h');
 $plan($mark, 'shop', 0, 11, '4h', 'Subscriptions');
 $plan($julia, 'copy', 0, 11, '5h');
 
-// A filter the whole team shares — once, however often the demo is reset.
-$database->prepare("DELETE FROM saved_filters WHERE user_id = :me AND name = 'Open bugs'")->execute(['me' => $me]);
-(new SavedFilterRepository())->create($me, 'Open bugs', 'type=bug&open=1', true);
+// The filters the team shares — once each, however often the demo is reset.
+// Written in the query language where they can be: "me" is whoever opens
+// one, so a shared filter is everybody's own list.
+$sharedFilters = [
+    [$me, 'Open bugs', 'type=bug&open=1'],
+    [$me, 'Mine, still open', http_build_query(['query' => 'assignee = me AND category != done ORDER BY priority DESC, due'])],
+    [$anna, 'Due this week', http_build_query(['query' => 'due <= endOfWeek() AND category != done ORDER BY due'])],
+    [$anna, 'Urgent and high', http_build_query(['query' => 'priority IN (urgent, high) AND category != done ORDER BY priority DESC'])],
+    [$mark, 'Waiting for a review', http_build_query(['query' => 'status = Review ORDER BY updated'])],
+    [$me, 'Nobody’s yet', http_build_query(['query' => 'assignee IS EMPTY AND category != done ORDER BY created DESC'])],
+];
+foreach ($sharedFilters as [$owner, $filterName, $filterQuery]) {
+    $database->prepare('DELETE FROM saved_filters WHERE user_id = :owner AND name = :name')->execute(['owner' => $owner, 'name' => $filterName]);
+    (new SavedFilterRepository())->create($owner, $filterName, $filterQuery, true);
+}
 
 // ---------------------------------------------------------------------------
 // And the dates moved back to when it all would have happened

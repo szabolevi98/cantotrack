@@ -258,3 +258,114 @@ summary.link-button::-webkit-details-marker {
     padding-top: 8px;
     padding-bottom: 8px;
 }
+
+/* Read out, not shown: a label the layout already makes plain. */
+.visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+}
+
+.field--error {
+    border-color: var(--ct-danger);
+}
+
+/* ---------------------------------------------------------------------------
+ * The ticket list's query: one line of the query language, its suggestions,
+ * and the help under it.
+ * ------------------------------------------------------------------------- */
+.tickets__mode {
+    margin-bottom: 12px;
+}
+
+.query-form__row {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+}
+
+.query-form__box {
+    position: relative;
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.query-form__input {
+    margin: 0;
+    font-size: 0.92rem;
+}
+
+.query-form__suggestions {
+    position: absolute;
+    top: calc(100% + 4px);
+    left: 0;
+    z-index: 20;
+    min-width: 260px;
+    max-height: 320px;
+    margin: 0;
+    padding: 4px;
+    overflow-y: auto;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-sm);
+    background: var(--ct-surface);
+    box-shadow: var(--ct-shadow);
+    list-style: none;
+}
+
+.query-form__suggestions li {
+    padding: 6px 10px;
+    border-radius: 6px;
+    font-family: var(--ct-mono, ui-monospace, SFMono-Regular, Menlo, Consolas, monospace);
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.query-form__suggestions li:hover,
+.query-form__suggestions li.is-active {
+    background: var(--ct-primary-soft);
+    color: var(--ct-primary);
+}
+
+.query-form__error {
+    margin: 8px 0 0;
+    color: var(--ct-danger);
+    font-size: 0.88rem;
+}
+
+.query-form__help {
+    margin-top: 10px;
+}
+
+.query-form__guide {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+    gap: 8px 32px;
+    margin-top: 8px;
+    font-size: 0.86rem;
+}
+
+.query-form__guide h3 {
+    margin: 12px 0 4px;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    color: var(--ct-muted);
+}
+
+.query-form__guide code {
+    display: inline-block;
+    margin: 0 2px 4px 0;
+}
+
+.query-form__examples {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.query-form__examples li {
+    margin-bottom: 4px;
+}

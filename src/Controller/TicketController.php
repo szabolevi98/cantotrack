@@ -46,6 +46,22 @@ class TicketController extends Controller
         Auth::require();
 
         $filters = $this->filters();
+        $queryError = null;
+        $query = trim((string) ($_GET['query'] ?? ''));
+
+        if ($query !== '') {
+            try {
+                $compiled = \CantoTrack\Service\TicketQuery::compile($query, Auth::id());
+                $filters['query_where'] = $compiled['where'];
+                $filters['query_params'] = $compiled['params'];
+                $filters['query_order'] = $compiled['order'];
+            } catch (ValidationError $e) {
+                $queryError = $e->getMessage();
+                // Nothing rather than everything: a query that cannot be read
+                // shows what is wrong with it, not the whole tracker.
+                $filters['query_where'] = 'FALSE';
+            }
+        }
 
         $tickets = new TicketRepository();
         $total = $tickets->count($filters);
@@ -74,8 +90,77 @@ class TicketController extends Controller
                 static fn(array $s): bool => $s['state'] !== 'closed'
             )) : [],
             'saved' => $this->savedFilter(),
+            'query_text' => $query,
+            'query_error' => $queryError,
+            'query_mode' => $query !== '' || ($_GET['mode'] ?? '') === 'query',
+            'as_query' => \CantoTrack\Service\TicketQuery::fromFilters($filters, $this->namesFor($filters)),
+            'vocabulary' => \CantoTrack\Service\TicketQuery::vocabulary(),
             'releases' => $filters['project_id'] ? (new ReleaseRepository())->forProject($filters['project_id']) : [],
         ]);
+    }
+
+    /**
+     * The names the simple filters stand for — the project's code, the
+     * person's name, the column's — to write them out as a query.
+     *
+     * @return array<string, array<int, string>>
+     */
+    private function namesFor(array $filters): array
+    {
+        $names = ['project' => [], 'person' => [], 'status' => [], 'release' => []];
+
+        if (!empty($filters['project_id']) && ($project = (new ProjectRepository())->find((int) $filters['project_id'])) !== null) {
+            $names['project'][(int) $project['id']] = (string) $project['code'];
+
+            foreach ((new StatusRepository())->forProject((int) $project['id']) as $status) {
+                $names['status'][(int) $status['id']] = (string) $status['name'];
+            }
+
+            foreach ((new ReleaseRepository())->forProject((int) $project['id']) as $release) {
+                $names['release'][(int) $release['id']] = (string) $release['name'];
+            }
+        }
+
+        if (!empty($filters['assignee_id']) && ($person = (new UserRepository())->find((int) $filters['assignee_id'])) !== null) {
+            $names['person'][(int) $person['id']] = (string) $person['name'];
+        }
+
+        return $names;
+    }
+
+    /**
+     * What a query can be finished with, for the suggestions under the box:
+     * the values one field takes, among what the person may see.
+     */
+    public function queryValues(): void
+    {
+        Auth::require();
+
+        $field = strtolower((string) ($_GET['field'] ?? ''));
+        $db = \CantoTrack\Core\DatabaseConnection::get();
+        $visible = \CantoTrack\Core\Access::sql('project_id');
+        $column = static function (string $sql) use ($db): array {
+            $statement = $db->query($sql);
+
+            return $statement === false ? [] : array_values(array_map('strval', $statement->fetchAll(\PDO::FETCH_COLUMN)));
+        };
+
+        $values = match ($field) {
+            'project' => $column('SELECT code FROM projects WHERE is_archived = 0' . str_replace('project_id', 'id', $visible) . ' ORDER BY code'),
+            'status' => $column('SELECT DISTINCT name FROM statuses WHERE 1 = 1' . $visible . ' ORDER BY name'),
+            'category', 'statuscategory' => ['to do', 'in progress', 'done'],
+            'type', 'issuetype' => array_merge(TicketRepository::TYPES, ['subtask']),
+            'priority' => TicketRepository::PRIORITIES,
+            'assignee', 'reporter', 'watcher' => array_merge(['me', 'currentUser()'], array_map(static fn(array $u): string => (string) $u['name'], (new UserRepository())->active())),
+            'epic' => $column('SELECT DISTINCT title FROM epics WHERE is_done = 0' . $visible . ' ORDER BY title'),
+            'sprint' => array_merge(['openSprints()', 'closedSprints()', 'futureSprints()'], $column('SELECT name FROM sprints WHERE state <> \'closed\'' . $visible . ' ORDER BY name')),
+            'release', 'fixversion', 'version' => array_merge(['unreleased()', 'released()'], $column('SELECT name FROM releases WHERE released_at IS NULL' . $visible . ' ORDER BY name')),
+            'label', 'labels' => $column('SELECT name FROM labels ORDER BY name'),
+            'created', 'updated', 'resolved', 'due', 'duedate' => ['startOfDay()', 'startOfWeek()', 'endOfWeek()', 'startOfMonth()', 'endOfMonth()', '-7d', '-1m'],
+            default => [],
+        };
+
+        $this->json(['values' => array_slice($values, 0, 200)]);
     }
 
     /** The saved filter the list was opened from, if it is one this person may see. */

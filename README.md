@@ -65,6 +65,11 @@ deploy with `git pull`.
 - **Notifications** in the application and by email, to the people who follow a
   ticket — which anybody who creates, comments on or is given a ticket does —
   and never about a ticket in a project they cannot see.
+- **A query language** for the ticket list, the API and the search box —
+  `project = BIKE AND assignee = me AND category != done ORDER BY priority DESC`,
+  `sprint IN openSprints() AND labels IS EMPTY`, `due < startOfDay()` — with
+  suggestions as it is typed, and a mistake pointed at where it is. Every value
+  is a bound parameter, and a query can only narrow what somebody may see.
 - **Saved filters**, private or shared with the team, and a ticket list that
   filters into the URL, so a list can be bookmarked or sent to somebody.
 - **Bulk changes** from the ticket list, **CSV import** of tickets from a

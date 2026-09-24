@@ -43,6 +43,11 @@ class SearchController extends Controller
             }
         }
 
+        // Something with an operator in it is a query, not words to look for.
+        if (preg_match('/\s(=|!=|~|<=?|>=?)\s|\s(IN|IS)\s/i', ' ' . $q . ' ') === 1) {
+            $this->redirect('/tickets?' . http_build_query(['query' => $q]));
+        }
+
         $this->redirect('/tickets?' . http_build_query(['q' => $q]));
     }
 

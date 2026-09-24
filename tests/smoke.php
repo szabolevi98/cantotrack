@@ -812,6 +812,15 @@ if ($email === null || $password === null) {
     check('the roadmap answers', str_contains(request($baseUrl . '/roadmap', [], $jar)['body'], 'roadmap__months'));
     check('and a project’s own', request($baseUrl . '/projects/' . $projectId . '/roadmap', [], $jar)['status'] === 200);
 
+    // The query language: the ticket just made, found by a query, and a
+    // query that cannot be read saying where.
+    $queried = request($baseUrl . '/tickets?' . http_build_query(['query' => 'project = ' . $code . ' AND text ~ "Smoke test ticket" ORDER BY created DESC']), [], $jar)['body'];
+    check('a query finds tickets', str_contains($queried, $code . '-1'));
+    check(
+        'and one that cannot be read says where',
+        str_contains(request($baseUrl . '/tickets?' . http_build_query(['query' => 'colour = red']), [], $jar)['body'], 'query-form__error')
+    );
+
     $timesheet = request($baseUrl . '/timesheet?view=days', [], $jar);
     check('the timesheet answers', $timesheet['status'] === 200, 'status ' . $timesheet['status']);
     check(

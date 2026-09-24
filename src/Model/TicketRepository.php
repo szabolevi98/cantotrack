@@ -113,10 +113,14 @@ class TicketRepository
     {
         [$where, $parameters] = $this->conditions($filters);
 
+        // A query's own order, if it gave one — only ever columns it chose
+        // from its own list — with the newest last for ties.
+        $order = !empty($filters['query_order']) ? ' ORDER BY ' . $filters['query_order'] . ', t.id DESC' : self::ORDER;
+
         $statement = $this->db->prepare(
             self::SELECT
             . ($where === [] ? '' : ' WHERE ' . implode(' AND ', $where))
-            . self::ORDER
+            . $order
             . ' LIMIT ' . max(1, min($limit, 500)) . ' OFFSET ' . max(0, $offset)
         );
         $statement->execute($parameters);
@@ -132,7 +136,11 @@ class TicketRepository
         $statement = $this->db->prepare(
             'SELECT COUNT(*) FROM tickets t
              JOIN projects p ON p.id = t.project_id
-             JOIN statuses s ON s.id = t.status_id'
+             JOIN statuses s ON s.id = t.status_id
+             LEFT JOIN sprints sp ON sp.id = t.sprint_id
+             LEFT JOIN releases rl ON rl.id = t.release_id
+             LEFT JOIN epics e ON e.id = t.epic_id
+             LEFT JOIN users a ON a.id = t.assignee_id'
             . ($where === [] ? '' : ' WHERE ' . implode(' AND ', $where))
         );
         $statement->execute($parameters);
@@ -160,6 +168,13 @@ class TicketRepository
         if (!empty($filters['epic_id'])) {
             $where[] = 't.epic_id = :epic_id';
             $parameters['epic_id'] = (int) $filters['epic_id'];
+        }
+
+        // A query from the query language, compiled already: its condition
+        // and the values bound to it (see TicketQuery).
+        if (!empty($filters['query_where'])) {
+            $where[] = (string) $filters['query_where'];
+            $parameters += (array) ($filters['query_params'] ?? []);
         }
 
         if (!empty($filters['release_id'])) {

@@ -60,6 +60,7 @@ $bundles = [
             'quicklog.js',
             'calendar.js',
             'roadmap.js',
+            'query.js',
         ],
     ],
 ];

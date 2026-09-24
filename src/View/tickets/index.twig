@@ -9,6 +9,67 @@
 {% endblock %}
 
 {% block content %}
+    {# Two ways to say which tickets: the filters, or a query written out. #}
+    <nav class="segmented tickets__mode" aria-label="{{ 'How to find tickets'|t }}">
+        <a class="segmented__item{{ not query_mode ? ' is-active' : '' }}" href="{{ url('/tickets') }}">{{ 'Filters'|t }}</a>
+        <a class="segmented__item{{ query_mode ? ' is-active' : '' }}"
+           href="{{ url('/tickets?' ~ (as_query ? 'query=' ~ as_query|url_encode : 'mode=query')) }}"
+           title="{{ 'The filters chosen now, written out as a query'|t }}">{{ 'Query'|t }}</a>
+    </nav>
+
+    {% if query_mode %}
+        {#
+            The query: one line of the query language, sent as a GET form like
+            the filters, so a query is a URL too — and a saved filter.
+        #}
+        <form class="card query-form" method="get" action="{{ url('/tickets') }}" data-query-form
+              data-values-url="{{ url('/tickets/query/values') }}"
+              data-fields="{{ vocabulary.fields|join(' ') }}" data-keywords="{{ vocabulary.keywords|join('|') }}">
+            <label class="visually-hidden" for="query">{{ 'Query'|t }}</label>
+            <div class="query-form__row">
+                <div class="query-form__box">
+                    <input id="query" class="field field--code query-form__input{{ query_error ? ' field--error' : '' }}" type="text" name="query"
+                           value="{{ query_text }}" autocomplete="off" spellcheck="false" autofocus
+                           placeholder="project = BIKE AND assignee = me AND category != done ORDER BY priority DESC"
+                           role="combobox" aria-autocomplete="list" aria-expanded="false" aria-controls="query-suggestions"
+                           {{ query_error ? 'aria-invalid="true" aria-describedby="query-error"' : '' }}>
+                    <ul class="query-form__suggestions" id="query-suggestions" role="listbox" hidden></ul>
+                </div>
+                <button class="button button--primary" type="submit">{{ 'Search'|t }}</button>
+            </div>
+            {% if query_error %}<p class="query-form__error" id="query-error" role="alert">{{ query_error }}</p>{% endif %}
+
+            <details class="query-form__help">
+                <summary class="link-button link-button--text">{{ 'How to write a query'|t }}</summary>
+                <div class="query-form__guide">
+                    <div>
+                        <h3>{{ 'Fields'|t }}</h3>
+                        <p><code>{{ vocabulary.fields|join('</code> <code>')|raw }}</code></p>
+                        <h3>{{ 'Operators'|t }}</h3>
+                        <p><code>=</code> <code>!=</code> <code>&lt;</code> <code>&lt;=</code> <code>&gt;</code> <code>&gt;=</code> {{ 'for numbers, days and priorities;'|t }} <code>~</code> <code>!~</code> {{ 'for words in the text;'|t }} <code>IN (…)</code> <code>NOT IN (…)</code> <code>IS EMPTY</code> <code>IS NOT EMPTY</code></p>
+                        <h3>{{ 'Days'|t }}</h3>
+                        <p>{{ 'A date, a distance from today, or a function:'|t }} <code>2026-10-01</code> <code>-7d</code> <code>2w</code> <code>-1m</code> <code>startOfWeek()</code> <code>endOfMonth()</code></p>
+                    </div>
+                    <div>
+                        <h3>{{ 'Examples'|t }}</h3>
+                        <ul class="query-form__examples">
+                            {% for example in [
+                                'assignee = me AND category != done ORDER BY priority DESC',
+                                'type = bug AND priority >= high AND created >= -14d',
+                                'sprint IN openSprints() AND assignee IS EMPTY',
+                                'release IN unreleased() AND category = done',
+                                'due < startOfDay() AND category != done ORDER BY due',
+                                'text ~ "checkout" OR labels IN (payments, shop)',
+                                'project = BIKE AND logged > 2d ORDER BY logged DESC',
+                            ] %}
+                                <li><a href="{{ url('/tickets?query=' ~ example|url_encode) }}"><code>{{ example }}</code></a></li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </details>
+        </form>
+    {% else %}
     {#
         The filters are a GET form, so a filtered list is a URL: it can be
         bookmarked, sent to somebody and reloaded without a warning about
@@ -89,6 +150,7 @@
         <button class="button" type="submit">{{ 'Filter'|t }}</button>
         <a class="button" href="{{ url('/tickets') }}">{{ 'Clear'|t }}</a>
     </form>
+    {% endif %}
 
     {# Keeping this list: a name, and whether the rest of the team sees it too. #}
     <details class="save-filter"{{ saved ? '' : '' }}>

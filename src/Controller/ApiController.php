@@ -109,6 +109,14 @@ class ApiController extends Controller
             $filters['open_only'] = true;
         }
 
+        // ?query=project = CT AND assignee = me ORDER BY priority DESC
+        if (is_string($_GET['query'] ?? null) && trim($_GET['query']) !== '') {
+            $compiled = \CantoTrack\Service\TicketQuery::compile((string) $_GET['query'], Auth::id());
+            $filters['query_where'] = $compiled['where'];
+            $filters['query_params'] = $compiled['params'];
+            $filters['query_order'] = $compiled['order'];
+        }
+
         $perPage = max(1, min(self::MAX_PAGE, (int) ($_GET['per_page'] ?? 50)));
         $page = max(1, (int) ($_GET['page'] ?? 1));
         $tickets = new TicketRepository();

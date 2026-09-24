@@ -92,6 +92,7 @@ $router->post('/profile/password', static fn() => (new ProfileController())->cha
 $router->post('/profile/theme', static fn() => (new ProfileController())->toggleTheme());
 $router->post('/profile/calendar', static fn() => (new ProfileController())->calendarFeed());
 $router->post('/profile/calendar-export', static fn() => (new ProfileController())->calendarExport());
+$router->post('/profile/notifications', static fn() => (new ProfileController())->notifications());
 $router->get('/calendar/{secret}', static fn($secret) => (new CalendarExportController())->feed((string) $secret));
 $router->get('/profile/tokens', static fn() => (new ApiTokenController())->index());
 $router->post('/profile/avatar', static fn() => (new AvatarController())->upload());

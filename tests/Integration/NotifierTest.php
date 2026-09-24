@@ -9,6 +9,7 @@ use CantoTrack\Model\UserRepository;
 use CantoTrack\Service\Activity;
 use CantoTrack\Service\CommentService;
 use CantoTrack\Service\Notifier;
+use CantoTrack\Service\NotifySettings;
 use CantoTrack\Service\TicketService;
 
 final class NotifierTest extends DatabaseTestCase
@@ -47,6 +48,46 @@ final class NotifierTest extends DatabaseTestCase
 
         self::assertSame('annak', $users->find($first)['handle']);
         self::assertSame('annak2', $users->find($second)['handle']);
+    }
+
+    public function testSomebodyWhoTurnedAKindOffIsNotToldOfIt(): void
+    {
+        (new UserRepository($this->db))->setNotifications($this->anna, NotifySettings::encode(['assigned' => 'off']), null);
+
+        (new TicketService($this->db))->update($this->ticket, ['assignee_id' => $this->anna], $this->me);
+
+        self::assertSame([], (new NotificationRepository($this->db))->forUser($this->anna));
+    }
+
+    public function testHereOnlyIsToldButNotEmailed(): void
+    {
+        (new UserRepository($this->db))->setNotifications($this->anna, NotifySettings::encode(['assigned' => 'app']), null);
+
+        (new TicketService($this->db))->update($this->ticket, ['assignee_id' => $this->anna], $this->me);
+
+        self::assertCount(1, (new NotificationRepository($this->db))->forUser($this->anna));
+        self::assertSame([], Mailer::$sent);
+    }
+
+    public function testADigestListsWhatItsQueryFindsAndWhatIsDue(): void
+    {
+        $service = new TicketService($this->db);
+        $service->update($this->ticket, ['assignee_id' => $this->anna, 'due_on' => date('Y-m-d')], $this->me);
+        (new UserRepository($this->db))->setNotifications($this->anna, NotifySettings::encode([]), 'assignee = me');
+
+        $anna = (array) (new UserRepository($this->db))->find($this->anna);
+        [$subject, $text] = (new \CantoTrack\Service\Digest($this->db))->compose($anna, new \DateTimeImmutable('today'));
+
+        self::assertStringContainsString('1 to look at', $subject);
+        self::assertStringContainsString('CT-1', $text);
+        self::assertStringContainsString('Due this week', $text);
+
+        // Once a day: sent today, not again today.
+        $digest = new \CantoTrack\Service\Digest($this->db);
+        $monday = new \DateTimeImmutable('monday next week');
+        self::assertSame(1, $digest->sendDue($monday));
+        self::assertSame(0, $digest->sendDue($monday));
+        self::assertSame(0, $digest->sendDue(new \DateTimeImmutable('sunday next week')), 'not on a weekend');
     }
 
     public function testBeingGivenATicketIsNotified(): void

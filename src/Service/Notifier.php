@@ -120,6 +120,12 @@ class Notifier
                 continue;
             }
 
+            // And each hears about it the way they chose, or not at all.
+            $way = NotifySettings::way((array) $person, $reason, $kind);
+            if ($way === 'off') {
+                continue;
+            }
+
             $notificationId = $this->notifications->create([
                 'user_id' => $userId,
                 'ticket_id' => $ticketId,
@@ -131,7 +137,9 @@ class Notifier
                 'new_value' => $new,
             ]);
 
-            $this->email($notificationId, $userId, $ticket);
+            if ($way === 'email') {
+                $this->email($notificationId, $userId, $ticket);
+            }
         }
     }
 
@@ -144,7 +152,7 @@ class Notifier
     {
         $person = $this->users->find($userId);
 
-        if ($person === null || (int) ($person['notify_email'] ?? 1) !== 1 || !Mailer::isConfigured()) {
+        if ($person === null || !Mailer::isConfigured()) {
             return;
         }
 

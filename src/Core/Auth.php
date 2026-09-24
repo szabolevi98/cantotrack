@@ -64,14 +64,15 @@ class Auth
     /**
      * Acts as a person for this one request, without a session: an API
      * request proves who it is with a token each time, and leaves nothing
-     * behind that a browser could pick up.
+     * behind that a browser could pick up. Null goes back to whoever the
+     * session says, or nobody — after acting as somebody for a moment.
      */
-    public static function actAs(array $user): void
+    public static function actAs(?array $user): void
     {
         self::$user = $user;
         Access::reset();
 
-        if (!empty($user['locale'])) {
+        if ($user !== null && !empty($user['locale'])) {
             I18n::setLocale((string) $user['locale']);
         }
     }

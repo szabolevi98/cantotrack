@@ -1,0 +1,32 @@
+{% autoescape false %}{{ 'Good morning, {name}.'|t({name: person.short_name ?: person.name}) }}
+
+{% if error %}
+{{ 'Your digest’s query does not read any more: {reason}'|t({reason: error}) }}
+{% else %}
+{{ plural('{count} ticket for “{query}”:', '{count} tickets for “{query}”:', total, {query: query}) }}
+
+{% for ticket in found %}
+  {{ ticket.project_code }}-{{ ticket.number }}  {{ ticket.title }}  [{{ ticket.status_name|t }}{% if ticket.priority != 'normal' %}, {{ ticket.priority|capitalize|t }}{% endif %}]
+{% else %}
+  {{ 'Nothing — a quiet morning.'|t }}
+{% endfor %}
+{% if total > found|length %}
+  {{ '…and {count} more: {url}'|t({count: total - found|length, url: list}) }}
+{% endif %}
+{% endif %}
+{% if due is not empty %}
+
+{{ 'Due this week:'|t }}
+{% for ticket in due %}
+  {{ ticket.due_on|day }}  {{ ticket.project_code }}-{{ ticket.number }}  {{ ticket.title }}{% if ticket.due_on < today %}  ({{ 'overdue'|t }}){% endif %}
+
+{% endfor %}
+{% endif %}
+{% if unread > 0 %}
+
+{{ plural('{count} notification is waiting: {url}', '{count} notifications are waiting: {url}', unread, {url: base ~ '/notifications'}) }}
+{% endif %}
+
+--
+{{ 'Change or stop this digest on your profile: {url}'|t({url: base ~ '/profile#notifications'}) }}
+{% endautoescape %}

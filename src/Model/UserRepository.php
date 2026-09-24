@@ -48,6 +48,18 @@ class UserRepository
     }
 
     /** Everyone, for the assignee lists. Inactive people are kept out of those. */
+    /**
+     * What a person hears about and how (see NotifySettings), and the
+     * morning digest's query, or null for none.
+     */
+    public function setNotifications(int $id, string $prefs, ?string $digestQuery): void
+    {
+        // The choices are what counts now: the old "email me at all" is on.
+        $this->db->prepare(
+            'UPDATE users SET notify_prefs = :prefs, notify_email = 1, digest_query = :digest WHERE id = :id'
+        )->execute(['prefs' => $prefs, 'digest' => $digestQuery, 'id' => $id]);
+    }
+
     /** The hash of a person's private calendar address, or null to have none — see the 0036 migration. */
     public function setCalendarExport(int $id, ?string $hash): void
     {
@@ -188,15 +200,13 @@ class UserRepository
     }
 
     /** What a person may change about themselves on their profile. */
-    public function updateProfile(int $id, string $name, ?string $shortName, ?string $locale, string $theme, bool $notifyEmail = true): void
+    public function updateProfile(int $id, string $name, ?string $shortName, ?string $locale, string $theme): void
     {
         $statement = $this->db->prepare(
-            'UPDATE users SET name = :name, short_name = :short_name, locale = :locale, theme = :theme,
-                 notify_email = :notify WHERE id = :id'
+            'UPDATE users SET name = :name, short_name = :short_name, locale = :locale, theme = :theme WHERE id = :id'
         );
 
         $statement->execute([
-            'notify' => $notifyEmail ? 1 : 0,
             'name' => trim($name),
             'short_name' => trim((string) $shortName) ?: null,
             'locale' => $locale ?: null,

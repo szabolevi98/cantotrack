@@ -60,11 +60,6 @@
                 </div>
             </div>
 
-            <label class="check">
-                <input type="checkbox" name="notify_email" value="1"{{ me.notify_email ? ' checked' : '' }}>
-                {{ 'Email me what I am notified about — tickets given to me, mentions, and changes to what I follow'|t }}
-            </label>
-
             <div class="form__actions">
                 <button class="button button--primary" type="submit">{{ 'Save'|t }}</button>
             </div>
@@ -127,6 +122,59 @@
                 {% if me.calendar_feed %}
                     <button class="button button--danger" type="submit" name="calendar_feed" value="">{{ 'Stop reading it'|t }}</button>
                 {% endif %}
+            </div>
+        </form>
+    </section>
+
+    {#
+        What the person hears about: each kind of thing in the application
+        and by email, in the application only, or not at all — and the
+        morning digest.
+    #}
+    {% set ways = notify_ways|default({}) %}
+    <section class="card card--narrow" id="notifications">
+        <h2 class="card__title">{{ 'What you hear about'|t }}</h2>
+        <form method="post" action="{{ url('/profile/notifications') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <table class="table table--compact notify-table">
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>{{ 'Here and by email'|t }}</th>
+                        <th>{{ 'Here only'|t }}</th>
+                        <th>{{ 'Not at all'|t }}</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for kind, label in {
+                        assigned: 'A ticket is given to me',
+                        mentioned: 'Somebody mentions me',
+                        status: 'Something I follow moves on',
+                        commented: 'Somebody comments on something I follow',
+                        changes: 'Other changes to what I follow'
+                    } %}
+                        <tr>
+                            <th scope="row">{{ label|t }}</th>
+                            {% for way in ['email', 'app', 'off'] %}
+                                <td><input type="radio" name="ways[{{ kind }}]" value="{{ way }}"{{ ways[kind]|default('email') == way ? ' checked' : '' }}
+                                           aria-label="{{ label|t }}: {{ {email: 'Here and by email', app: 'Here only', off: 'Not at all'}[way]|t }}"></td>
+                            {% endfor %}
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+
+            <label class="check">
+                <input type="checkbox" name="digest" value="1"{{ me.digest_query ? ' checked' : '' }}>
+                {{ 'Send me a digest on working-day mornings'|t }}
+            </label>
+            <label for="digest_query">{{ 'What it lists'|t }}</label>
+            <input id="digest_query" class="field field--code" type="text" name="digest_query" maxlength="1000"
+                   value="{{ me.digest_query ?: default_digest|default('') }}">
+            <p class="hint">{{ 'A query, as on the ticket list. The digest also lists what of yours is due this week, and how many notifications are unread.'|t }}</p>
+
+            <div class="form__actions">
+                <button class="button button--primary" type="submit">{{ 'Save'|t }}</button>
             </div>
         </form>
     </section>

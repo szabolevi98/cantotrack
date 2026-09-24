@@ -28,6 +28,8 @@ class ProfileController extends Controller
 
         $this->render('profile/index.twig', [
             'new_calendar_address' => is_string($address) ? $address : null,
+            'notify_ways' => \CantoTrack\Service\NotifySettings::of((array) Auth::user()),
+            'default_digest' => \CantoTrack\Service\Digest::DEFAULT_QUERY,
             'me' => Auth::user(),
             'locales' => I18n::LOCALES,
             'error' => null,
@@ -60,8 +62,7 @@ class ProfileController extends Controller
             $name,
             $this->input('short_name'),
             array_key_exists($locale, I18n::LOCALES) ? $locale : null,
-            $theme,
-            isset($_POST['notify_email'])
+            $theme
         );
 
         // The flash is written in the language just chosen, not the one the
@@ -110,6 +111,33 @@ class ProfileController extends Controller
         }
 
         $this->redirect('/profile');
+    }
+
+    /** What the person hears about and how, and their morning digest. */
+    public function notifications(): void
+    {
+        Auth::require();
+
+        $digest = null;
+        if (isset($_POST['digest'])) {
+            $digest = mb_substr($this->input('digest_query'), 0, 1000) ?: \CantoTrack\Service\Digest::DEFAULT_QUERY;
+
+            try {
+                \CantoTrack\Service\TicketQuery::compile($digest, Auth::id());
+            } catch (\CantoTrack\Core\ValidationError $e) {
+                $this->flash(__('The digest’s query does not read: {reason}', ['reason' => $e->getMessage()]), 'danger');
+                $this->redirect('/profile#notifications');
+            }
+        }
+
+        (new UserRepository())->setNotifications(
+            (int) Auth::id(),
+            \CantoTrack\Service\NotifySettings::encode(is_array($_POST['ways'] ?? null) ? $_POST['ways'] : []),
+            $digest
+        );
+
+        $this->flash(__('What you hear about is saved.'));
+        $this->redirect('/profile#notifications');
     }
 
     /**

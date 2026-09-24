@@ -2297,6 +2297,19 @@ summary.link-button::-webkit-details-marker {
     color: var(--ct-muted);
 }
 
+/* An epic's own page: the heading of its tickets inside their flush card,
+   and the faces of the people who follow it. */
+.epic-page__head {
+    margin: 0;
+    padding: 18px 22px 10px;
+}
+
+.faces {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 4px;
+}
+
 .epic__meta {
     color: var(--ct-muted);
     font-size: 0.82rem;

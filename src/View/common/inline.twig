@@ -10,10 +10,13 @@
             {% block control %}<select name="value">…</select>{% endblock %}
         {% endembed %}
 
+    Something other than a ticket passes where its form goes as `action`.
+
     Without a script the form stays hidden and the Edit page is the way to
     change it, as it always was.
 #}
 {% set editable = can_work and editable|default(true) %}
+{% set action = action is defined ? action : url('/tickets/' ~ ticket.id ~ '/field') %}
 <div class="inline{{ editable ? ' inline--editable' : '' }}" data-inline>
     <div class="inline__show"{% if editable %} data-inline-open{% endif %}>
         {% block show %}{% endblock %}
@@ -25,7 +28,7 @@
         {% endif %}
     </div>
     {% if editable %}
-        <form class="inline__form" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/field') }}" data-inline-form hidden>
+        <form class="inline__form" method="post" action="{{ action }}" data-inline-form hidden>
             <input type="hidden" name="_token" value="{{ csrf_token }}">
             <input type="hidden" name="field" value="{{ field }}">
             {% block control %}{% endblock %}

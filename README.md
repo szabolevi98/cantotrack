@@ -54,6 +54,10 @@ deploy with `git pull`.
   releases and the sprints above them. A bar is dragged to move an epic, or by
   an end to change when it starts or finishes; an epic without days of its own
   is drawn from its tickets, and says so.
+- **Epics talked about like tickets**: comments with `@` mentions, files, a
+  history of what changed, followers who hear when one is commented on or
+  finished, and its title, description and days changed where they are
+  shown — beside how far its tickets have got, their points and their hours.
 - **Fields of a project's own** — text, a number, a choice from a list, a day,
   yes or no — kept by the administrators, required if need be, and on the
   ticket form, its page, its history, the query language

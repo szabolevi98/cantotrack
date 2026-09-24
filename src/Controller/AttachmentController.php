@@ -49,6 +49,21 @@ class AttachmentController extends Controller
         );
     }
 
+    /** Files onto an epic, from its form, a drop, or a paste into a comment. */
+    public function uploadToEpic(int $epicId): void
+    {
+        Auth::require();
+
+        if ((new \CantoTrack\Model\EpicRepository())->find($epicId) === null) {
+            $this->notFound(__('There is no such epic.'));
+        }
+
+        $this->receive(
+            fn(array $file): array => (new AttachmentService())->storeOnEpic($epicId, (int) Auth::id(), $file),
+            '/epics/' . $epicId . '#attachments'
+        );
+    }
+
     /**
      * Every file of an upload, each through `$store`: JSON back for the
      * page's own script, a redirect with a message for the form.
@@ -150,7 +165,11 @@ class AttachmentController extends Controller
         (new AttachmentService())->remove($attachment, Auth::id());
 
         $this->flash(__('{name} removed.', ['name' => $attachment['original_name']]), 'warning');
-        $this->redirect($attachment['page_id'] !== null ? '/pages/' . $attachment['page_id'] : '/tickets/' . $attachment['ticket_id'] . '#attachments');
+        $this->redirect(match (true) {
+            $attachment['page_id'] !== null => '/pages/' . $attachment['page_id'],
+            $attachment['epic_id'] !== null => '/epics/' . $attachment['epic_id'] . '#attachments',
+            default => '/tickets/' . $attachment['ticket_id'] . '#attachments',
+        });
     }
 
     private function address(array $attachment): string

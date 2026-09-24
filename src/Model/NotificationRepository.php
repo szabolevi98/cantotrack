@@ -19,10 +19,12 @@ class NotificationRepository
     public function forUser(int $userId, int $limit = 50, int $offset = 0): array
     {
         $statement = $this->db->prepare(
-            'SELECT n.*, a.name AS user_name, t.title AS ticket_title, t.number AS ticket_number, p.code AS project_code
+            'SELECT n.*, a.name AS user_name, t.title AS ticket_title, t.number AS ticket_number, p.code AS project_code,
+                    ep.title AS epic_title
              FROM notifications n
-             JOIN tickets t ON t.id = n.ticket_id
-             JOIN projects p ON p.id = t.project_id
+             LEFT JOIN tickets t ON t.id = n.ticket_id
+             LEFT JOIN epics ep ON ep.id = n.epic_id
+             JOIN projects p ON p.id = COALESCE(t.project_id, ep.project_id)
              LEFT JOIN users a ON a.id = n.actor_id
              WHERE n.user_id = :user' . Access::sql('p.id') . '
              ORDER BY n.created_at DESC, n.id DESC
@@ -36,8 +38,8 @@ class NotificationRepository
     public function unreadCount(int $userId): int
     {
         $statement = $this->db->prepare(
-            'SELECT COUNT(*) FROM notifications n JOIN tickets t ON t.id = n.ticket_id
-             WHERE n.user_id = :user AND n.read_at IS NULL' . Access::sql('t.project_id')
+            'SELECT COUNT(*) FROM notifications n LEFT JOIN tickets t ON t.id = n.ticket_id LEFT JOIN epics ep ON ep.id = n.epic_id
+             WHERE n.user_id = :user AND n.read_at IS NULL AND (t.id IS NOT NULL OR ep.id IS NOT NULL)' . Access::sql('COALESCE(t.project_id, ep.project_id)')
         );
         $statement->execute(['user' => $userId]);
 
@@ -55,11 +57,12 @@ class NotificationRepository
     public function create(array $data): int
     {
         $this->db->prepare(
-            'INSERT INTO notifications (user_id, ticket_id, actor_id, reason, kind, field, old_value, new_value)
-             VALUES (:user, :ticket, :actor, :reason, :kind, :field, :old, :new)'
+            'INSERT INTO notifications (user_id, ticket_id, epic_id, actor_id, reason, kind, field, old_value, new_value)
+             VALUES (:user, :ticket, :epic, :actor, :reason, :kind, :field, :old, :new)'
         )->execute([
             'user' => $data['user_id'],
-            'ticket' => $data['ticket_id'],
+            'ticket' => $data['ticket_id'] ?? null,
+            'epic' => $data['epic_id'] ?? null,
             'actor' => $data['actor_id'],
             'reason' => $data['reason'],
             'kind' => $data['kind'],
@@ -87,6 +90,13 @@ class NotificationRepository
     {
         $this->db->prepare('UPDATE notifications SET read_at = NOW() WHERE user_id = :user AND ticket_id = :ticket AND read_at IS NULL')
             ->execute(['user' => $userId, 'ticket' => $ticketId]);
+    }
+
+    /** Reading an epic reads what was said about it. */
+    public function markEpicRead(int $userId, int $epicId): void
+    {
+        $this->db->prepare('UPDATE notifications SET read_at = NOW() WHERE user_id = :user AND epic_id = :epic AND read_at IS NULL')
+            ->execute(['user' => $userId, 'epic' => $epicId]);
     }
 
     public function markEmailed(int $id): void

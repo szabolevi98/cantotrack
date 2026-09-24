@@ -44,7 +44,7 @@ final class NotifySettings
         return match (true) {
             $reason === 'assigned' => 'assigned',
             $reason === 'mentioned' => 'mentioned',
-            $kind === 'status' => 'status',
+            $kind === 'status', $kind === 'done' => 'status',
             $kind === 'commented' => 'commented',
             default => 'changes',
         };

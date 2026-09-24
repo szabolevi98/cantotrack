@@ -914,6 +914,35 @@ if ($email === null || $password === null) {
     check('the roadmap answers', str_contains(request($baseUrl . '/roadmap', [], $jar)['body'], 'roadmap__months'));
     check('and a project’s own', request($baseUrl . '/projects/' . $projectId . '/roadmap', [], $jar)['status'] === 200);
 
+    // An epic talked about like a ticket: a comment, a fact changed where it
+    // is shown, a file, finished and opened again — all in its history.
+    $said = request($baseUrl . '/epics/' . $epicId . '/comments', ['_token' => $token, 'body' => 'Smoke epic comment for ' . $code . '-1'], $jar);
+    check('an epic can be commented on', $said['status'] === 302 && str_contains($said['headers'], '#comment-'));
+    $moved = request($baseUrl . '/epics/' . $epicId . '/field', ['_token' => $token, 'field' => 'ends_on', 'value' => '2031-02-30'], $jar, ['Accept: application/json']);
+    check('a day that is not one is refused in place', $moved['status'] === 422 && str_contains($moved['body'], '"ok":false'));
+    $moved = request($baseUrl . '/epics/' . $epicId . '/field', ['_token' => $token, 'field' => 'ends_on', 'value' => '2031-03-14'], $jar, ['Accept: application/json']);
+    check('and a real one is kept', $moved['status'] === 200 && str_contains($moved['body'], '"ok":true'));
+    $brief = tempnam(sys_get_temp_dir(), 'smoke') ?: '';
+    file_put_contents($brief, "The brief.\n");
+    $attached = upload($baseUrl . '/epics/' . $epicId . '/attachments', $token, [['path' => $brief, 'name' => 'smoke-brief.txt', 'type' => 'text/plain']], $jar, true);
+    @unlink($brief);
+    check('a file can be attached to an epic', $attached['status'] === 200 && str_contains($attached['body'], 'smoke-brief.txt'));
+    request($baseUrl . '/epics/' . $epicId . '/done', ['_token' => $token], $jar);
+    request($baseUrl . '/epics/' . $epicId . '/done', ['_token' => $token], $jar);
+    $epicPage = request($baseUrl . '/epics/' . $epicId, [], $jar)['body'];
+    check(
+        'and its page shows all of it',
+        str_contains($epicPage, 'Smoke epic comment') && str_contains($epicPage, 'smoke-brief.txt')
+            && str_contains($epicPage, 'data-refresh="facts"') && substr_count($epicPage, 'timeline__event') >= 4
+    );
+    $unfollowed = request($baseUrl . '/epics/' . $epicId . '/watch', ['_token' => $token], $jar);
+    check('an epic can be unfollowed', $unfollowed['status'] === 302);
+    check(
+        'and followed again',
+        request($baseUrl . '/epics/' . $epicId . '/watch', ['_token' => $token], $jar)['status'] === 302
+            && str_contains(request($baseUrl . '/epics/' . $epicId, [], $jar)['body'], 'aria-pressed="true"')
+    );
+
     // The query language: the ticket just made, found by a query, and a
     // query that cannot be read saying where.
     $queried = request($baseUrl . '/tickets?' . http_build_query(['query' => 'project = ' . $code . ' AND text ~ "Smoke test ticket" ORDER BY created DESC']), [], $jar)['body'];

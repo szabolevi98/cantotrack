@@ -38,6 +38,10 @@ class NotificationController extends Controller
 
         $notifications->markRead($id);
 
+        if ($notification['epic_id'] !== null) {
+            $this->redirect('/epics/' . $notification['epic_id'] . ($notification['kind'] === 'commented' ? '#activity' : ''));
+        }
+
         $this->redirect('/tickets/' . $notification['ticket_id'] . ($notification['kind'] === 'commented' ? '#activity' : ''));
     }
 
@@ -71,5 +75,28 @@ class NotificationController extends Controller
         }
 
         $this->redirect('/tickets/' . $ticketId);
+    }
+
+    public function toggleEpicWatch(int $epicId): void
+    {
+        Auth::require();
+
+        $epics = new \CantoTrack\Model\EpicRepository();
+
+        if ($epics->find($epicId) === null) {
+            $this->notFound(__('There is no such epic.'));
+        }
+
+        $me = (int) Auth::id();
+
+        if ($epics->isWatching($epicId, $me)) {
+            $epics->unwatch($epicId, $me);
+            $this->flash(__('You no longer follow this epic.'));
+        } else {
+            $epics->watch($epicId, $me);
+            $this->flash(__('You follow this epic now: you hear about its comments and when it is finished.'));
+        }
+
+        $this->redirect('/epics/' . $epicId);
     }
 }

@@ -128,63 +128,7 @@
                 </section>
             {% endif %}
 
-            {#
-                The files. Pictures as previews, anything else as a line with
-                its size. The form works on its own; with a script, files can
-                also be dropped on the card, or pasted into a comment.
-            #}
-            <section class="card" id="attachments" data-drop-upload="{{ url('/tickets/' ~ ticket.id ~ '/attachments') }}">
-                <h2 class="card__title">{{ 'Attachments'|t }}</h2>
-
-                {% set images = attachments|filter(a => a.mime starts with 'image/') %}
-                {% set others = attachments|filter(a => not (a.mime starts with 'image/')) %}
-
-                {% if images is not empty %}
-                    <ul class="attachments__images">
-                        {% for file in images %}
-                            <li class="attachment-image">
-                                <a href="{{ url('/attachments/' ~ file.id) }}" target="_blank" rel="noopener">
-                                    <img src="{{ url('/attachments/' ~ file.id) }}" alt="{{ file.original_name }}" loading="lazy"
-                                         {% if file.width %}width="{{ file.width }}" height="{{ file.height }}"{% endif %}>
-                                </a>
-                                <span class="attachment-image__name" title="{{ file.original_name }}">{{ file.original_name }}</span>
-                                {% if file.user_id == current_user.id or is_admin %}
-                                    <form method="post" action="{{ url('/attachments/' ~ file.id ~ '/delete') }}"
-                                          data-confirm="{{ 'Remove {name}?'|t({name: file.original_name}) }}">
-                                        <input type="hidden" name="_token" value="{{ csrf_token }}">
-                                        <button class="link-button" type="submit" aria-label="{{ 'Remove {name}'|t({name: file.original_name}) }}">×</button>
-                                    </form>
-                                {% endif %}
-                            </li>
-                        {% endfor %}
-                    </ul>
-                {% endif %}
-
-                {% if others is not empty %}
-                    <ul class="attachments__files">
-                        {% for file in others %}
-                            <li>
-                                <a href="{{ url('/attachments/' ~ file.id) }}">{{ file.original_name }}</a>
-                                <span class="muted">{{ file.size|bytes }} · {{ file.user_name }} · {{ file.created_at|day }}</span>
-                                {% if file.user_id == current_user.id or is_admin %}
-                                    <form method="post" action="{{ url('/attachments/' ~ file.id ~ '/delete') }}"
-                                          data-confirm="{{ 'Remove {name}?'|t({name: file.original_name}) }}">
-                                        <input type="hidden" name="_token" value="{{ csrf_token }}">
-                                        <button class="link-button" type="submit" aria-label="{{ 'Remove {name}'|t({name: file.original_name}) }}">×</button>
-                                    </form>
-                                {% endif %}
-                            </li>
-                        {% endfor %}
-                    </ul>
-                {% endif %}
-
-                <form class="upload" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/attachments') }}" enctype="multipart/form-data">
-                    <input type="hidden" name="_token" value="{{ csrf_token }}">
-                    <input class="upload__input" id="files" type="file" name="files[]" multiple>
-                    <button class="button button--small" type="submit">{{ 'Attach'|t }}</button>
-                    <span class="hint upload__hint">{{ 'Up to {mb} MB each. Drop files here, or paste a screenshot into a comment.'|t({mb: max_upload_mb}) }}</span>
-                </form>
-            </section>
+            {% include 'common/attachments.twig' with {upload_url: url('/tickets/' ~ ticket.id ~ '/attachments')} %}
 
             {#
                 How this ticket depends on others. Each link reads from this

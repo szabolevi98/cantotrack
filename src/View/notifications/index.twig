@@ -29,8 +29,14 @@
                     <li class="notification{{ n.read_at ? '' : ' notification--unread' }}">
                         <a class="notification__link" href="{{ url('/notifications/' ~ n.id) }}">
                             <span class="notification__what">
-                                <span class="ticket-key">{{ n.project_code }}-{{ n.ticket_number }}</span>
-                                {% if n.reason == 'mentioned' %}
+                                {% if n.epic_id %}
+                                    <span class="ticket-key">{{ n.project_code }}</span> <span class="badge badge--violet">{{ 'Epic'|t }}</span>
+                                {% else %}
+                                    <span class="ticket-key">{{ n.project_code }}-{{ n.ticket_number }}</span>
+                                {% endif %}
+                                {% if n.epic_id and n.kind == 'done' %}
+                                    {{ n.new_value ? '{who} marked it done'|t({who: n.user_name ?: 'Somebody'|t}) : '{who} opened it again'|t({who: n.user_name ?: 'Somebody'|t}) }}
+                                {% elseif n.reason == 'mentioned' %}
                                     {{ '{who} mentioned you'|t({who: n.user_name}) }}:
                                     <span class="muted">{{ n.new_value|slice(0, 140) }}</span>
                                 {% elseif n.reason == 'assigned' %}
@@ -42,7 +48,7 @@
                                     {{ ui.event_line(n) }}
                                 {% endif %}
                             </span>
-                            <span class="notification__title">{{ n.ticket_title }}</span>
+                            <span class="notification__title">{{ n.epic_id ? n.epic_title : n.ticket_title }}</span>
                         </a>
                         <time class="notification__when muted" datetime="{{ n.created_at }}">{{ n.created_at|day }} {{ n.created_at|date('H:i') }}</time>
                     </li>

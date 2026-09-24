@@ -193,6 +193,13 @@ $router->post('/releases/{id}/delete', static fn($id) => (new ReleaseController(
 $router->get('/epics/{id}/edit', static fn($id) => (new EpicController())->editForm((int) $id));
 $router->post('/epics/{id}', static fn($id) => (new EpicController())->update((int) $id));
 $router->post('/epics/{id}/delete', static fn($id) => (new EpicController())->delete((int) $id));
+$router->post('/epics/{id}/field', static fn($id) => (new EpicController())->field((int) $id));
+$router->post('/epics/{id}/done', static fn($id) => (new EpicController())->toggleDone((int) $id));
+$router->post('/epics/{id}/comments', static fn($id) => (new EpicController())->comment((int) $id));
+$router->post('/epic-comments/{id}', static fn($id) => (new EpicController())->editComment((int) $id));
+$router->post('/epic-comments/{id}/delete', static fn($id) => (new EpicController())->deleteComment((int) $id));
+$router->post('/epics/{id}/attachments', static fn($id) => (new AttachmentController())->uploadToEpic((int) $id));
+$router->post('/epics/{id}/watch', static fn($id) => (new NotificationController())->toggleEpicWatch((int) $id));
 
 // ---------------------------------------------------------------------------
 // Tickets

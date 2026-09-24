@@ -274,6 +274,32 @@
     {%- endif -%}
 {% endmacro %}
 
+{#
+    A line of an epic's history. What a ticket's history also has — a title
+    changed, a file attached — is said the same way.
+#}
+{% macro epic_event_line(event) %}
+    {%- set who = event.user_name ?: 'Somebody'|t -%}
+    {%- if event.kind == 'created' -%}
+        {{ '{who} created the epic'|t({who: who}) }}
+    {%- elseif event.kind == 'done' -%}
+        {{ (event.new_value ? '{who} marked it done' : '{who} opened it again')|t({who: who}) }}
+    {%- elseif event.field in ['starts', 'ends'] -%}
+        {%- set field = (event.field == 'starts' ? 'start day' : 'end day')|t -%}
+        {%- set old = event.old_value ? event.old_value|day : null -%}
+        {%- set new = event.new_value ? event.new_value|day : null -%}
+        {%- if old and new -%}
+            {{ '{who} changed the {field} from {old} to {new}'|t({who: who, field: field, old: old, new: new}) }}
+        {%- elseif new -%}
+            {{ '{who} set the {field} to {new}'|t({who: who, field: field, new: new}) }}
+        {%- else -%}
+            {{ '{who} cleared the {field}'|t({who: who, field: field}) }}
+        {%- endif -%}
+    {%- else -%}
+        {{ _self.event_line(event) }}
+    {%- endif -%}
+{% endmacro %}
+
 {% macro event_line(event) %}
     {%- set who = event.user_name ?: 'Somebody'|t -%}
     {%- set fields = {

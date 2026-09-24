@@ -23,7 +23,7 @@ final class Undo
     private const SECONDS = 600;
 
     /** What can be brought back: the table, and what it is called. */
-    private const KINDS = ['worklogs' => 'hours', 'comments' => 'comment'];
+    private const KINDS = ['worklogs' => 'hours', 'comments' => 'comment', 'epic_comments' => 'comment'];
 
     private PDO $db;
 

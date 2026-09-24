@@ -1203,6 +1203,43 @@ foreach ([
     }
 }
 
+// What was said on a few epics, days apart, and who follows them: the
+// people doing the work, and the client's own person on theirs.
+foreach ([
+    ['WINE', 'Cart and checkout', ['me', 'bence', 'zsofia'], [
+        [9, 'bence', 'Card payments are live on staging. Bank transfer next — it needs the order number in the reference, or accounting cannot match it.'],
+        [6, 'zsofia', 'The confirmation email should say the same thing, @bence. Taking WINE-11.'],
+        [2, 'me', 'The excise rules are the last open piece. Let us agree on them before the end date moves again.'],
+    ]],
+    ['BIKE', 'Renting and riding', ['me', 'anna', 'peter'], [
+        [8, 'peter', 'Most of our renters book from the phone at the station. Can the whole rental fit on one screen?'],
+        [7, 'anna', 'It can. The map and the bike list go on one page, the rest comes after the bike is picked.'],
+        [3, 'me', 'Demo on Thursday, @peter — the unlock flow is ready to try.'],
+    ]],
+    ['CLINIC', 'Booking', ['me', 'dora', 'kata'], [
+        [5, 'kata', 'The doctors want to block out their own holidays. Is that part of this epic, or the calendars one?'],
+        [4, 'dora', 'The calendars one. This one ends when a patient can book and cancel on their own.'],
+    ]],
+] as [$epicCode, $epicTitle, $epicFollowers, $epicSaid]) {
+    $found = $database->prepare('SELECT e.id FROM epics e JOIN projects p ON p.id = e.project_id WHERE p.code = :code AND e.title = :title ORDER BY e.id DESC LIMIT 1');
+    $found->execute(['code' => $epicCode, 'title' => $epicTitle]);
+    $epicId = (int) $found->fetchColumn();
+
+    if ($epicId === 0) {
+        continue;
+    }
+
+    foreach ($epicFollowers as $follower) {
+        $epics->watch($epicId, $who[$follower]);
+    }
+
+    foreach ($epicSaid as [$daysAgo, $sayer, $words]) {
+        $commentId = $epics->addComment($epicId, $who[$sayer], $words);
+        $database->prepare('UPDATE epic_comments SET created_at = :at WHERE id = :id')
+            ->execute(['at' => $today->modify('-' . $daysAgo . ' days')->format('Y-m-d') . ' ' . sprintf('%02d:%02d:00', 9 + $daysAgo % 7, 10 + $daysAgo * 7 % 50), 'id' => $commentId]);
+    }
+}
+
 // ---------------------------------------------------------------------------
 // A few automation rules, and one morning of the daily ones
 // ---------------------------------------------------------------------------

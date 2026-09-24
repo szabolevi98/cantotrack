@@ -138,7 +138,8 @@ class Notifier
             ]);
 
             if ($way === 'email') {
-                $this->email($notificationId, $userId, $ticket);
+                $key = $ticket['project_code'] . '-' . $ticket['number'];
+                $this->email($notificationId, $userId, $key, (string) $ticket['title'], '/tickets/' . $ticketId, $key);
             }
         }
     }
@@ -146,9 +147,10 @@ class Notifier
     /**
      * The same notification by email, to anybody who has not turned that off
      * — written in their own language, not in the language of whoever made
-     * the change.
+     * the change. About a ticket or an epic: `$key` is how the text names it,
+     * `$tag` what goes in brackets before the subject, `$path` where it is.
      */
-    private function email(int $notificationId, int $userId, array $ticket): void
+    public function email(int $notificationId, int $userId, string $key, string $title, string $path, string $tag): void
     {
         $person = $this->users->find($userId);
 
@@ -165,16 +167,17 @@ class Notifier
         I18n::setLocale((string) ($person['locale'] ?: Config::get('app.locale', 'en')));
 
         try {
-            $key = $ticket['project_code'] . '-' . $ticket['number'];
+            $base = rtrim((string) Config::get('app.base_url'), '/');
             $text = View::twig()->render('emails/notification.txt.twig', [
                 'notification' => $notification,
-                'ticket' => $ticket,
+                'title' => $title,
                 'key' => $key,
                 'person' => $person,
-                'link' => rtrim((string) Config::get('app.base_url'), '/') . '/tickets/' . $ticket['id'],
+                'link' => $base . $path,
+                'profile' => $base . '/profile',
             ]);
 
-            if (Mailer::send((string) $person['email'], (string) $person['name'], '[' . $key . '] ' . $ticket['title'], $text)) {
+            if (Mailer::send((string) $person['email'], (string) $person['name'], '[' . $tag . '] ' . $title, $text)) {
                 $this->notifications->markEmailed($notificationId);
             }
         } finally {

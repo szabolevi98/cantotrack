@@ -1,61 +1,250 @@
 {% extends 'layout.twig' %}
 {% import 'common/macros.twig' as ui %}
 
+{% set search_project = {id: project.id, code: project.code} %}
+{% set field_url = url('/epics/' ~ epic.id ~ '/field') %}
+
 {% block title %}{{ epic.title }} — {{ app_name }}{% endblock %}
-{% block heading %}{{ epic.title }}{% endblock %}
+{% block heading %}
+    {{- epic.title -}}
+    {% if can_work %}
+        <button class="inline__pencil inline__pencil--title" type="button" data-inline-open data-inline-for="title-form"
+                aria-label="{{ 'Change the {field}'|t({field: 'title'|t}) }}" title="{{ 'Change the {field}'|t({field: 'title'|t}) }}">
+            <i class="bi bi-pencil" aria-hidden="true"></i>
+        </button>
+    {% endif %}
+{% endblock %}
 
 {% block subheading %}
+    {% if can_work %}
+        <form class="inline__form inline__form--title" id="title-form" method="post" action="{{ field_url }}" data-inline-form hidden>
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <input type="hidden" name="field" value="title">
+            <input class="field" type="text" name="value" value="{{ epic.title }}" maxlength="200" required aria-label="{{ 'Title'|t }}">
+            <p class="inline__error" data-inline-error hidden></p>
+            <div class="inline__buttons">
+                <button class="button button--small button--primary" type="submit">{{ 'Save'|t }}</button>
+                <button class="button button--small" type="button" data-inline-cancel>{{ 'Cancel'|t }}</button>
+            </div>
+        </form>
+    {% endif %}
     <p class="content__sub">
-        {{ 'Epic in'|t }} <a href="{{ url('/projects/' ~ project.id) }}">{{ project.name }}</a>
+        <span class="badge badge--violet">{{ 'Epic'|t }}</span>
+        {{ 'in'|t }} <a href="{{ url('/projects/' ~ project.id) }}">{{ project.name }}</a>
         {% if epic.is_done %}<span class="badge badge--done">{{ 'Done'|t }}</span>{% endif %}
-        {% if epic.starts_on or epic.ends_on %}· {{ epic.starts_on ? epic.starts_on|day : '…' }} — {{ epic.ends_on ? epic.ends_on|day : '…' }}{% endif %}
         · <a href="{{ url('/projects/' ~ project.id ~ '/roadmap') }}">{{ 'On the roadmap'|t }}</a>
     </p>
 {% endblock %}
 
 {% block actions %}
+    <form method="post" action="{{ url('/epics/' ~ epic.id ~ '/watch') }}">
+        <input type="hidden" name="_token" value="{{ csrf_token }}">
+        <button class="button{{ watching ? ' is-on' : '' }}" type="submit" aria-pressed="{{ watching ? 'true' : 'false' }}"
+                title="{{ plural('{count} person follows this', '{count} people follow this', watchers|length) }}">
+            {{ watching ? 'Following'|t : 'Follow'|t }}{% if watchers is not empty %} · {{ watchers|length }}{% endif %}
+        </button>
+    </form>
     {% if can_work %}
-        <a class="button" href="{{ url('/tickets/create?project=' ~ project.id ~ '&epic=' ~ epic.id) }}">{{ 'New ticket'|t }}</a>
+        <form method="post" action="{{ url('/epics/' ~ epic.id ~ '/done') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <button class="button" type="submit">{{ epic.is_done ? 'Open it again'|t : 'Mark it done'|t }}</button>
+        </form>
+        {% if not epic.is_done %}
+            <a class="button" href="{{ url('/tickets/create?project=' ~ project.id ~ '&epic=' ~ epic.id) }}">{{ 'New ticket'|t }}</a>
+        {% endif %}
         <a class="button" href="{{ url('/epics/' ~ epic.id ~ '/edit') }}">{{ 'Edit'|t }}</a>
     {% endif %}
 {% endblock %}
 
 {% block content %}
-    {% if epic.description %}
-        <section class="card">
-            <p class="card__body prose">{{ epic.description|nl2br }}</p>
-        </section>
-    {% endif %}
+    <div class="split">
+        <div class="split__main">
+            <section class="card" data-refresh="description">
+                {% embed 'common/inline.twig' with {field: 'description', label: 'description'|t, action: field_url} %}
+                    {% block show %}
+                        <h2 class="card__title">{{ 'Description'|t }}</h2>
+                        {% if epic.description %}
+                            <div class="card__body prose markdown">{{ epic.description|markdown }}</div>
+                        {% else %}
+                            <p class="card__body muted">{{ can_work ? 'What this epic is for, and when it is finished — click to write it.'|t : 'Nothing written down yet.'|t }}</p>
+                        {% endif %}
+                    {% endblock %}
+                    {% block control %}
+                        <label class="card__title" for="description-{{ epic.id }}">{{ 'Description'|t }}</label>
+                        <textarea id="description-{{ epic.id }}" class="field" name="value" rows="10" data-suggest
+                                  data-paste-upload="{{ url('/epics/' ~ epic.id ~ '/attachments') }}">{{ epic.description }}</textarea>
+                        <p class="hint">{{ 'Markdown works: **bold**, `code`, lists, and CT-14 becomes a link.'|t }}</p>
+                    {% endblock %}
+                {% endembed %}
+            </section>
 
-    <section class="card card--flush">
-        {% if tickets is empty %}
-            <p class="card__empty">{{ 'Nothing in this epic yet.'|t }}</p>
-        {% else %}
-            <table class="table">
-                <thead>
-                <tr>
-                    <th class="table__key">{{ 'Ticket'|t }}</th>
-                    <th>{{ 'Title'|t }}</th>
-                    <th>{{ 'Status'|t }}</th>
-                    <th>{{ 'Assignee'|t }}</th>
-                    <th class="table__number">{{ 'Logged'|t }}</th>
-                </tr>
-                </thead>
-                <tbody>
-                {% for ticket in tickets %}
-                    <tr>
-                        <td>{{ ui.ticket_key(ticket) }}</td>
-                        <td>
-                            <a href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a>{{ ui.family(ticket) }}
-                            {{ ui.priority(ticket.priority) }}
-                        </td>
-                        <td>{{ ui.status(ticket.status_name, ticket.status_colour) }} {{ ui.resolution(ticket) }}</td>
-                        <td>{{ ui.person(ticket.assignee_name, ticket.assignee_id) }}</td>
-                        <td class="table__number">{{ ticket.logged_minutes > 0 ? ticket.logged_minutes|duration : '—' }}</td>
-                    </tr>
-                {% endfor %}
-                </tbody>
-            </table>
-        {% endif %}
-    </section>
+            <section class="card card--flush" id="tickets">
+                <header class="subtasks__head epic-page__head">
+                    <h2 class="card__title">{{ 'Tickets'|t }}</h2>
+                    {% if progress.tickets > 0 %}
+                        <span class="muted">{{ '{done} of {count} done'|t({done: progress.done, count: progress.tickets}) }}</span>
+                        <span class="bar subtasks__bar"><span class="bar__fill" style="width: {{ (progress.done / progress.tickets * 100)|round }}%"></span></span>
+                    {% endif %}
+                </header>
+                {% if tickets is empty %}
+                    <p class="card__empty">{{ 'Nothing in this epic yet.'|t }}</p>
+                {% else %}
+                    <table class="table">
+                        <thead>
+                        <tr>
+                            <th class="table__key">{{ 'Ticket'|t }}</th>
+                            <th>{{ 'Title'|t }}</th>
+                            <th>{{ 'Status'|t }}</th>
+                            <th>{{ 'Assignee'|t }}</th>
+                            <th class="table__number">{{ 'Logged'|t }}</th>
+                        </tr>
+                        </thead>
+                        <tbody>
+                        {% for ticket in tickets %}
+                            <tr>
+                                <td>{{ ui.ticket_key(ticket) }}</td>
+                                <td>
+                                    <a href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a>{{ ui.family(ticket) }}
+                                    {{ ui.priority(ticket.priority) }}
+                                </td>
+                                <td>{{ ui.status(ticket.status_name, ticket.status_colour) }} {{ ui.resolution(ticket) }}</td>
+                                <td>{{ ui.person(ticket.assignee_name, ticket.assignee_id) }}</td>
+                                <td class="table__number">{{ ticket.logged_minutes > 0 ? ticket.logged_minutes|duration : '—' }}</td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                {% endif %}
+            </section>
+
+            {% include 'common/attachments.twig' with {upload_url: url('/epics/' ~ epic.id ~ '/attachments')} %}
+
+            <section class="card" id="activity" data-refresh="activity">
+                <header class="activity__head">
+                    <h2 class="card__title">{{ 'Activity'|t }}</h2>
+                    <nav class="segmented" aria-label="{{ 'Show'|t }}">
+                        {% for value, label in {all: 'Everything', comments: 'Comments', history: 'History'} %}
+                            <a class="segmented__item{{ showing == value ? ' is-active' : '' }}"
+                               href="{{ url('/epics/' ~ epic.id ~ (value == 'all' ? '' : '?activity=' ~ value)) }}#activity"
+                               {{ showing == value ? 'aria-current="true"' : '' }}>{{ label|t }}</a>
+                        {% endfor %}
+                    </nav>
+                </header>
+
+                {% if timeline is empty %}
+                    <p class="card__body muted">{{ showing == 'history' ? 'Nothing has happened to it yet.'|t : 'Nobody has said anything yet.'|t }}</p>
+                {% else %}
+                    <ol class="timeline">
+                        {% for item in timeline %}
+                            {% if item.kind == 'comment' %}
+                                {% set comment = item.comment %}
+                                <li class="timeline__comment" id="comment-{{ comment.id }}">
+                                    {{ ui.face(comment.user_name, comment.user_id, 'avatar avatar--small') }}
+                                    <div class="comment">
+                                        <header class="comment__head">
+                                            <strong>{{ comment.user_name }}</strong>
+                                            <time class="muted" datetime="{{ comment.created_at }}">{{ comment.created_at|day }} {{ comment.created_at|date('H:i') }}</time>
+                                            {% if comment.edited_at %}<span class="muted" title="{{ comment.edited_at }}">· {{ 'edited'|t }}</span>{% endif %}
+                                        </header>
+                                        <div class="comment__body markdown">{{ comment.body|markdown }}</div>
+
+                                        {% if comment.user_id == current_user.id or is_admin %}
+                                            <div class="comment__actions">
+                                                {% if comment.user_id == current_user.id %}
+                                                    <details class="comment__edit">
+                                                        <summary class="link-button link-button--text">{{ 'Edit'|t }}</summary>
+                                                        <form method="post" action="{{ url('/epic-comments/' ~ comment.id) }}">
+                                                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                                            <textarea class="field" name="body" rows="4" required data-suggest>{{ comment.body }}</textarea>
+                                                            <button class="button button--small button--primary" type="submit">{{ 'Save'|t }}</button>
+                                                        </form>
+                                                    </details>
+                                                {% endif %}
+                                                <form method="post" action="{{ url('/epic-comments/' ~ comment.id ~ '/delete') }}"
+                                                      data-confirm="{{ 'Delete this comment?'|t }}">
+                                                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                                    <button class="link-button link-button--text" type="submit">{{ 'Delete'|t }}</button>
+                                                </form>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </li>
+                            {% else %}
+                                <li class="timeline__event">
+                                    <span class="timeline__dot" aria-hidden="true"></span>
+                                    <span>{{ ui.epic_event_line(item.event) }}</span>
+                                    <time class="muted" datetime="{{ item.event.created_at }}">{{ item.event.created_at|day }} {{ item.event.created_at|date('H:i') }}</time>
+                                </li>
+                            {% endif %}
+                        {% endfor %}
+                    </ol>
+                {% endif %}
+
+                {% if showing != 'history' %}
+                    <form class="comment-form" id="comment-form" method="post" action="{{ url('/epics/' ~ epic.id ~ '/comments') }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                        <label for="body">{{ 'Add a comment'|t }}</label>
+                        <textarea id="body" class="field" name="body" rows="4" required data-suggest data-paste-upload="{{ url('/epics/' ~ epic.id ~ '/attachments') }}"
+                                  placeholder="{{ 'Markdown works. CT-14 links to that ticket, @name tells somebody.'|t }}"></textarea>
+                        <button class="button button--primary" type="submit">{{ 'Comment'|t }}</button>
+                    </form>
+                {% endif %}
+            </section>
+        </div>
+
+        <aside class="split__side">
+            <section class="card">
+                <dl class="facts" data-refresh="facts">
+                    <dt>{{ 'Status'|t }}</dt>
+                    <dd>{% if epic.is_done %}<span class="badge badge--done">{{ 'Done'|t }}</span>{% else %}{{ 'Open'|t }}{% endif %}</dd>
+
+                    <dt>{{ 'Starts'|t }}</dt>
+                    <dd>
+                        {% embed 'common/inline.twig' with {field: 'starts_on', label: 'start day'|t, action: field_url} %}
+                            {% block show %}{{ epic.starts_on ? epic.starts_on|day : '—' }}{% endblock %}
+                            {% block control %}<input class="field field--inline" type="date" name="value" value="{{ epic.starts_on }}" aria-label="{{ 'Starts'|t }}">{% endblock %}
+                        {% endembed %}
+                    </dd>
+
+                    <dt>{{ 'Ends'|t }}</dt>
+                    <dd>
+                        {% embed 'common/inline.twig' with {field: 'ends_on', label: 'end day'|t, action: field_url} %}
+                            {% block show %}
+                                {{ epic.ends_on ? epic.ends_on|day : '—' }}
+                                {% if epic.ends_on and not epic.is_done and epic.ends_on < 'now'|date('Y-m-d') %}<span class="badge badge--red">{{ 'Overdue'|t }}</span>{% endif %}
+                            {% endblock %}
+                            {% block control %}<input class="field field--inline" type="date" name="value" value="{{ epic.ends_on }}" aria-label="{{ 'Ends'|t }}">{% endblock %}
+                        {% endembed %}
+                    </dd>
+
+                    <dt>{{ 'Tickets'|t }}</dt>
+                    <dd>{{ progress.tickets > 0 ? '{done} of {count} done'|t({done: progress.done, count: progress.tickets}) : '—' }}</dd>
+
+                    {% if progress.points > 0 %}
+                        <dt>{{ 'Points'|t }}</dt>
+                        <dd>{{ '{done} of {count} done'|t({done: progress.done_points, count: progress.points}) }}</dd>
+                    {% endif %}
+
+                    <dt>{{ 'Logged'|t }}</dt>
+                    <dd>
+                        {{ progress.logged > 0 ? progress.logged|duration : '—' }}
+                        {% if progress.estimate > 0 %}<span class="muted">/ {{ progress.estimate|duration }} {{ 'estimated'|t }}</span>{% endif %}
+                    </dd>
+
+                    <dt>{{ 'Followers'|t }}</dt>
+                    <dd>
+                        {% if watchers is empty %}
+                            <span class="muted">{{ 'Nobody yet'|t }}</span>
+                        {% else %}
+                            <span class="faces">
+                                {% for person in watchers %}
+                                    <span title="{{ person.name }}">{{ ui.face(person.name, person.id, 'avatar avatar--small') }}</span>
+                                {% endfor %}
+                            </span>
+                        {% endif %}
+                    </dd>
+                </dl>
+            </section>
+        </aside>
+    </div>
 {% endblock %}

@@ -63,10 +63,12 @@ class AttachmentService
     private AttachmentRepository $attachments;
     private TicketRepository $tickets;
     private Activity $activity;
+    private PDO $db;
 
     public function __construct(?PDO $db = null)
     {
         $db ??= DatabaseConnection::get();
+        $this->db = $db;
 
         $this->attachments = new AttachmentRepository($db);
         $this->tickets = new TicketRepository($db);
@@ -118,6 +120,24 @@ class AttachmentService
         $id = $this->attachments->create(['page_id' => $pageId, 'user_id' => $userId] + $this->keep($upload));
 
         return (array) $this->attachments->find($id);
+    }
+
+    /**
+     * Takes one uploaded file onto an epic — the brief, the design, the
+     * client's email. The caller has made sure the epic is one the person
+     * may see.
+     *
+     * @param array<string, mixed> $upload
+     * @throws ValidationError
+     */
+    public function storeOnEpic(int $epicId, int $userId, array $upload): array
+    {
+        $id = $this->attachments->create(['epic_id' => $epicId, 'user_id' => $userId] + $this->keep($upload));
+        $stored = (array) $this->attachments->find($id);
+
+        (new EpicService($this->db))->attached($epicId, $userId, (string) $stored['original_name']);
+
+        return $stored;
     }
 
     /**
@@ -182,6 +202,10 @@ class AttachmentService
         $ticket = $attachment['ticket_id'] === null ? null : $this->tickets->find((int) $attachment['ticket_id']);
         if ($ticket !== null) {
             $this->activity->happened($ticket, $actorId, 'detached', 'attachment', (string) $attachment['original_name']);
+        }
+
+        if (($attachment['epic_id'] ?? null) !== null) {
+            (new EpicService($this->db))->attached((int) $attachment['epic_id'], $actorId, (string) $attachment['original_name'], true);
         }
     }
 

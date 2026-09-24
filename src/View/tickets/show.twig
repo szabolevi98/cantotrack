@@ -483,6 +483,12 @@
                         {% endif %}
                     </dd>
 
+                    {% for field in custom_fields %}
+                        {% set value = field_values[field.id]|default(null) %}
+                        <dt>{{ field.name }}</dt>
+                        <dd>{% if value is null %}—{% elseif field.kind == 'checkbox' %}{{ 'yes'|t }}{% elseif field.kind == 'date' %}{{ value|day }}{% else %}{{ value }}{% endif %}</dd>
+                    {% endfor %}
+
                     <dt>{{ 'Created'|t }}</dt>
                     <dd>{{ ticket.created_at|day }}</dd>
 

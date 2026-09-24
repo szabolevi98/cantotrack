@@ -51,8 +51,8 @@
                 <table class="table table--compact">
                     <thead><tr>
                         <th class="table__number">{{ 'Line'|t }}</th>
-                        {% set headings = {title: 'Title', description: 'Description', type: 'Type', priority: 'Priority', status: 'Status', assignee: 'Assignee', labels: 'Labels', estimate: 'Estimate', due_on: 'Due', story_points: 'Points', epic: 'Epic'} %}
-                        {% for field in preview.fields %}<th>{{ headings[field]|t }}</th>{% endfor %}
+                        {% set headings = {title: 'Title', description: 'Description', type: 'Type', priority: 'Priority', status: 'Status', assignee: 'Assignee', labels: 'Labels', estimate: 'Estimate', due_on: 'Due', story_points: 'Points', epic: 'Epic', parent: 'A subtask of'} %}
+                        {% for field in preview.fields %}<th>{{ preview.headings[field] ?? headings[field]|t }}</th>{% endfor %}
                         <th></th>
                     </tr></thead>
                     <tbody>

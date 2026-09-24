@@ -45,6 +45,10 @@ deploy with `git pull`.
   releases and the sprints above them. A bar is dragged to move an epic, or by
   an end to change when it starts or finishes; an epic without days of its own
   is drawn from its tickets, and says so.
+- **Fields of a project's own** — text, a number, a choice from a list, a day,
+  yes or no — kept by the administrators, required if need be, and on the
+  ticket form, its page, its history, the query language
+  (`"Platform" = iOS AND Budget > 500`), the API and the CSV import.
 - **Links between tickets** — blocks, relates to, duplicates. A ticket blocked by
   an unfinished one says so on the board.
 - **Private projects and guests.** A project is open to the team, or private to

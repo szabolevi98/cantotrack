@@ -821,6 +821,20 @@ if ($email === null || $password === null) {
         str_contains(request($baseUrl . '/tickets?' . http_build_query(['query' => 'colour = red']), [], $jar)['body'], 'query-form__error')
     );
 
+    // A field of the project's own: added in its settings, filled in on a
+    // ticket, and found by the query language.
+    request($baseUrl . '/projects/' . $projectId . '/fields', ['_token' => $token, 'name' => 'Smoke platform', 'kind' => 'select', 'options' => "iOS\nAndroid"], $jar);
+    $fieldsPage = request($baseUrl . '/projects/' . $projectId . '/fields', [], $jar)['body'];
+    $fieldId = preg_match('#/fields/(\d+)/delete#', $fieldsPage, $m) === 1 ? (int) $m[1] : 0;
+    check('a project can have fields of its own', $fieldId > 0);
+    $ticketForm = request($baseUrl . '/tickets/' . $ticketId . '/edit', [], $jar)['body'];
+    $version = preg_match('/name="version" value="(\d+)"/', $ticketForm, $m) === 1 ? $m[1] : '';
+    request($baseUrl . '/tickets/' . $ticketId, ['_token' => $token, 'version' => $version, 'title' => 'Smoke test ticket', 'fields' => [$fieldId => 'Android']], $jar);
+    check(
+        'and a ticket says what it is in it',
+        str_contains(request($baseUrl . '/tickets?' . http_build_query(['query' => '"Smoke platform" = Android']), [], $jar)['body'], $code . '-1')
+    );
+
     $timesheet = request($baseUrl . '/timesheet?view=days', [], $jar);
     check('the timesheet answers', $timesheet['status'] === 200, 'status ' . $timesheet['status']);
     check(

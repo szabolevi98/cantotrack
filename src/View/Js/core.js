@@ -210,6 +210,16 @@
             return;
         }
 
+        // The project's own fields: its are shown and sent, the others'
+        // hidden and left out of the form.
+        source.form.querySelectorAll('[data-field-project]').forEach(function (item) {
+            var mine = item.dataset.fieldProject === source.value;
+            item.hidden = !mine;
+            item.querySelectorAll('input, select, textarea').forEach(function (control) {
+                control.disabled = !mine;
+            });
+        });
+
         var url = source.dataset.optionsUrl.replace('{id}', encodeURIComponent(source.value));
         if (!source.value) {
             return;

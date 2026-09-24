@@ -214,6 +214,16 @@
             return;
         }
 
+        // The project's own fields: its are shown and sent, the others'
+        // hidden and left out of the form.
+        source.form.querySelectorAll('[data-field-project]').forEach(function (item) {
+            var mine = item.dataset.fieldProject === source.value;
+            item.hidden = !mine;
+            item.querySelectorAll('input, select, textarea').forEach(function (control) {
+                control.disabled = !mine;
+            });
+        });
+
         var url = source.dataset.optionsUrl.replace('{id}', encodeURIComponent(source.value));
         if (!source.value) {
             return;
@@ -1536,7 +1546,7 @@
 
     var input = form.querySelector('input[name="query"]');
     var list = document.getElementById('query-suggestions');
-    var fields = form.dataset.fields.split(' ');
+    var fields = JSON.parse(form.dataset.fields || '[]');
     var operators = ['=', '!=', '~', '!~', '<', '<=', '>', '>=', 'IN (', 'NOT IN (', 'IS EMPTY', 'IS NOT EMPTY'];
     var joiners = ['AND', 'OR', 'ORDER BY'];
     var cache = {};
@@ -1556,7 +1566,11 @@
     }
 
     function isField(word) {
-        return word && fields.indexOf(word.toLowerCase()) !== -1;
+        if (!word) {
+            return false;
+        }
+        var wanted = word.toLowerCase();
+        return fields.some(function (field) { return field.toLowerCase() === wanted; });
     }
 
     function upper(word) {

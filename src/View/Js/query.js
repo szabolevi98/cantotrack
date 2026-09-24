@@ -20,7 +20,7 @@
 
     var input = form.querySelector('input[name="query"]');
     var list = document.getElementById('query-suggestions');
-    var fields = form.dataset.fields.split(' ');
+    var fields = JSON.parse(form.dataset.fields || '[]');
     var operators = ['=', '!=', '~', '!~', '<', '<=', '>', '>=', 'IN (', 'NOT IN (', 'IS EMPTY', 'IS NOT EMPTY'];
     var joiners = ['AND', 'OR', 'ORDER BY'];
     var cache = {};
@@ -40,7 +40,11 @@
     }
 
     function isField(word) {
-        return word && fields.indexOf(word.toLowerCase()) !== -1;
+        if (!word) {
+            return false;
+        }
+        var wanted = word.toLowerCase();
+        return fields.some(function (field) { return field.toLowerCase() === wanted; });
     }
 
     function upper(word) {

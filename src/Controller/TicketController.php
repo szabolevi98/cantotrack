@@ -51,7 +51,7 @@ class TicketController extends Controller
 
         if ($query !== '') {
             try {
-                $compiled = \CantoTrack\Service\TicketQuery::compile($query, Auth::id());
+                $compiled = \CantoTrack\Service\TicketQuery::compile($query, Auth::id(), null, (new \CantoTrack\Model\CustomFieldRepository())->kindsByName());
                 $filters['query_where'] = $compiled['where'];
                 $filters['query_params'] = $compiled['params'];
                 $filters['query_order'] = $compiled['order'];
@@ -95,6 +95,7 @@ class TicketController extends Controller
             'query_mode' => $query !== '' || ($_GET['mode'] ?? '') === 'query',
             'as_query' => \CantoTrack\Service\TicketQuery::fromFilters($filters, $this->namesFor($filters)),
             'vocabulary' => \CantoTrack\Service\TicketQuery::vocabulary(),
+            'custom_names' => array_values(array_unique(array_map(static fn(array $f): string => (string) $f['name'], (new \CantoTrack\Model\CustomFieldRepository())->visible()))),
             'releases' => $filters['project_id'] ? (new ReleaseRepository())->forProject($filters['project_id']) : [],
         ]);
     }
@@ -157,10 +158,29 @@ class TicketController extends Controller
             'release', 'fixversion', 'version' => array_merge(['unreleased()', 'released()'], $column('SELECT name FROM releases WHERE released_at IS NULL' . $visible . ' ORDER BY name')),
             'label', 'labels' => $column('SELECT name FROM labels ORDER BY name'),
             'created', 'updated', 'resolved', 'due', 'duedate' => ['startOfDay()', 'startOfWeek()', 'endOfWeek()', 'startOfMonth()', 'endOfMonth()', '-7d', '-1m'],
-            default => [],
+            default => $this->customValues($field),
         };
 
         $this->json(['values' => array_slice($values, 0, 200)]);
+    }
+
+    /** @return list<string> the choices of one of the projects' own fields, by its name */
+    private function customValues(string $name): array
+    {
+        $values = [];
+
+        foreach ((new \CantoTrack\Model\CustomFieldRepository())->visible() as $field) {
+            if (mb_strtolower((string) $field['name']) === trim(mb_strtolower($name), '"')) {
+                $values = array_merge($values, match ($field['kind']) {
+                    'select' => $field['choices'],
+                    'checkbox' => ['yes', 'no'],
+                    'date' => ['startOfDay()', 'startOfWeek()', 'endOfMonth()', '-7d'],
+                    default => [],
+                });
+            }
+        }
+
+        return array_values(array_unique($values));
     }
 
     /** The saved filter the list was opened from, if it is one this person may see. */
@@ -225,6 +245,8 @@ class TicketController extends Controller
             'statuses' => (new StatusRepository())->forProject((int) $ticket['project_id']),
             'worklogs' => (new WorklogRepository())->forTicket($id),
             'subtasks' => (new TicketRepository())->subtasks($id),
+            'custom_fields' => (new \CantoTrack\Model\CustomFieldRepository())->forProject((int) $ticket['project_id']),
+            'field_values' => (new \CantoTrack\Model\CustomFieldRepository())->valuesFor($id),
             'timeline' => $this->timeline($id, $showing),
             'showing' => $showing,
             'today' => date('Y-m-d'),
@@ -547,6 +569,10 @@ class TicketController extends Controller
             'projects' => (new ProjectRepository())->allWithCounts(),
             'epics' => $projectId > 0 ? (new EpicRepository())->openForProject($projectId) : [],
             'releases' => $projectId > 0 ? (new ReleaseRepository())->unreleased($projectId) : [],
+            // A ticket being edited has its project's fields; a new one, every
+            // project's, shown as its project is chosen.
+            'custom_fields' => $ticket !== null ? (new \CantoTrack\Model\CustomFieldRepository())->forProject($projectId) : (new \CantoTrack\Model\CustomFieldRepository())->visible(),
+            'field_values' => $values['fields'] ?? ($ticket !== null ? (new \CantoTrack\Model\CustomFieldRepository())->valuesFor((int) $ticket['id']) : []),
             'people' => (new UserRepository())->active(),
             'priorities' => TicketRepository::PRIORITIES,
             'types' => TicketRepository::TYPES,
@@ -571,6 +597,7 @@ class TicketController extends Controller
             'epic_id' => $this->idInput('epic_id'),
             'parent' => $this->input('parent'),
             'release_id' => $this->idInput('release_id'),
+            'fields' => is_array($_POST['fields'] ?? null) ? $_POST['fields'] : [],
             'title' => $this->input('title'),
             'description' => $this->input('description'),
             'status' => $this->input('status'),

@@ -111,7 +111,7 @@ class ApiController extends Controller
 
         // ?query=project = CT AND assignee = me ORDER BY priority DESC
         if (is_string($_GET['query'] ?? null) && trim($_GET['query']) !== '') {
-            $compiled = \CantoTrack\Service\TicketQuery::compile((string) $_GET['query'], Auth::id());
+            $compiled = \CantoTrack\Service\TicketQuery::compile((string) $_GET['query'], Auth::id(), null, (new \CantoTrack\Model\CustomFieldRepository())->kindsByName());
             $filters['query_where'] = $compiled['where'];
             $filters['query_params'] = $compiled['params'];
             $filters['query_order'] = $compiled['order'];

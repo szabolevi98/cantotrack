@@ -89,19 +89,25 @@ final class TicketQuery
     /** @var array<string, mixed> */
     private array $params = [];
 
-    private function __construct(private readonly ?int $userId, private readonly DateTimeImmutable $now)
+    /**
+     * @param array<string, string> $custom the projects' own fields: lower-case name => kind
+     */
+    private function __construct(private readonly ?int $userId, private readonly DateTimeImmutable $now, private readonly array $custom = [])
     {
     }
 
     /**
-     * A query, as a condition and an order for the ticket list.
+     * A query, as a condition and an order for the ticket list. The
+     * projects' own fields can be named too, quoted when the name has a
+     * space in it: "Platform" = iOS.
      *
+     * @param array<string, string> $custom lower-case field name => kind (see CustomFieldRepository::kindsByName)
      * @return array{where: string, params: array<string, mixed>, order: ?string}
      * @throws ValidationError when it cannot be read, with where it went wrong
      */
-    public static function compile(string $query, ?int $userId, ?DateTimeImmutable $now = null): array
+    public static function compile(string $query, ?int $userId, ?DateTimeImmutable $now = null, array $custom = []): array
     {
-        $compiler = new self($userId, $now ?? new DateTimeImmutable());
+        $compiler = new self($userId, $now ?? new DateTimeImmutable(), $custom);
         $compiler->tokens = self::tokenize($query);
 
         $where = '';
@@ -357,11 +363,17 @@ final class TicketQuery
     {
         $token = $this->peek();
 
-        if ($token['type'] !== 'word') {
+        if ($token['type'] !== 'word' && $token['type'] !== 'string') {
             $this->fail(__('Expected a field, such as project, status or assignee.'));
         }
 
-        $field = self::FIELDS[strtolower($token['value'])] ?? null;
+        $field = $token['type'] === 'word' ? (self::FIELDS[strtolower($token['value'])] ?? null) : null;
+
+        if ($field === null && isset($this->custom[mb_strtolower($token['value'])])) {
+            $this->position++;
+
+            return $this->customClause($token['value'], $this->custom[mb_strtolower($token['value'])]);
+        }
 
         if ($field === null) {
             $this->fail(__('There is no field called “{field}”.', ['field' => $token['value']]));
@@ -428,6 +440,91 @@ final class TicketQuery
         }
 
         return $this->compare($field, $op['value'], $this->value());
+    }
+
+    /**
+     * A clause on one of the projects' own fields: its values are kept as
+     * text in one form per kind, so a number is compared as a number and a
+     * day as a day.
+     */
+    private function customClause(string $name, string $kind): string
+    {
+        $exists = fn(string $condition): string => 'EXISTS (SELECT 1 FROM ticket_field_values tqv JOIN custom_fields tqf ON tqf.id = tqv.field_id'
+            . ' WHERE tqv.ticket_id = t.id AND tqf.name = ' . $this->bind($name) . ($condition === '' ? '' : ' AND ' . $condition) . ')';
+
+        if ($this->isKeyword('IS')) {
+            $this->position++;
+            $negated = false;
+            if ($this->isKeyword('NOT')) {
+                $negated = true;
+                $this->position++;
+            }
+            if (!$this->isKeyword('EMPTY') && !$this->isKeyword('NULL')) {
+                $this->fail(__('Expected “EMPTY” after “IS”.'));
+            }
+            $this->position++;
+
+            return $negated ? $exists('') : '(NOT ' . $exists('') . ')';
+        }
+
+        $negated = false;
+        if ($this->isKeyword('NOT')) {
+            $this->position++;
+            $negated = true;
+            if (!$this->isKeyword('IN')) {
+                $this->fail(__('Expected “IN” after “NOT”.'));
+            }
+        }
+
+        if ($this->isKeyword('IN')) {
+            $this->position++;
+            $parts = array_map(fn(array $value): string => $this->customCompare($kind, '=', $value['value'], $exists), $this->valueList());
+            $any = '(' . implode(' OR ', $parts) . ')';
+
+            return $negated ? '(NOT ' . $any . ')' : $any;
+        }
+
+        $op = $this->peek();
+        $allowed = match ($kind) {
+            'number', 'date' => ['=', '!=', '<', '<=', '>', '>='],
+            'checkbox' => ['=', '!='],
+            default => ['=', '!=', '~', '!~'],
+        };
+
+        if ($op['type'] !== 'op' || !in_array($op['value'], $allowed, true)) {
+            $this->fail(__('“{field}” does not take “{op}”; it takes {allowed}.', ['field' => $name, 'op' => $op['value'], 'allowed' => implode(' ', $allowed)]));
+        }
+        $this->position++;
+
+        $value = $this->value();
+
+        return $this->customCompare($kind, $op['value'], $value['value'], $exists, $value);
+    }
+
+    /**
+     * @param callable(string): string $exists
+     * @param array{value: string, function: ?string, at: int}|null $whole the value with its function, for a day
+     */
+    private function customCompare(string $kind, string $op, string $given, callable $exists, ?array $whole = null): string
+    {
+        $given = trim($given);
+
+        if ($kind === 'checkbox') {
+            $yes = in_array(mb_strtolower($given), ['yes', 'true', '1', 'on', 'igen'], true);
+            $wanted = $op === '!=' ? !$yes : $yes;
+
+            return $wanted ? $exists('tqv.value = \'1\'') : '(NOT ' . $exists('tqv.value = \'1\'') . ')';
+        }
+
+        $sqlOp = $op === '!=' ? '=' : $op;
+
+        $condition = match ($kind) {
+            'number' => 'CAST(tqv.value AS DECIMAL(14,2)) ' . ($op === '!=' ? '=' : $op) . ' ' . $this->bind(is_numeric(str_replace(',', '.', $given)) ? (float) str_replace(',', '.', $given) : $this->fail(__('“{value}” is not a number.', ['value' => $given]))),
+            'date' => 'tqv.value ' . $sqlOp . ' ' . $this->bind($this->day($whole ?? ['value' => $given, 'function' => null, 'at' => 0])->format('Y-m-d')),
+            default => in_array($op, ['~', '!~'], true) ? 'tqv.value LIKE ' . $this->like($given) : 'tqv.value = ' . $this->bind($given),
+        };
+
+        return in_array($op, ['!=', '!~'], true) ? '(NOT ' . $exists($condition) . ')' : $exists($condition);
     }
 
     /** @return list<array{value: string, function: ?string, at: int}> */

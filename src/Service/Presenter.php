@@ -63,6 +63,17 @@ final class Presenter
         ];
 
         if ($full) {
+            $fields = new \CantoTrack\Model\CustomFieldRepository();
+            $values = $fields->valuesFor((int) $ticket['id']);
+            $out['fields'] = [];
+            foreach ($fields->forProject((int) $ticket['project_id']) as $field) {
+                $value = $values[(int) $field['id']] ?? null;
+                $out['fields'][(string) $field['name']] = $value === null ? null : match ($field['kind']) {
+                    'number' => (float) $value,
+                    'checkbox' => true,
+                    default => $value,
+                };
+            }
             $out['description'] = (string) $ticket['description'];
             $out['reporter'] = $ticket['reporter_id'] === null ? null : ['id' => (int) $ticket['reporter_id'], 'name' => $ticket['reporter_name']];
         }

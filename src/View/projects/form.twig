@@ -9,6 +9,13 @@
 {% block content %}
     {% if error %}<p class="flash flash--danger">{{ error }}</p>{% endif %}
 
+    {% if editing %}
+        <p class="card card--narrow project-settings__links">
+            <a href="{{ url('/projects/' ~ project.id ~ '/fields') }}">{{ 'Fields of its own'|t }}</a>
+            <span class="muted">— {{ 'what its tickets say beyond the usual'|t }}</span>
+        </p>
+    {% endif %}
+
     <section class="card card--narrow">
         <form method="post" action="{{ editing ? url('/projects/' ~ project.id) : url('/projects/create') }}">
             <input type="hidden" name="_token" value="{{ csrf_token }}">

@@ -73,6 +73,8 @@ class TicketService
         $status = $this->status($projectId, $input['status'] ?? '');
         $labels = LabelRepository::parse($input['labels'] ?? '');
         $parent = $this->parent($input, $projectId, null);
+        $fields = new CustomFields($this->db);
+        $values = $fields->checked($projectId, is_array($input['fields'] ?? null) ? $input['fields'] : null, true);
 
         $id = $this->tickets->create([
             'project_id' => $projectId,
@@ -104,6 +106,10 @@ class TicketService
         if ($parent !== null && $parent['sprint_id'] !== null) {
             (new SprintRepository($this->db))->assign([$id], (int) $parent['sprint_id']);
         }
+
+        // The project's own fields, without a line each in the history: the
+        // ticket was created with them.
+        $fields->save((array) $this->tickets->find($id), $values, $reporterId, true);
 
         $this->activity->happened((array) $this->tickets->find($id), $reporterId, 'created');
 
@@ -172,6 +178,8 @@ class TicketService
 
         $oldLabels = $this->labels->forTicket($id);
         $newLabels = $has('labels') ? LabelRepository::parse($input['labels']) : $oldLabels;
+        $fields = new CustomFields($this->db);
+        $values = $has('fields') && is_array($input['fields']) ? $fields->checked($projectId, $input['fields'], false) : [];
 
         // No version given (an API client that does not care) means "whatever
         // is there now" — the last-write-wins it asked for by leaving it out.
@@ -206,6 +214,7 @@ class TicketService
         }
 
         $this->recordChanges($ticket, (array) $this->tickets->find($id), $oldLabels, $newLabels, $actorId);
+        $fields->save((array) $this->tickets->find($id), $values, $actorId);
     }
 
     /**

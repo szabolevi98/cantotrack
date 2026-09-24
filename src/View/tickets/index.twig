@@ -24,7 +24,7 @@
         #}
         <form class="card query-form" method="get" action="{{ url('/tickets') }}" data-query-form
               data-values-url="{{ url('/tickets/query/values') }}"
-              data-fields="{{ vocabulary.fields|join(' ') }}" data-keywords="{{ vocabulary.keywords|join('|') }}">
+              data-fields="{{ vocabulary.fields|merge(custom_names|map(n => n matches '/^[\\w]+$/' ? n : '"' ~ n ~ '"'))|json_encode }}">
             <label class="visually-hidden" for="query">{{ 'Query'|t }}</label>
             <div class="query-form__row">
                 <div class="query-form__box">
@@ -45,6 +45,9 @@
                     <div>
                         <h3>{{ 'Fields'|t }}</h3>
                         <p><code>{{ vocabulary.fields|join('</code> <code>')|raw }}</code></p>
+                        {% if custom_names is not empty %}
+                            <p>{{ 'And the projects’ own:'|t }} {% for name in custom_names %}<code>{{ name matches '/^[\\w]+$/' ? name : '"' ~ name ~ '"' }}</code> {% endfor %}</p>
+                        {% endif %}
                         <h3>{{ 'Operators'|t }}</h3>
                         <p><code>=</code> <code>!=</code> <code>&lt;</code> <code>&lt;=</code> <code>&gt;</code> <code>&gt;=</code> {{ 'for numbers, days and priorities;'|t }} <code>~</code> <code>!~</code> {{ 'for words in the text;'|t }} <code>IN (…)</code> <code>NOT IN (…)</code> <code>IS EMPTY</code> <code>IS NOT EMPTY</code></p>
                         <h3>{{ 'Days'|t }}</h3>

@@ -1,0 +1,35 @@
+{#
+    A project's own fields on the ticket form: `fields` the fields (of every
+    project the form can be for, when the project is not chosen yet), `values`
+    what they hold, `project_id` the project chosen. With a script, choosing
+    another project shows its fields and turns the others off.
+#}
+{% if fields is not empty %}
+    <div class="custom-fields" data-custom-fields>
+        {% for field in fields %}
+            {% set id = 'field-' ~ field.id %}
+            {% set value = values[field.id]|default('') %}
+            {% set other = project_id and field.project_id != project_id %}
+            <div class="custom-fields__item" data-field-project="{{ field.project_id }}"{{ other or not project_id ? ' hidden' : '' }}>
+                {% if field.kind == 'checkbox' %}
+                    <input type="hidden" name="fields[{{ field.id }}]" value="0"{{ other ? ' disabled' : '' }}>
+                    <label class="check"><input type="checkbox" name="fields[{{ field.id }}]" value="1"{{ value == '1' ? ' checked' : '' }}{{ other ? ' disabled' : '' }}> {{ field.name }}</label>
+                {% else %}
+                    <label for="{{ id }}">{{ field.name }}{% if field.is_required %} <span class="muted">*</span>{% endif %}</label>
+                    {% if field.kind == 'select' %}
+                        <select id="{{ id }}" class="field" name="fields[{{ field.id }}]"{{ other ? ' disabled' : '' }}>
+                            <option value="">—</option>
+                            {% for choice in field.choices %}
+                                <option value="{{ choice }}"{{ value == choice ? ' selected' : '' }}>{{ choice }}</option>
+                            {% endfor %}
+                        </select>
+                    {% else %}
+                        <input id="{{ id }}" class="field" name="fields[{{ field.id }}]" value="{{ value }}"
+                               type="{{ field.kind == 'date' ? 'date' : 'text' }}"
+                               {{ field.kind == 'number' ? 'inputmode="decimal"' : '' }}{{ field.kind == 'text' ? ' maxlength="500"' : '' }}{{ other ? ' disabled' : '' }}>
+                    {% endif %}
+                {% endif %}
+            </div>
+        {% endfor %}
+    </div>
+{% endif %}

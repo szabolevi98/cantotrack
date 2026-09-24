@@ -1,0 +1,89 @@
+{% extends 'layout.twig' %}
+{% set kind_names = {text: 'Text', number: 'Number', select: 'A choice from a list', date: 'Day', checkbox: 'Yes or no'} %}
+
+{% block title %}{{ 'Fields'|t }} — {{ project.code }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Fields of {project}'|t({project: project.name}) }}{% endblock %}
+{% block subheading %}<p class="content__sub">{{ 'What a ticket of this project says beyond the usual: the platform, the clinic, the customer.'|t }}</p>{% endblock %}
+
+{% block actions %}
+    <a class="button" href="{{ url('/projects/' ~ project.id ~ '/edit') }}">{{ 'Project settings'|t }}</a>
+{% endblock %}
+
+{% block content %}
+    {% if error %}<p class="flash flash--danger">{{ error }}</p>{% endif %}
+
+    {% if fields is empty %}
+        <section class="card card--narrow"><p class="card__body muted">{{ 'No fields of its own yet.'|t }}</p></section>
+    {% else %}
+        <section class="card card--narrow card--flush">
+            <ul class="field-list">
+                {% for field in fields %}
+                    <li class="field-list__item">
+                        <details>
+                            <summary>
+                                <strong>{{ field.name }}</strong>
+                                <span class="muted">{{ kind_names[field.kind]|t }}{{ field.is_required ? ' · ' ~ 'required'|t : '' }}{% if field.kind == 'select' %} · {{ field.choices|join(', ') }}{% endif %}</span>
+                            </summary>
+                            <form method="post" action="{{ url('/fields/' ~ field.id) }}" class="field-list__form">
+                                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                <label for="name-{{ field.id }}">{{ 'Name'|t }}</label>
+                                <input id="name-{{ field.id }}" class="field" type="text" name="name" value="{{ field.name }}" maxlength="60" required>
+                                {% if field.kind == 'select' %}
+                                    <label for="options-{{ field.id }}">{{ 'Choices, one a line'|t }}</label>
+                                    <textarea id="options-{{ field.id }}" class="field" name="options" rows="4">{{ field.options }}</textarea>
+                                {% endif %}
+                                <label class="check"><input type="checkbox" name="is_required" value="1"{{ field.is_required ? ' checked' : '' }}> {{ 'Has to be filled in'|t }}</label>
+                                <div class="form__actions">
+                                    <button class="button button--small button--primary" type="submit">{{ 'Save'|t }}</button>
+                                </div>
+                            </form>
+                        </details>
+                        <div class="field-list__actions">
+                            {% for direction, arrow in {up: '↑', down: '↓'} %}
+                                <form method="post" action="{{ url('/fields/' ~ field.id ~ '/move') }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                    <input type="hidden" name="direction" value="{{ direction }}">
+                                    <button class="button button--small" type="submit" aria-label="{{ direction == 'up' ? 'Move up'|t : 'Move down'|t }}"
+                                            {{ (direction == 'up' and loop.parent.loop.first) or (direction == 'down' and loop.parent.loop.last) ? 'disabled' : '' }}>{{ arrow }}</button>
+                                </form>
+                            {% endfor %}
+                            <form method="post" action="{{ url('/fields/' ~ field.id ~ '/delete') }}"
+                                  data-confirm="{{ 'Delete “{field}” and every value tickets have in it?'|t({field: field.name}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                <button class="button button--small button--danger" type="submit">{{ 'Delete'|t }}</button>
+                            </form>
+                        </div>
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
+
+    <section class="card card--narrow">
+        <h2 class="card__title">{{ 'A new field'|t }}</h2>
+        <form method="post" action="{{ url('/projects/' ~ project.id ~ '/fields') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <div class="form__row">
+                <div>
+                    <label for="name">{{ 'Name'|t }}</label>
+                    <input id="name" class="field" type="text" name="name" value="{{ values.name|default('') }}" maxlength="60" required placeholder="{{ 'Platform'|t }}">
+                </div>
+                <div>
+                    <label for="kind">{{ 'Kind'|t }}</label>
+                    <select id="kind" class="field" name="kind">
+                        {% for kind in kinds %}
+                            <option value="{{ kind }}"{{ values.kind|default('text') == kind ? ' selected' : '' }}>{{ kind_names[kind]|t }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+            </div>
+            <label for="options">{{ 'Choices, one a line — for a list'|t }}</label>
+            <textarea id="options" class="field" name="options" rows="4" placeholder="iOS&#10;Android&#10;Both">{{ values.options|default('') }}</textarea>
+            <label class="check"><input type="checkbox" name="is_required" value="1"{{ values.is_required|default(false) ? ' checked' : '' }}> {{ 'Has to be filled in'|t }}</label>
+            <p class="hint">{{ 'The kind cannot be changed later: the values already kept are in its form.'|t }}</p>
+            <div class="form__actions">
+                <button class="button button--primary" type="submit">{{ 'Add the field'|t }}</button>
+            </div>
+        </form>
+    </section>
+{% endblock %}

@@ -68,15 +68,22 @@ class ImportController extends Controller
         $project = $this->projectOr404($projectId);
         $rows = $this->pending($projectId);
 
-        $prepared = (new TicketImport())->prepare($projectId, $rows);
-        $fields = array_values(TicketImport::columns($rows[0]));
+        $import = new TicketImport();
+        $prepared = $import->prepare($projectId, $rows);
+        $columns = $import->projectColumns($projectId, $rows[0]);
+        $fields = array_values($columns);
+        $headings = [];
+        foreach ((new \CantoTrack\Model\CustomFieldRepository())->forProject($projectId) as $field) {
+            $headings['field:' . $field['id']] = (string) $field['name'];
+        }
 
         $this->render('projects/import.twig', [
             'project' => $project,
             'preview' => [
                 'name' => Session::get(self::KEY)['name'] ?? '',
                 'fields' => $fields,
-                'ignored' => array_values(array_diff_key($rows[0], TicketImport::columns($rows[0]))),
+                'ignored' => array_values(array_diff_key($rows[0], $columns)),
+                'headings' => $headings,
                 'rows' => $prepared,
                 'good' => count(array_filter($prepared, static fn(array $row): bool => $row['problems'] === [])),
             ],

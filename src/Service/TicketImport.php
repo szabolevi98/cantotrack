@@ -135,6 +135,28 @@ class TicketImport
     }
 
     /**
+     * The columns, with the project's own fields among them: a column named
+     * after one of them is "field:" and its id.
+     *
+     * @param list<string> $header
+     * @return array<int, string>
+     */
+    public function projectColumns(int $projectId, array $header): array
+    {
+        $columns = self::columns($header);
+
+        foreach ((new \CantoTrack\Model\CustomFieldRepository($this->db))->forProject($projectId) as $field) {
+            foreach ($header as $index => $name) {
+                if (!isset($columns[$index]) && mb_strtolower(trim($name)) === mb_strtolower((string) $field['name'])) {
+                    $columns[$index] = 'field:' . $field['id'];
+                }
+            }
+        }
+
+        return $columns;
+    }
+
+    /**
      * Every row as it would become a ticket, with what is wrong with it.
      *
      * @param list<list<string>> $rows the header first
@@ -142,7 +164,14 @@ class TicketImport
      */
     public function prepare(int $projectId, array $rows): array
     {
-        $columns = self::columns($rows[0]);
+        $columns = $this->projectColumns($projectId, $rows[0]);
+        $custom = [];
+        foreach ((new \CantoTrack\Model\CustomFieldRepository($this->db))->forProject($projectId) as $field) {
+            if (in_array('field:' . $field['id'], $columns, true)) {
+                $custom[(int) $field['id']] = $field;
+            }
+        }
+
         $statuses = new StatusRepository($this->db);
         $epics = [];
         foreach ((new EpicRepository($this->db))->forProject($projectId) as $epic) {
@@ -228,6 +257,20 @@ class TicketImport
                     $problems[] = __('{key} is a subtask itself; subtasks go one level deep.', ['key' => strtoupper(trim($value['parent']))]);
                 } else {
                     $input['parent_id'] = (int) $parent['id'];
+                }
+            }
+
+            foreach ($custom as $fieldId => $field) {
+                $given = $value['field:' . $fieldId] ?? '';
+
+                if ($given === '') {
+                    continue;
+                }
+
+                try {
+                    $input['fields'][$fieldId] = \CantoTrack\Service\CustomFields::value($field, $given);
+                } catch (ValidationError $e) {
+                    $problems[] = $e->getMessage();
                 }
             }
 

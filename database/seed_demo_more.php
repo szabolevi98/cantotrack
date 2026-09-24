@@ -644,6 +644,40 @@ foreach ($catalogue as $code => $project) {
 }
 
 // ---------------------------------------------------------------------------
+// The projects' own fields, and what the tickets say in them
+// ---------------------------------------------------------------------------
+$customFields = new CantoTrack\Service\CustomFields();
+$fieldValues = new CantoTrack\Model\CustomFieldRepository();
+$ownFields = [
+    'BIKE' => [['Platform', 'select', "iOS\nAndroid\nBoth\nBackend"], ['Customer impact', 'select', "Low\nMedium\nHigh"]],
+    'CLINIC' => [['Site', 'select', "Pécs\nKaposvár\nBoth"], ['Needs legal review', 'checkbox', '']],
+    'WINE' => [['Country', 'select', "Hungary\nAustria\nGermany\nAll"]],
+    'OPS' => [['Server', 'select', "web-1\nweb-2\ndb-1\nbackup"]],
+    'HELP' => [['Client contact', 'text', ''], ['Reported on', 'date', ''], ['Hours approved by the client', 'checkbox', '']],
+];
+$contacts = ['Kovács Ildikó', 'Szendrei Gábor', 'Nagy Péter', 'Tóth Andrea', 'Fekete Zoltán'];
+
+foreach ($ownFields as $code => $defined) {
+    foreach ($defined as [$name, $kind, $options]) {
+        $fieldId = $customFields->define($projectOf[$code], $name, $kind, $options, false);
+        $choices = $options === '' ? [] : explode("\n", $options);
+
+        foreach ($made2 as $t => [$ticketCode, $title]) {
+            if ($ticketCode !== $code || $title === 'meetings' || !$chance(80)) {
+                continue;
+            }
+            $value = match ($kind) {
+                'select' => $pick($choices),
+                'checkbox' => $chance(35) ? '1' : null,
+                'date' => $ymd(isset($window[$t]) ? new DateTimeImmutable($window[$t][0]) : $today->modify('-' . mt_rand(1, 60) . ' days')),
+                default => $pick($contacts),
+            };
+            $fieldValues->setValue($t, $fieldId, $value);
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
 // Days away, before the hours
 // ---------------------------------------------------------------------------
 $away = [

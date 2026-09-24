@@ -1,0 +1,219 @@
+{% extends 'layout.twig' %}
+{% import 'common/macros.twig' as ui %}
+
+{#
+    A project's templates — what a new ticket can start from — and the
+    tickets made from them by themselves, on their day.
+#}
+{% set weekdays = {1: 'Monday', 2: 'Tuesday', 3: 'Wednesday', 4: 'Thursday', 5: 'Friday', 6: 'Saturday', 7: 'Sunday'} %}
+
+{% block title %}{{ 'Templates'|t }} — {{ project.code }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Templates of {project}'|t({project: project.name}) }}{% endblock %}
+{% block subheading %}<p class="content__sub">{{ 'Tickets written the same way again and again: a bug report with its steps, a release checklist, the monthly server updates.'|t }}</p>{% endblock %}
+
+{% block actions %}
+    <a class="button" href="{{ url('/projects/' ~ project.id ~ '/edit') }}">{{ 'Project settings'|t }}</a>
+    {% if templates is not empty %}
+        <a class="button button--primary" href="{{ url('/tickets/create?project=' ~ project.id ~ '&template=' ~ templates|first.id) }}">{{ 'New ticket from a template'|t }}</a>
+    {% endif %}
+{% endblock %}
+
+{% macro fields(template, types, priorities, id) %}
+    {% import 'common/macros.twig' as ui %}
+    <label for="name-{{ id }}">{{ 'Name'|t }}</label>
+    <input id="name-{{ id }}" class="field" type="text" name="name" value="{{ template.name|default('') }}" maxlength="120" required
+           placeholder="{{ 'Bug report, Release checklist…'|t }}">
+
+    <div class="form__row">
+        <div>
+            <label for="type-{{ id }}">{{ 'Type'|t }}</label>
+            <select id="type-{{ id }}" class="field" name="type">
+                {% for value in types %}<option value="{{ value }}"{{ template.type|default('task') == value ? ' selected' : '' }}>{{ ui.type_label(value) }}</option>{% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="priority-{{ id }}">{{ 'Priority'|t }}</label>
+            <select id="priority-{{ id }}" class="field" name="priority">
+                {% for value in priorities %}<option value="{{ value }}"{{ template.priority|default('normal') == value ? ' selected' : '' }}>{{ ui.priority_label(value) }}</option>{% endfor %}
+            </select>
+        </div>
+        <div>
+            <label for="estimate-{{ id }}">{{ 'Estimate'|t }}</label>
+            <input id="estimate-{{ id }}" class="field" type="text" name="estimate" value="{{ template.estimate_minutes|default(null) ? template.estimate_minutes|duration : '' }}" placeholder="2h">
+        </div>
+        <div>
+            <label for="points-{{ id }}">{{ 'Story points'|t }}</label>
+            <input id="points-{{ id }}" class="field" type="number" name="story_points" min="0" max="999" value="{{ template.story_points|default('') }}">
+        </div>
+    </div>
+
+    <label for="title-{{ id }}">{{ 'Title'|t }}</label>
+    <input id="title-{{ id }}" class="field" type="text" name="title" value="{{ template.title|default('') }}" maxlength="250"
+           placeholder="{{ 'Server updates — {month}'|t }}">
+    <p class="hint">{{ '{date}, {week} and {month} become the day the ticket is made for: 2026-10-05, 2026-W41, 2026-10.'|t }}</p>
+
+    <label for="description-{{ id }}">{{ 'Description'|t }}</label>
+    <textarea id="description-{{ id }}" class="field" name="description" rows="6" data-suggest
+              placeholder="{{ 'What happened, what should have, the steps — Markdown and task lists work.'|t }}">{{ template.description|default('') }}</textarea>
+
+    <div class="form__row">
+        <div>
+            <label for="labels-{{ id }}">{{ 'Labels'|t }}</label>
+            <input id="labels-{{ id }}" class="field" type="text" name="labels" value="{{ template.labels|default('') }}" placeholder="maintenance, client">
+        </div>
+    </div>
+
+    <label for="subtasks-{{ id }}">{{ 'Subtasks, one a line'|t }}</label>
+    <textarea id="subtasks-{{ id }}" class="field" name="subtasks" rows="4"
+              placeholder="{{ 'Back up the database'|t }}">{{ template.subtasks|default('') }}</textarea>
+{% endmacro %}
+
+{% block content %}
+    <section class="card card--narrow card--flush" id="templates">
+        <h2 class="card__title billing__title">{{ 'Templates'|t }}</h2>
+        {% if templates is empty %}
+            <p class="card__empty">{{ 'No templates yet. The first is below.'|t }}</p>
+        {% else %}
+            <ul class="field-list">
+                {% for template in templates %}
+                    <li class="field-list__item" id="template-{{ template.id }}">
+                        <details>
+                            <summary>
+                                <strong>{{ template.name }}</strong>
+                                <span class="muted">
+                                    {{ ui.type_label(template.type) }}{% if template.title %} · {{ template.title }}{% endif %}
+                                    {% set steps = template.subtasks ? template.subtasks|split("\n")|length : 0 %}
+                                    {% if steps > 0 %} · {{ plural('{count} subtask', '{count} subtasks', steps) }}{% endif %}
+                                </span>
+                            </summary>
+                            <form method="post" action="{{ url('/templates/' ~ template.id) }}" class="field-list__form">
+                                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                {{ _self.fields(template, types, priorities, template.id) }}
+                                <div class="form__actions">
+                                    <button class="button button--small button--primary" type="submit">{{ 'Save'|t }}</button>
+                                    <a class="button button--small" href="{{ url('/tickets/create?project=' ~ project.id ~ '&template=' ~ template.id) }}">{{ 'New ticket from it'|t }}</a>
+                                </div>
+                            </form>
+                            <form method="post" action="{{ url('/templates/' ~ template.id ~ '/delete') }}" class="field-list__form"
+                                  data-confirm="{{ 'Delete the template “{name}”? The tickets it repeats stop; the ones made from it stay.'|t({name: template.name}) }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                <button class="link-button link-button--text" type="submit">{{ 'Delete the template'|t }}</button>
+                            </form>
+                        </details>
+                    </li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </section>
+
+    <section class="card card--narrow" id="new-template">
+        <h2 class="card__title">{{ 'A new template'|t }}</h2>
+        <form method="post" action="{{ url('/projects/' ~ project.id ~ '/templates') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            {{ _self.fields({}, types, priorities, 'new') }}
+            <div class="form__actions">
+                <button class="button button--primary" type="submit">{{ 'Save the template'|t }}</button>
+            </div>
+        </form>
+    </section>
+
+    <section class="card card--flush" id="repeating">
+        <h2 class="card__title billing__title">{{ 'Repeating tickets'|t }}</h2>
+        <p class="card__body outbox__intro">{{ 'Made by themselves from a template, early each morning on their day. A day missed is made up once, not once a day.'|t }}</p>
+        {% if recurring is not empty %}
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>{{ 'Template'|t }}</th>
+                    <th>{{ 'How often'|t }}</th>
+                    <th>{{ 'Assignee'|t }}</th>
+                    <th>{{ 'Next'|t }}</th>
+                    <th>{{ 'Last made'|t }}</th>
+                    <th></th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for r in recurring %}
+                    <tr{{ r.is_active ? '' : ' class="is-paused"' }}>
+                        <td>{{ r.template_name }}</td>
+                        <td>
+                            {% if r.frequency == 'workdays' %}{{ 'Every working day'|t }}
+                            {% elseif r.frequency == 'weekly' %}{{ 'Every {day}'|t({day: weekdays[r.weekday]|t}) }}
+                            {% else %}{{ 'Every month on the {day}.'|t({day: r.month_day}) }}{% endif %}
+                            {% if r.due_days is not null %}<div class="muted">{{ plural('due {count} day later', 'due {count} days later', r.due_days) }}</div>{% endif %}
+                        </td>
+                        <td>{{ r.assignee_name ?: '—' }}</td>
+                        <td>{{ r.is_active ? r.next_on|day : 'Paused'|t }}</td>
+                        <td>{% if r.last_ticket_id %}<a class="ticket-key" href="{{ url('/tickets/' ~ r.last_ticket_id) }}">{{ r.project_code }}-{{ r.last_number }}</a>{% else %}—{% endif %}</td>
+                        <td class="table__actions">
+                            <form method="post" action="{{ url('/recurring/' ~ r.id ~ '/now') }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                <button class="button button--small" type="submit" title="{{ 'Its next day stays as it is'|t }}">{{ 'Make one now'|t }}</button>
+                            </form>
+                            <form method="post" action="{{ url('/recurring/' ~ r.id ~ '/toggle') }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                <button class="button button--small" type="submit">{{ r.is_active ? 'Pause'|t : 'Start again'|t }}</button>
+                            </form>
+                            <form method="post" action="{{ url('/recurring/' ~ r.id ~ '/delete') }}" data-confirm="{{ 'Stop repeating it? The tickets it made stay.'|t }}">
+                                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                <button class="link-button" type="submit" aria-label="{{ 'Stop repeating it'|t }}" title="{{ 'Stop repeating it'|t }}">×</button>
+                            </form>
+                        </td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+
+        {% if templates is empty %}
+            <p class="card__empty">{{ 'A repeating ticket is made from a template: make one first.'|t }}</p>
+        {% else %}
+            <form class="repeat-form" method="post" action="{{ url('/projects/' ~ project.id ~ '/recurring') }}">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <h3 class="card__subtitle">{{ 'Repeat a template'|t }}</h3>
+                <div class="form__row">
+                    <div>
+                        <label for="repeat-template">{{ 'Template'|t }}</label>
+                        <select id="repeat-template" class="field" name="template_id" required>
+                            {% for template in templates %}<option value="{{ template.id }}">{{ template.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="repeat-frequency">{{ 'How often'|t }}</label>
+                        <select id="repeat-frequency" class="field" name="frequency">
+                            <option value="workdays">{{ 'Every working day'|t }}</option>
+                            <option value="weekly" selected>{{ 'Every week'|t }}</option>
+                            <option value="monthly">{{ 'Every month'|t }}</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="repeat-weekday">{{ 'On (every week)'|t }}</label>
+                        <select id="repeat-weekday" class="field" name="weekday">
+                            {% for number, name in weekdays %}<option value="{{ number }}">{{ name|t }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="repeat-day">{{ 'Day (every month)'|t }}</label>
+                        <input id="repeat-day" class="field" type="number" name="month_day" min="1" max="31" value="1">
+                    </div>
+                </div>
+                <div class="form__row">
+                    <div>
+                        <label for="repeat-assignee">{{ 'Assignee'|t }}</label>
+                        <select id="repeat-assignee" class="field" name="assignee_id">
+                            <option value="">{{ 'Nobody yet'|t }}</option>
+                            {% for person in people %}<option value="{{ person.id }}">{{ person.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div>
+                        <label for="repeat-due">{{ 'Due after, in days'|t }}</label>
+                        <input id="repeat-due" class="field" type="number" name="due_days" min="0" max="365" placeholder="{{ 'No due date'|t }}">
+                    </div>
+                </div>
+                <div class="form__actions">
+                    <button class="button button--primary" type="submit">{{ 'Repeat it'|t }}</button>
+                </div>
+            </form>
+        {% endif %}
+    </section>
+{% endblock %}

@@ -2755,6 +2755,34 @@ mark {
     font-size: 1.02rem;
 }
 
+/* The new-ticket form's "start from a template", and the templates page. */
+.template-pick {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 10px;
+    padding-top: 14px;
+    padding-bottom: 14px;
+}
+
+.template-pick label {
+    margin: 0;
+}
+
+.template-pick__manage {
+    margin-left: auto;
+    font-size: 0.88rem;
+}
+
+.repeat-form {
+    padding: 4px 22px 20px;
+    border-top: 1px solid var(--ct-border);
+}
+
+tr.is-paused td {
+    color: var(--ct-muted);
+}
+
 /*
  * The hours: a day on the timesheet, the entries in it, and the form that adds
  * one from a ticket.

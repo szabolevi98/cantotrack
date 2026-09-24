@@ -36,6 +36,25 @@
         </section>
     {% endif %}
 
+    {# A new ticket can start from one of its project's templates: the form
+       drawn again, filled in from it — a form of its own, since a form
+       cannot sit inside another. #}
+    {% if not editing and templates|default([]) is not empty %}
+        <form class="card card--narrow template-pick" method="get" action="{{ url('/tickets/create') }}">
+            <input type="hidden" name="project" value="{{ project_id }}">
+            {% if values.epic_id|default(null) %}<input type="hidden" name="epic" value="{{ values.epic_id }}">{% endif %}
+            <label for="template">{{ 'Start from a template'|t }}</label>
+            <select id="template" class="field field--inline" name="template" data-autosubmit>
+                <option value="">{{ 'None — an empty ticket'|t }}</option>
+                {% for template in templates %}
+                    <option value="{{ template.id }}"{{ values.template_id|default(null) == template.id ? ' selected' : '' }}>{{ template.name }}</option>
+                {% endfor %}
+            </select>
+            <button class="button button--small autosubmit__button" type="submit">{{ 'Use it'|t }}</button>
+            {% if is_admin %}<a class="template-pick__manage" href="{{ url('/projects/' ~ project_id ~ '/templates') }}">{{ 'Templates'|t }}</a>{% endif %}
+        </form>
+    {% endif %}
+
     <section class="card card--narrow">
         <form method="post" action="{{ editing ? url('/tickets/' ~ ticket.id) : url('/tickets/create') }}">
             <input type="hidden" name="_token" value="{{ csrf_token }}">
@@ -43,6 +62,15 @@
                 {# The version this form was drawn from. A save over a different
                    one is refused instead of undoing somebody else's. #}
                 <input type="hidden" name="version" value="{{ values.version|default(ticket.version) }}">
+            {% endif %}
+            {% if values.template_id|default(null) %}
+                <input type="hidden" name="template_id" value="{{ values.template_id }}">
+                {% if values.template_steps|default([]) is not empty %}
+                    <p class="hint">
+                        {{ 'From the template “{name}”. When it is made, so are its {count} subtasks:'|t({name: values.template_name, count: values.template_steps|length}) }}
+                        {{ values.template_steps|join(' · ') }}
+                    </p>
+                {% endif %}
             {% endif %}
             {% if values.cloned_from|default(null) %}
                 <input type="hidden" name="cloned_from" value="{{ values.cloned_from }}">

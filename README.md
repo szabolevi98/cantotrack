@@ -62,6 +62,13 @@ deploy with `git pull`.
   yes or no — kept by the administrators, required if need be, and on the
   ticket form, its page, its history, the query language
   (`"Platform" = iOS AND Budget > 500`), the API and the CSV import.
+- **Templates and repeating tickets**: a project's templates — a bug report
+  with its headings, a release checklist with its steps as subtasks — offered
+  on the new-ticket form, which they fill in; and tickets made from a
+  template by themselves, every working day, every week on a weekday or every
+  month on a day, with an assignee and a due date, `{month}` or `{date}` in
+  the title filled in. A day the server missed is made up once, not once a
+  day.
 - **Links between tickets** — blocks, relates to, duplicates. A ticket blocked by
   an unfinished one says so on the board.
 - **Private projects and guests.** A project is open to the team, or private to

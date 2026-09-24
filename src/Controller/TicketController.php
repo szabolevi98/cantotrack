@@ -390,6 +390,17 @@ class TicketController extends Controller
             return;
         }
 
+        // From a template: its type, title, description, labels and estimate
+        // filled in, and its steps made as subtasks when the ticket is.
+        $template = $this->idQuery('template') === null ? null : (new \CantoTrack\Model\TemplateRepository())->find((int) $this->idQuery('template'));
+        if ($template !== null) {
+            $this->renderForm(null, (int) $template['project_id'], \CantoTrack\Service\Templates::formValues($template) + [
+                'epic_id' => $this->idQuery('epic'),
+            ]);
+
+            return;
+        }
+
         $this->renderForm(null, $projectId, [
             'epic_id' => $this->idQuery('epic'),
             'parent' => trim((string) ($_GET['parent'] ?? '')),
@@ -406,6 +417,12 @@ class TicketController extends Controller
             $this->renderForm(null, (int) $this->idInput('project_id'), $this->typed(), $e->getMessage(), 422);
 
             return;
+        }
+
+        // Made from a template: its steps become its subtasks.
+        $template = $this->idInput('template_id') === null ? null : (new \CantoTrack\Model\TemplateRepository())->find((int) $this->idInput('template_id'));
+        if ($template !== null && (int) $template['project_id'] === (int) $this->idInput('project_id')) {
+            (new \CantoTrack\Service\Templates())->addSteps($id, $template, $this->idInput('assignee_id'), (int) Auth::id());
         }
 
         // A clone says what it was copied from, and the original says so too.
@@ -751,6 +768,13 @@ class TicketController extends Controller
         // Estimates are stored in minutes and typed as "1h 30m": the form shows
         // what was typed when it comes back with an error, and the stored value
         // written out otherwise.
+        // Back with an error, a ticket from a template still says which.
+        if (!empty($values['template_id']) && !isset($values['template_name'])) {
+            $template = (new \CantoTrack\Model\TemplateRepository())->find((int) $values['template_id']);
+            $values['template_name'] = $template['name'] ?? null;
+            $values['template_steps'] = $template === null ? [] : \CantoTrack\Service\Templates::steps($template);
+        }
+
         if (!isset($values['estimate_text'])) {
             $values['estimate_text'] = !empty($values['estimate_minutes'])
                 ? Format::duration((int) $values['estimate_minutes'])
@@ -773,6 +797,7 @@ class TicketController extends Controller
             'types' => TicketRepository::TYPES,
             'statuses' => $projectId > 0 ? (new StatusRepository())->forProject($projectId) : [],
             'all_labels' => (new LabelRepository())->all(),
+            'templates' => $ticket === null && $projectId > 0 ? (new \CantoTrack\Model\TemplateRepository())->forProject($projectId) : [],
             'error' => $error,
             'theirs' => $theirs,
         ], $status);
@@ -804,6 +829,7 @@ class TicketController extends Controller
             'labels' => $this->input('labels'),
             'version' => $this->input('version', (string) ($ticket['version'] ?? '')),
             'cloned_from' => $this->idInput('cloned_from'),
+            'template_id' => $this->idInput('template_id'),
             'cloned_key' => $this->input('cloned_key'),
         ];
     }

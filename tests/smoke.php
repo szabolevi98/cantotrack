@@ -1069,6 +1069,17 @@ if ($email === null || $password === null) {
     check('the billing page answers', $billing['status'] === 200 && str_contains($billing['body'], 'id="unbilled"') && str_contains($billing['body'], 'id="letterhead"'));
     check('and a statement that does not exist is not found', request($baseUrl . '/billing/statements/99999999', [], $jar)['status'] === 404);
 
+    // A project's templates and repeating tickets, and the new-ticket form
+    // started from a template.
+    check('a project’s templates answer', request($baseUrl . '/projects/' . $projectId . '/templates', [], $jar)['status'] === 200);
+    $madeTemplate = request($baseUrl . '/projects/' . $projectId . '/templates', ['_token' => $token, 'name' => 'Smoke template', 'type' => 'bug', 'priority' => 'high', 'title' => 'Smoke {date}', 'subtasks' => "One\nTwo"], $jar);
+    preg_match('#template-(\d+)#', $madeTemplate['headers'], $m);
+    $templateId = (int) ($m[1] ?? 0);
+    check('a template can be made', $templateId > 0);
+    $fromTemplate = request($baseUrl . '/tickets/create?project=' . $projectId . '&template=' . $templateId, [], $jar)['body'];
+    check('and a new ticket starts from it', str_contains($fromTemplate, 'value="Smoke ' . date('Y-m-d') . '"') && str_contains($fromTemplate, 'name="template_id"'));
+    request($baseUrl . '/templates/' . $templateId . '/delete', ['_token' => $token], $jar);
+
     // The email: what waits, what did not go, and a test message to oneself,
     // which goes at once rather than within the minute.
     $mailPage = request($baseUrl . '/settings/email', [], $jar);

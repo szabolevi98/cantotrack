@@ -13,6 +13,9 @@
         <p class="card card--narrow project-settings__links">
             <a href="{{ url('/projects/' ~ project.id ~ '/fields') }}">{{ 'Fields of its own'|t }}</a>
             <span class="muted">— {{ 'what its tickets say beyond the usual'|t }}</span>
+            <br>
+            <a href="{{ url('/projects/' ~ project.id ~ '/templates') }}">{{ 'Templates and repeating tickets'|t }}</a>
+            <span class="muted">— {{ 'what a new ticket starts from, and what is made by itself'|t }}</span>
         </p>
     {% endif %}
 

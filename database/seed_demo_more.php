@@ -1299,9 +1299,7 @@ foreach (array_values($finishedIds) as $i => $t) {
 $billingSettings = new CantoTrack\Model\SettingRepository();
 if ($billingSettings->get(CantoTrack\Service\Statements::FROM_SETTING) === null) {
     (new CantoTrack\Service\Statements())->setLetterhead(
-        'Canto Digital Kft.
-7621 Pécs, Király utca 12.
-Tax number: 12345678-2-02',
+        "Canto Digital Kft.\n7621 Pécs, Király utca 12.\nTax number: 12345678-2-02",
         'Payment within 15 days by bank transfer, quoting the statement number. Account: 11700000-12345678-00000000.'
     );
 }
@@ -1309,9 +1307,7 @@ $lastMonthFrom = (new DateTimeImmutable('first day of last month'))->format('Y-m
 $lastMonthTo = (new DateTimeImmutable('last day of last month'))->format('Y-m-d');
 $billing = new CantoTrack\Service\Statements();
 $billed = new CantoTrack\Model\StatementRepository();
-foreach (['Mecsek Clinic' => 'Mecsek Clinic Zrt.
-7624 Pécs, Szigeti út 3.', 'Balaton Bikes Kft.' => 'Balaton Bikes Kft.
-8230 Balatonfüred, Tagore sétány 1.'] as $clientName => $billTo) {
+foreach (['Mecsek Clinic' => "Mecsek Clinic Zrt.\n7624 Pécs, Szigeti út 3.", 'Balaton Bikes Kft.' => "Balaton Bikes Kft.\n8230 Balatonfüred, Tagore sétány 1."] as $clientName => $billTo) {
     $clientId = $clients->findOrCreate($clientName);
     try {
         $statementId = $billing->draft((int) $clientId, $lastMonthFrom, $lastMonthTo, $who['tamas']);
@@ -1321,6 +1317,47 @@ foreach (['Mecsek Clinic' => 'Mecsek Clinic Zrt.
     $billed->setWording($statementId, $billTo, null);
     if ($clientName === 'Mecsek Clinic') {
         $billing->issue((array) $billed->find($statementId), $who['tamas']);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// The templates the team starts tickets from, and the ones that repeat.
+// ---------------------------------------------------------------------------
+$templateRepository = new CantoTrack\Model\TemplateRepository();
+$templateService = new CantoTrack\Service\Templates();
+$templateOf = static function (string $code, array $fields) use ($templateRepository, $who): ?int {
+    $project = (new CantoTrack\Model\ProjectRepository())->findByCode($code);
+
+    return $project === null ? null : $templateRepository->create((int) $project['id'], CantoTrack\Service\Templates::clean($fields), $who['tamas']);
+};
+$bugReport = [
+    'name' => 'Bug report', 'type' => 'bug', 'priority' => 'normal', 'title' => '',
+    'description' => "**What happened**\n\n**What should have happened**\n\n**Steps**\n\n- [ ] \n\nDevice and browser: ",
+    'labels' => '',
+];
+foreach (['BIKE', 'CLINIC', 'WINE'] as $code) {
+    $templateOf($code, $bugReport);
+}
+$templateOf('CT', [
+    'name' => 'Release checklist', 'type' => 'task', 'priority' => 'high', 'title' => 'Release {date}', 'estimate' => '3h',
+    'description' => 'Everything a release goes through, in order. Tick them off as they are done.',
+    'subtasks' => "Freeze the branch and write the notes\nRun the checks and the browser tests\nBack up the live database\nDeploy and watch the logs\nTell the team what went out",
+]);
+$serverUpdates = $templateOf('OPS', [
+    'name' => 'Monthly server updates', 'type' => 'task', 'priority' => 'normal', 'title' => 'Server updates — {month}', 'estimate' => '2h',
+    'labels' => 'maintenance',
+    'description' => 'The monthly round on every server: packages, PHP, the database, certificates.',
+    'subtasks' => "Back up every database\nUpdate the packages and restart\nCheck the certificates\nCheck that every site answers",
+]);
+$weeklyReport = $templateOf('HELP', [
+    'name' => 'Weekly support report', 'type' => 'task', 'priority' => 'normal', 'title' => 'Support report — {week}', 'estimate' => '45m',
+    'description' => 'What came in this week, what is still open, and anything a client should hear about.',
+]);
+$repeatToday = new DateTimeImmutable('today');
+foreach ([[$serverUpdates, ['frequency' => 'monthly', 'month_day' => 1, 'assignee_id' => $who['tamas'], 'due_days' => 4]], [$weeklyReport, ['frequency' => 'weekly', 'weekday' => 5, 'assignee_id' => $who['reka'], 'due_days' => 0]]] as [$templateId, $rule]) {
+    if ($templateId !== null) {
+        $template = (array) $templateRepository->find($templateId);
+        $templateRepository->createRecurring($templateService->cleanRecurring($template, $rule, $repeatToday), $who['tamas']);
     }
 }
 

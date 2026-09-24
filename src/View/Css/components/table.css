@@ -169,3 +169,9 @@
 .audit__row--ticket_deleted td {
     background: var(--ct-danger-soft, rgba(220, 38, 38, 0.06));
 }
+
+/* The buttons at the end of a row: on the right, and never broken over lines. */
+.table__actions {
+    text-align: right;
+    white-space: nowrap;
+}

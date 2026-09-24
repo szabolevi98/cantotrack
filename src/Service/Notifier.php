@@ -177,9 +177,8 @@ class Notifier
                 'profile' => $base . '/profile',
             ]);
 
-            if (Mailer::send((string) $person['email'], (string) $person['name'], '[' . $tag . '] ' . $title, $text)) {
-                $this->notifications->markEmailed($notificationId);
-            }
+            // Marked emailed by the outbox once it has actually gone.
+            Mailer::send((string) $person['email'], (string) $person['name'], '[' . $tag . '] ' . $title, $text, 'notification', $notificationId);
         } finally {
             I18n::setLocale($previous);
         }

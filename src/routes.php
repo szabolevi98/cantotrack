@@ -29,6 +29,7 @@ use CantoTrack\Controller\LinkController;
 use CantoTrack\Controller\LocaleController;
 use CantoTrack\Controller\LoginController;
 use CantoTrack\Controller\NotificationController;
+use CantoTrack\Controller\OutboxController;
 use CantoTrack\Controller\PageController;
 use CantoTrack\Controller\PasswordResetController;
 use CantoTrack\Controller\PeopleController;
@@ -263,6 +264,10 @@ $router->post('/absences/{id}/delete', static fn($id) => (new TimesheetControlle
 $router->get('/reports', static fn() => (new ReportController())->index());
 $router->get('/reports/export', static fn() => (new ReportController())->export());
 $router->get('/reports/missing', static fn() => (new ReportController())->missing());
+$router->get('/settings/email', static fn() => (new OutboxController())->index());
+$router->post('/settings/email/send', static fn() => (new OutboxController())->sendNow());
+$router->post('/settings/email/test', static fn() => (new OutboxController())->test());
+$router->post('/settings/email/{id}/retry', static fn($id) => (new OutboxController())->retry((int) $id));
 $router->get('/billing', static fn() => (new BillingController())->index());
 $router->post('/billing/statements', static fn() => (new BillingController())->create());
 $router->post('/billing/letterhead', static fn() => (new BillingController())->letterhead());

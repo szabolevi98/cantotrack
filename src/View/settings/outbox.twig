@@ -1,0 +1,119 @@
+{% extends 'layout.twig' %}
+
+{#
+    The email: how it goes out, what is waiting, what the mail server would
+    not take and why, and what went lately.
+#}
+{% set kinds = {notification: 'Notification', digest: 'Digest', password: 'Lost password', test: 'Test', mail: 'Email'} %}
+
+{% block title %}{{ 'Email'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Email'|t }}{% endblock %}
+{% block subheading %}
+    <p class="content__sub">
+        {% if transport == 'none' %}
+            {{ 'Email is turned off in config.ini.'|t }}
+        {% else %}
+            {{ 'Sent by {transport} from {from}, within a minute of being written.'|t({transport: transport, from: from ?: '—'}) }}
+        {% endif %}
+    </p>
+{% endblock %}
+
+{% block actions %}
+    <form method="post" action="{{ url('/settings/email/test') }}">
+        <input type="hidden" name="_token" value="{{ csrf_token }}">
+        <button class="button" type="submit">{{ 'Send me a test message'|t }}</button>
+    </form>
+    {% if counts.waiting > 0 %}
+        <form method="post" action="{{ url('/settings/email/send') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <button class="button button--primary" type="submit">{{ 'Send what is waiting now'|t }}</button>
+        </form>
+    {% endif %}
+{% endblock %}
+
+{% macro rows(messages, kinds, retry) %}
+    <table class="table">
+        <thead>
+        <tr>
+            <th>{{ 'To'|t }}</th>
+            <th>{{ 'Subject'|t }}</th>
+            <th>{{ 'What'|t }}</th>
+            <th>{{ retry ? 'Tries'|t : 'When'|t }}</th>
+            {% if retry %}<th></th>{% endif %}
+        </tr>
+        </thead>
+        <tbody>
+        {% for m in messages %}
+            <tr>
+                <td>{{ m.to_name }} <span class="muted">{{ m.to_address }}</span></td>
+                <td>
+                    {{ m.subject }}
+                    {% if m.last_error %}<div class="outbox__error">{{ m.last_error }}</div>{% endif %}
+                </td>
+                <td>{{ (kinds[m.kind]|default('Email'))|t }}</td>
+                <td class="outbox__when">
+                    {% if m.state == 'sent' %}
+                        {{ m.sent_at|day }} {{ m.sent_at|date('H:i') }}
+                    {% elseif m.state == 'failed' %}
+                        {{ m.attempts }}
+                    {% else %}
+                        {{ m.attempts }}{% if m.attempts > 0 %} · <span class="muted">{{ 'next at {time}'|t({time: m.next_attempt_at|date('H:i')}) }}</span>{% endif %}
+                    {% endif %}
+                </td>
+                {% if retry %}
+                    <td class="table__actions">
+                        <form method="post" action="{{ url('/settings/email/' ~ m.id ~ '/retry') }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                            <button class="button button--small" type="submit">{{ 'Try again'|t }}</button>
+                        </form>
+                    </td>
+                {% endif %}
+            </tr>
+        {% endfor %}
+        </tbody>
+    </table>
+{% endmacro %}
+
+{% block content %}
+    {# `queued`, not `waiting`: the layout's sidebar has a `waiting` of its own. #}
+    <div class="stats">
+        <div class="stat">
+            <div class="stat__label">{{ 'Waiting'|t }}</div>
+            <div class="stat__value">{{ counts.waiting }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat__label">{{ 'Did not go'|t }}</div>
+            <div class="stat__value{{ counts.failed > 0 ? ' stat__value--danger' : '' }}">{{ counts.failed }}</div>
+        </div>
+        <div class="stat">
+            <div class="stat__label">{{ 'Sent today'|t }}</div>
+            <div class="stat__value">{{ counts.sent_today }}</div>
+        </div>
+    </div>
+
+    {% if failed is not empty %}
+        <section class="card card--flush">
+            <h2 class="card__title billing__title">{{ 'Did not go'|t }}</h2>
+            <p class="card__body outbox__intro">{{ 'Tried five times over about five hours and refused every time. The reason is under each; once it is put right, try again.'|t }}</p>
+            {{ _self.rows(failed, kinds, true) }}
+        </section>
+    {% endif %}
+
+    <section class="card card--flush">
+        <h2 class="card__title billing__title">{{ 'Waiting'|t }}</h2>
+        {% if queued is empty %}
+            <p class="card__empty">{{ 'Nothing is waiting to go.'|t }}</p>
+        {% else %}
+            {{ _self.rows(queued, kinds, true) }}
+        {% endif %}
+    </section>
+
+    <section class="card card--flush">
+        <h2 class="card__title billing__title">{{ 'Sent lately'|t }}</h2>
+        {% if sent is empty %}
+            <p class="card__empty">{{ 'Nothing has been sent yet — or not in the last month, which is as long as it is kept.'|t }}</p>
+        {% else %}
+            {{ _self.rows(sent, kinds, false) }}
+        {% endif %}
+    </section>
+{% endblock %}

@@ -104,6 +104,8 @@ class View
             Auth::check() ? (new \CantoTrack\Model\NotificationRepository())->unreadCount((int) Auth::id()) : 0));
         $twig->addFunction(new TwigFunction('work_types', [\CantoTrack\Model\WorkTypeRepository::class, 'active']));
         $twig->addFunction(new TwigFunction('avatar_url', [\CantoTrack\Service\Avatars::class, 'url']));
+        // Email the mail server would not take, for the administrators' sidebar.
+        $twig->addFunction(new TwigFunction('failed_mail', static fn(): int => Auth::isAdmin() ? (new \CantoTrack\Service\Outbox())->counts()['failed'] : 0));
         $twig->addFunction(new TwigFunction('pending_weeks', static fn(): int =>
             Auth::isAdmin() ? count((new \CantoTrack\Service\WeekReview())->pending()) : 0));
         $twig->addFunction(new TwigFunction('burndown_chart', [Chart::class, 'burndown'], ['is_safe' => ['html']]));

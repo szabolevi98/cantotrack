@@ -1964,6 +1964,12 @@ summary.link-button::-webkit-details-marker {
     background: var(--ct-danger-soft, rgba(220, 38, 38, 0.06));
 }
 
+/* The buttons at the end of a row: on the right, and never broken over lines. */
+.table__actions {
+    text-align: right;
+    white-space: nowrap;
+}
+
 /*
  * The board: one column per status, each holding cards — and, split into
  * swimlanes, one row of those columns per person or per epic.
@@ -3858,6 +3864,7 @@ a.family:hover {
 .bi-plus-lg::before { content: "\f64d"; }
 .bi-receipt::before { content: "\f50f"; }
 .bi-printer::before { content: "\f501"; }
+.bi-envelope::before { content: "\f32f"; }
 
 /*
  * The bar along the top of the content: the light/dark switch, the keyboard
@@ -6111,6 +6118,26 @@ kbd {
     .ticket-key {
         color: #000 !important;
     }
+}
+
+/* The email page: why a message did not go, under its subject. */
+.outbox__error {
+    margin-top: 4px;
+    color: var(--ct-danger);
+    font-size: 0.85rem;
+    word-break: break-word;
+}
+
+.outbox__when {
+    white-space: nowrap;
+}
+
+.outbox__intro {
+    padding: 0 22px;
+}
+
+.stat__value--danger {
+    color: var(--ct-danger);
 }
 
 /*

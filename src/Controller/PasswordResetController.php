@@ -70,11 +70,13 @@ class PasswordResetController extends Controller
 
             $link = rtrim((string) Config::get('app.base_url'), '/') . '/password/reset/' . $token;
 
-            Mailer::send(
+            // At once, not within the minute: somebody is waiting for it.
+            Mailer::sendNow(
                 (string) $user['email'],
                 (string) $user['name'],
                 __('A new password for {app}', ['app' => Config::get('app.name', 'CantoTrack')]),
-                __("Somebody — hopefully you — asked for a new password.\n\nChoose one here, within an hour:\n{link}\n\nIf it was not you, ignore this message: your password stays as it is.", ['link' => $link])
+                __("Somebody — hopefully you — asked for a new password.\n\nChoose one here, within an hour:\n{link}\n\nIf it was not you, ignore this message: your password stays as it is.", ['link' => $link]),
+                'password'
             );
         }
 

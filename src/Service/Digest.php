@@ -51,7 +51,7 @@ final class Digest
             try {
                 [$subject, $text] = $this->compose($user, $today);
 
-                if (Mailer::send((string) $user['email'], (string) $user['name'], $subject, $text)) {
+                if (Mailer::send((string) $user['email'], (string) $user['name'], $subject, $text, 'digest')) {
                     $this->db->prepare('UPDATE users SET digest_sent_on = :today WHERE id = :id')
                         ->execute(['today' => $today->format('Y-m-d'), 'id' => $user['id']]);
                     $sent++;

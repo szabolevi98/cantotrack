@@ -296,12 +296,18 @@ changing their sources, `php bin/build_assets.php` builds them again.
 Email goes out the way `[mail] transport` says: `mail` for PHP's own `mail()`
 through the machine's sendmail, `smtp` for a mail server (`host`, `port`,
 `username`, `password`, `encryption`), `file` to write every message to
-`var/mail` while developing, or `none`.
+`var/mail` while developing, or `none`. It is not sent while somebody waits
+for their page: it goes into an outbox, and the outbox job sends it within
+the minute and tries again — later each time, for about five hours — what
+the mail server refuses. The administrators' **Email** page shows what is
+waiting, what did not go and why, and sends a test message. The link for a
+lost password is the exception, and goes at once.
 
-Cron, for webhooks every minute, the daily automation rules, and the morning
-digests people ask for on their profile:
+Cron, for email and webhooks every minute, the daily automation rules, and
+the morning digests people ask for on their profile:
 
 ```
+* * * * * www-data php /path/to/cantotrack/bin/outbox.php
 * * * * * www-data php /path/to/cantotrack/bin/webhooks.php
 15 7 * * * www-data php /path/to/cantotrack/bin/automation.php
 30 7 * * 1-5 www-data php /path/to/cantotrack/bin/digest.php

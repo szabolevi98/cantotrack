@@ -109,44 +109,111 @@ class Mailer
     }
 
     /**
-     * Sends one message, in plain text. Returns whether it went: a mail
-     * server that is down must not take the page that triggered the message
-     * with it, so a failure is logged and answered with false.
+     * Hands one message, in plain text, to the outbox — see the 0044
+     * migration and bin/outbox.php — to be sent within the minute and tried
+     * again if the mail server will not take it. Returns whether it is on
+     * its way: not when there is no email, nor to an address nothing reaches.
      */
-    public static function send(string $toAddress, string $toName, string $subject, string $text): bool
+    public static function send(string $toAddress, string $toName, string $subject, string $text, string $kind = 'mail', ?int $notificationId = null): bool
+    {
+        if (!self::handOver($toAddress, $toName, $subject, $text)) {
+            return false;
+        }
+
+        try {
+            (new \CantoTrack\Service\Outbox())->add($toAddress, $toName, $subject, $text, $kind, $notificationId);
+        } catch (\Throwable $e) {
+            Logger::error('Mail could not be put in the outbox: ' . $e->getMessage(), ['to' => $toAddress, 'subject' => $subject]);
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Sends one message now — the link for a lost password, which somebody
+     * is standing there waiting for — and leaves it in the outbox to be tried
+     * again if it does not go at once.
+     */
+    public static function sendNow(string $toAddress, string $toName, string $subject, string $text, string $kind = 'mail'): bool
+    {
+        if (!self::handOver($toAddress, $toName, $subject, $text)) {
+            return false;
+        }
+
+        // Through the outbox all the same, so that it is in its log — and
+        // tried again later if it does not go now.
+        try {
+            $outbox = new \CantoTrack\Service\Outbox();
+
+            return $outbox->sendOne($outbox->add($toAddress, $toName, $subject, $text, $kind));
+        } catch (\Throwable $e) {
+            Logger::error('Mail could not be put in the outbox: ' . $e->getMessage(), ['to' => $toAddress, 'subject' => $subject]);
+
+            return self::deliver($toAddress, $toName, $subject, $text) === null;
+        }
+    }
+
+    /**
+     * Whether a message can go at all, noted for the tests either way it
+     * goes: there is email, and the address is one mail reaches (written to
+     * a file, anything goes).
+     */
+    private static function handOver(string $toAddress, string $toName, string $subject, string $text): bool
     {
         if (!self::isConfigured()) {
             return false;
         }
 
-        $config = self::config();
-        $from = (string) ($config['from'] ?? $config['from_address'] ?? 'cantotrack@localhost');
-        $fromName = (string) ($config['from_name'] ?? Config::get('app.name', 'CantoTrack'));
-        $email = (new Email())
-            ->from(new Address($from, $fromName))
-            ->to(new Address($toAddress, $toName))
-            ->subject($subject)
-            ->text($text);
+        self::$sent[] = self::message(self::config(), $toAddress, $toName, $subject, $text);
 
-        self::$sent[] = $email;
-        $transport = self::transport($config);
+        return self::transport() === 'file' || self::reachable($toAddress);
+    }
 
-        // Written to a file, anything goes; sent for real, not to nowhere.
-        if ($transport !== 'file' && !self::reachable($toAddress)) {
-            return false;
-        }
-
+    /**
+     * Sends one message the way the configuration says. Returns null when it
+     * went, or what went wrong — logged, and never thrown: a mail server
+     * that is down must not take anything else down with it.
+     */
+    public static function deliver(string $toAddress, string $toName, string $subject, string $text): ?string
+    {
         try {
-            return match ($transport) {
+            $config = self::config();
+            $email = self::message($config, $toAddress, $toName, $subject, $text);
+            $from = self::fromAddress($config);
+
+            $sent = match (self::transport($config)) {
+                'none' => throw new \RuntimeException('Email is turned off.'),
                 'file' => self::toFile($email),
                 'mail' => self::withMail($email, $from),
                 default => self::toServer($email, self::serverDsn($config)),
             };
+
+            return $sent ? null : 'The mail system did not take the message.';
         } catch (\Throwable $e) {
             Logger::error('Mail could not be sent: ' . $e->getMessage(), ['to' => $toAddress, 'subject' => $subject]);
 
-            return false;
+            return mb_substr($e->getMessage(), 0, 500);
         }
+    }
+
+    /** @param array<string, mixed> $config */
+    private static function message(array $config, string $toAddress, string $toName, string $subject, string $text): Email
+    {
+        $fromName = (string) ($config['from_name'] ?? Config::get('app.name', 'CantoTrack'));
+
+        return (new Email())
+            ->from(new Address(self::fromAddress($config), $fromName))
+            ->to(new Address($toAddress, $toName))
+            ->subject($subject)
+            ->text($text);
+    }
+
+    /** @param array<string, mixed> $config */
+    private static function fromAddress(array $config): string
+    {
+        return (string) ($config['from'] ?? $config['from_address'] ?? 'cantotrack@localhost');
     }
 
     private static function toFile(Email $email): bool

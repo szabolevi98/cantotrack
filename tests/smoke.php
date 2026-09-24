@@ -1069,6 +1069,13 @@ if ($email === null || $password === null) {
     check('the billing page answers', $billing['status'] === 200 && str_contains($billing['body'], 'id="unbilled"') && str_contains($billing['body'], 'id="letterhead"'));
     check('and a statement that does not exist is not found', request($baseUrl . '/billing/statements/99999999', [], $jar)['status'] === 404);
 
+    // The email: what waits, what did not go, and a test message to oneself,
+    // which goes at once rather than within the minute.
+    $mailPage = request($baseUrl . '/settings/email', [], $jar);
+    check('the email page answers', $mailPage['status'] === 200 && str_contains($mailPage['body'], '/settings/email/test'));
+    $tested = request($baseUrl . '/settings/email/test', ['_token' => $token], $jar);
+    check('and a test message can be sent from it', $tested['status'] === 302 && str_contains($tested['headers'], '/settings/email'));
+
     $planned = request($baseUrl . '/planning', [
         '_token' => $token,
         'ticket' => $code . '-1',

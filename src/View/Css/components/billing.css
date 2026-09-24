@@ -186,3 +186,23 @@
         color: #000 !important;
     }
 }
+
+/* The email page: why a message did not go, under its subject. */
+.outbox__error {
+    margin-top: 4px;
+    color: var(--ct-danger);
+    font-size: 0.85rem;
+    word-break: break-word;
+}
+
+.outbox__when {
+    white-space: nowrap;
+}
+
+.outbox__intro {
+    padding: 0 22px;
+}
+
+.stat__value--danger {
+    color: var(--ct-danger);
+}

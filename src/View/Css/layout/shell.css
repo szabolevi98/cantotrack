@@ -50,15 +50,29 @@
     letter-spacing: 0.04em;
 }
 
-.sidebar__nav {
+/* Everything under the brand: the search and the menu. On a screen shorter
+   than the menu it scrolls inside the sidebar — the sidebar itself is as
+   tall as the window and stays put, so without this the last items ran out
+   below its background, onto the page. */
+.sidebar__menu {
     display: flex;
     flex: 1;
     flex-direction: column;
-    gap: 2px;
-    /* Without this a flex child will not shrink below its content, and on a
-       short screen the navigation ran under the account box instead of
-       scrolling inside the sidebar. */
     min-height: 0;
+    margin: 0 -8px;
+    padding: 0 8px;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+    scrollbar-color: rgba(var(--ct-sidebar-text-rgb), 0.3) transparent;
+}
+
+.sidebar__nav {
+    display: flex;
+    flex: 1 0 auto;
+    flex-direction: column;
+    gap: 2px;
+    padding-bottom: 8px;
 }
 
 /* …and its items keep their height while it does. */
@@ -200,6 +214,10 @@
         width: auto;
         height: auto;
         padding: 14px 16px;
+    }
+
+    .sidebar__menu {
+        overflow: visible;
     }
 
     .sidebar__nav {

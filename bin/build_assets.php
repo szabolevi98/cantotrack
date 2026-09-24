@@ -45,6 +45,7 @@ $bundles = [
             'components/reports.css',
             'components/calendar.css',
             'components/roadmap.css',
+            'components/inline.css',
             'pages/auth.css',
         ],
     ],
@@ -62,6 +63,7 @@ $bundles = [
             'roadmap.js',
             'query.js',
             'pages.js',
+            'inline.js',
         ],
     ],
 ];

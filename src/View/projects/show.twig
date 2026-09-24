@@ -178,7 +178,7 @@
                                     </span>
                                 </div>
 
-                                <a class="ticket-card__title" href="{{ url('/tickets/' ~ ticket.id) }}" draggable="false">{{ ticket.title }}</a>
+                                <a class="ticket-card__title" href="{{ url('/tickets/' ~ ticket.id) }}" draggable="false" data-panel>{{ ticket.title }}</a>
 
                                 {% if ticket.epic_title or ticket.label_names or ticket.parent_id or ticket.subtask_count > 0 %}
                                     <div class="ticket-card__tags">

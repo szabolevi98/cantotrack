@@ -294,28 +294,18 @@ class TicketController extends Controller
         $notifications = new \CantoTrack\Model\NotificationRepository();
         $notifications->markTicketRead((int) Auth::id(), $id);
 
-        $this->render('tickets/show.twig', [
-            'ticket' => $ticket,
-            'remaining' => TicketRepository::remaining($ticket),
+        $this->render('tickets/show.twig', $this->factsContext($ticket) + [
             'watching' => $notifications->isWatching($id, (int) Auth::id()),
             'favourite' => (new TicketRepository())->isFavourite($id, (int) Auth::id()),
             'watchers' => $notifications->watcherCount($id),
-            'labels' => (new LabelRepository())->forTicket($id),
             'attachments' => (new AttachmentRepository())->forTicket($id),
             'links' => (new LinkRepository())->forTicket($id),
             'link_kinds' => array_keys(LinkService::OFFERED),
-            'sprints' => array_values(array_filter(
-                (new SprintRepository())->forProject((int) $ticket['project_id']),
-                static fn(array $s): bool => $s['state'] !== 'closed'
-            )),
             'max_upload_mb' => intdiv(AttachmentService::maxBytes(), 1048576),
-            'people' => (new UserRepository())->active(),
             'statuses' => (new StatusRepository())->forProject((int) $ticket['project_id']),
             'worklogs' => (new WorklogRepository())->forTicket($id),
             'subtasks' => (new TicketRepository())->subtasks($id),
             'pages' => (new \CantoTrack\Model\PageRepository())->mentioning($id),
-            'custom_fields' => (new \CantoTrack\Model\CustomFieldRepository())->forProject((int) $ticket['project_id']),
-            'field_values' => (new \CantoTrack\Model\CustomFieldRepository())->valuesFor($id),
             'timeline' => $this->timeline($id, $showing),
             'showing' => $showing,
             'today' => date('Y-m-d'),
@@ -465,6 +455,87 @@ class TicketController extends Controller
         // Back where it was clicked, so moving a ticket from the board does not
         // land somebody on the ticket's own page.
         $this->back('/tickets/' . $id);
+    }
+
+    /**
+     * One fact of a ticket changed where it is shown — its page, or the
+     * panel beside the board. Through the same rules as the edit form; no
+     * version is sent, because one field is all that changes.
+     */
+    public function field(int $id): void
+    {
+        Auth::requireMember();
+
+        $this->ticketOr404($id);
+        $field = $this->input('field');
+        $fields = ['title', 'description', 'type', 'priority', 'assignee_id', 'epic_id', 'release_id', 'due_on', 'story_points', 'estimate', 'labels'];
+        $error = null;
+
+        if (!in_array($field, $fields, true)) {
+            $error = __('That cannot be changed here.');
+        } else {
+            try {
+                (new TicketService())->update($id, [$field => (string) ($_POST['value'] ?? '')], Auth::id());
+            } catch (ValidationError $e) {
+                $error = $e->getMessage();
+            }
+        }
+
+        if (str_contains((string) ($_SERVER['HTTP_ACCEPT'] ?? ''), 'application/json')) {
+            $this->json(['ok' => $error === null, 'error' => $error], $error === null ? 200 : 422);
+        }
+
+        if ($error !== null) {
+            $this->flash($error, 'danger');
+        }
+
+        $this->back('/tickets/' . $id);
+    }
+
+    /**
+     * A ticket in the panel beside the board: its facts, what it says, and
+     * the last of what was said about it — without leaving the board.
+     */
+    public function panel(int $id): void
+    {
+        Auth::require();
+
+        $ticket = $this->ticketOr404($id);
+        $comments = (new CommentRepository())->forTicket($id);
+
+        $this->render('tickets/panel.twig', $this->factsContext($ticket) + [
+            'comments' => array_slice($comments, -5),
+            'comment_count' => count($comments),
+            'statuses' => (new StatusRepository())->forProject((int) $ticket['project_id']),
+            'subtasks' => (new TicketRepository())->subtasks($id),
+            'back' => self::isLocalPath((string) ($_GET['back'] ?? '')) ? (string) $_GET['back'] : '/tickets/' . $id,
+        ]);
+    }
+
+    /**
+     * What the facts of a ticket need to be shown and changed in place.
+     *
+     * @return array<string, mixed>
+     */
+    private function factsContext(array $ticket): array
+    {
+        $id = (int) $ticket['id'];
+        $projectId = (int) $ticket['project_id'];
+
+        return [
+            'ticket' => $ticket,
+            'remaining' => TicketRepository::remaining($ticket),
+            'labels' => (new LabelRepository())->forTicket($id),
+            'sprints' => array_values(array_filter(
+                (new SprintRepository())->forProject($projectId),
+                static fn(array $s): bool => $s['state'] !== 'closed'
+            )),
+            'people' => (new UserRepository())->active(),
+            'epics' => (new EpicRepository())->openForProject($projectId),
+            'releases' => (new ReleaseRepository())->unreleased($projectId),
+            'custom_fields' => (new \CantoTrack\Model\CustomFieldRepository())->forProject($projectId),
+            'field_values' => (new \CantoTrack\Model\CustomFieldRepository())->valuesFor($id),
+        ];
     }
 
     /** Why a finished ticket is finished — "won't do" rather than "done". */

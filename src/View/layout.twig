@@ -214,7 +214,7 @@
     </header>
 
 <main class="content" id="main">
-    <header class="content__head">
+    <header class="content__head" data-refresh="head">
         <div>
             <h1>{% block heading %}{% endblock %}</h1>
             {% block subheading %}{% endblock %}
@@ -254,5 +254,15 @@
 </dialog>
 
 {% if can_work %}{% include 'common/quick_log.twig' %}{% endif %}
+{% if current_user %}
+    {# A ticket beside the page, opened from a card or a row — see inline.js. #}
+    <aside class="panel" data-panel-root hidden aria-label="{{ 'Ticket'|t }}"
+           data-panel-url="{{ url('/tickets/{id}/panel') }}" data-ticket-url="{{ url('/tickets/{id}') }}">
+        <button class="panel__close" type="button" data-panel-close aria-label="{{ 'Close'|t }}" title="{{ 'Close'|t }} (Esc)">
+            <i class="bi bi-x-lg" aria-hidden="true"></i>
+        </button>
+        <div class="panel__body" data-panel-body></div>
+    </aside>
+{% endif %}
 </body>
 </html>

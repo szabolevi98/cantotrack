@@ -1,0 +1,39 @@
+{#
+    One fact of a ticket that can be changed where it is shown: a click on
+    it (or its pencil) turns it into its control, Enter or Save keeps the
+    change, Escape or Cancel leaves it as it was. See inline.js.
+
+    Embedded, with the fact as `show` and the control as `control`:
+
+        {% embed 'common/inline.twig' with {ticket: ticket, field: 'priority', label: 'priority'|t} %}
+            {% block show %}…{% endblock %}
+            {% block control %}<select name="value">…</select>{% endblock %}
+        {% endembed %}
+
+    Without a script the form stays hidden and the Edit page is the way to
+    change it, as it always was.
+#}
+{% set editable = can_work and editable|default(true) %}
+<div class="inline{{ editable ? ' inline--editable' : '' }}" data-inline>
+    <div class="inline__show"{% if editable %} data-inline-open{% endif %}>
+        {% block show %}{% endblock %}
+        {% if editable %}
+            <button class="inline__pencil" type="button" data-inline-open
+                    aria-label="{{ 'Change the {field}'|t({field: label}) }}" title="{{ 'Change the {field}'|t({field: label}) }}">
+                <i class="bi bi-pencil" aria-hidden="true"></i>
+            </button>
+        {% endif %}
+    </div>
+    {% if editable %}
+        <form class="inline__form" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/field') }}" data-inline-form hidden>
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <input type="hidden" name="field" value="{{ field }}">
+            {% block control %}{% endblock %}
+            <p class="inline__error" data-inline-error hidden></p>
+            <div class="inline__buttons">
+                <button class="button button--small button--primary" type="submit">{{ 'Save'|t }}</button>
+                <button class="button button--small" type="button" data-inline-cancel>{{ 'Cancel'|t }}</button>
+            </div>
+        </form>
+    {% endif %}
+</div>

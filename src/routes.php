@@ -187,6 +187,8 @@ $router->get('/tickets/{id}/edit', static fn($id) => (new TicketController())->e
 $router->post('/tickets/{id}', static fn($id) => (new TicketController())->update((int) $id));
 $router->post('/tickets/{id}/status', static fn($id) => (new TicketController())->changeStatus((int) $id));
 $router->post('/tickets/{id}/resolution', static fn($id) => (new TicketController())->resolve((int) $id));
+$router->post('/tickets/{id}/field', static fn($id) => (new TicketController())->field((int) $id));
+$router->get('/tickets/{id}/panel', static fn($id) => (new TicketController())->panel((int) $id));
 $router->post('/tickets/{id}/move', static fn($id) => (new TicketController())->move((int) $id));
 $router->post('/tickets/{id}/delete', static fn($id) => (new TicketController())->delete((int) $id));
 

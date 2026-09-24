@@ -6,9 +6,29 @@
 {% set finished = ticket.status_category == 'done' %}
 
 {% block title %}{{ key }} {{ ticket.title }} — {{ app_name }}{% endblock %}
-{% block heading %}{{ ticket.title }}{% endblock %}
+{% block heading %}
+    {{- ticket.title -}}
+    {% if can_work %}
+        <button class="inline__pencil inline__pencil--title" type="button" data-inline-open data-inline-for="title-form"
+                aria-label="{{ 'Change the {field}'|t({field: 'title'|t}) }}" title="{{ 'Change the {field}'|t({field: 'title'|t}) }}">
+            <i class="bi bi-pencil" aria-hidden="true"></i>
+        </button>
+    {% endif %}
+{% endblock %}
 
 {% block subheading %}
+    {% if can_work %}
+        <form class="inline__form inline__form--title" id="title-form" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/field') }}" data-inline-form hidden>
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <input type="hidden" name="field" value="title">
+            <input class="field" type="text" name="value" value="{{ ticket.title }}" maxlength="250" required aria-label="{{ 'Title'|t }}">
+            <p class="inline__error" data-inline-error hidden></p>
+            <div class="inline__buttons">
+                <button class="button button--small button--primary" type="submit">{{ 'Save'|t }}</button>
+                <button class="button button--small" type="button" data-inline-cancel>{{ 'Cancel'|t }}</button>
+            </div>
+        </form>
+    {% endif %}
     <p class="content__sub">
         {{ ui.type_icon(ticket.type) }}
         <span class="ticket-key ticket-key--plain">{{ key }}</span>
@@ -49,17 +69,7 @@
 {% block content %}
     <div class="split">
         <div class="split__main">
-            <section class="card">
-                <h2 class="card__title">{{ 'Description'|t }}</h2>
-                {% if labels is not empty %}
-                    <p class="labels">{{ ui.labels(labels, true) }}</p>
-                {% endif %}
-                {% if ticket.description %}
-                    <div class="card__body prose markdown">{{ ticket.description|markdown }}</div>
-                {% else %}
-                    <p class="card__body muted">{{ 'Nothing written down yet.'|t }}</p>
-                {% endif %}
-            </section>
+            {% include 'tickets/description.twig' %}
 
             {#
                 The steps the ticket is broken into, each a ticket of its own:
@@ -224,7 +234,7 @@
                 What was said and what happened, in one stream — see
                 TicketController::timeline for why they are read together.
             #}
-            <section class="card" id="activity">
+            <section class="card" id="activity" data-refresh="activity">
                 <header class="activity__head">
                     <h2 class="card__title">{{ 'Activity'|t }}</h2>
                     <nav class="segmented" aria-label="{{ 'Show'|t }}">
@@ -394,129 +404,7 @@
 
         <aside class="split__side">
             <section class="card">
-                <dl class="facts">
-                    <dt>{{ 'Status'|t }}</dt>
-                    <dd>
-                        {{ ui.status(ticket.status_name, ticket.status_colour) }}
-                        {% if ticket.blocked_by > 0 %}<span class="badge badge--red" title="{{ 'Blocked by an unfinished ticket'|t }}">{{ 'Blocked'|t }}</span>{% endif %}
-                    </dd>
-
-                    {% if finished %}
-                        {% set resolutions = {done: 'Done', wont_do: 'Won’t do', duplicate: 'Duplicate', cannot_reproduce: 'Cannot reproduce'} %}
-                        <dt>{{ 'Resolution'|t }}</dt>
-                        <dd>
-                            {% if can_work %}
-                                <form class="move" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/resolution') }}">
-                                    <input type="hidden" name="_token" value="{{ csrf_token }}">
-                                    <select class="field field--inline" name="resolution" data-autosubmit aria-label="{{ 'Resolution'|t }}">
-                                        {% for key, name in resolutions %}
-                                            <option value="{{ key }}"{{ ticket.resolution|default('done') == key ? ' selected' : '' }}>{{ name|t }}</option>
-                                        {% endfor %}
-                                    </select>
-                                    <button class="button button--small autosubmit__button" type="submit">{{ 'Save'|t }}</button>
-                                </form>
-                            {% else %}
-                                {{ resolutions[ticket.resolution|default('done')]|t }}
-                            {% endif %}
-                        </dd>
-                    {% endif %}
-
-                    <dt>{{ 'Sprint'|t }}</dt>
-                    <dd>
-                        {% if ticket.sprint_state == 'closed' or not can_work %}
-                            {{ ticket.sprint_name|default('Backlog'|t) }}
-                        {% else %}
-                            <form class="move" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/sprint') }}">
-                                <input type="hidden" name="_token" value="{{ csrf_token }}">
-                                <input type="hidden" name="back" value="/tickets/{{ ticket.id }}">
-                                <select class="field field--inline move__select" name="sprint_id" data-autosubmit aria-label="{{ 'Sprint'|t }}">
-                                    <option value="">{{ 'Backlog'|t }}</option>
-                                    {% for sprint in sprints %}
-                                        <option value="{{ sprint.id }}"{{ ticket.sprint_id == sprint.id ? ' selected' : '' }}>{{ sprint.name }}</option>
-                                    {% endfor %}
-                                </select>
-                                <button class="button button--small autosubmit__button" type="submit">{{ 'Move'|t }}</button>
-                            </form>
-                        {% endif %}
-                    </dd>
-
-                    <dt>{{ 'Release'|t }}</dt>
-                    <dd>
-                        {% if ticket.release_id %}
-                            <a href="{{ url('/releases/' ~ ticket.release_id) }}">{{ ticket.release_name }}</a>
-                            {% if ticket.release_released_at %}<span class="badge badge--green">{{ 'out'|t }}</span>{% endif %}
-                        {% else %}—{% endif %}
-                    </dd>
-
-                    <dt>{{ 'Type'|t }}</dt>
-                    <dd class="facts__with-icon">{{ ui.type_icon(ticket.type) }} {{ ui.type_label(ticket.type) }}</dd>
-
-                    <dt>{{ 'Priority'|t }}</dt>
-                    <dd>{{ ticket.priority == 'normal' ? ui.priority_label('normal') : ui.priority(ticket.priority) }}</dd>
-
-                    <dt>{{ 'Assignee'|t }}</dt>
-                    <dd>{{ ui.person(ticket.assignee_name, ticket.assignee_id) }}</dd>
-
-                    <dt>{{ 'Reporter'|t }}</dt>
-                    <dd>{{ ui.person(ticket.reporter_name, ticket.reporter_id) }}</dd>
-
-                    <dt>{{ 'Due'|t }}</dt>
-                    <dd>{{ ticket.due_on ? ui.due(ticket.due_on, finished) : '—' }}</dd>
-
-                    <dt>{{ 'Points'|t }}</dt>
-                    <dd>{{ ticket.story_points is not null ? ticket.story_points : '—' }}</dd>
-
-                    <dt>{{ 'Estimate'|t }}</dt>
-                    <dd>{{ ticket.estimate_minutes ? ticket.estimate_minutes|duration : '—' }}</dd>
-
-
-                    <dt>{{ 'Logged'|t }}</dt>
-                    <dd>
-                        {{ ticket.logged_minutes > 0 ? ticket.logged_minutes|duration : '—' }}
-                        {#
-                            The comparison only means anything when there is
-                            something to compare against, and it is the one
-                            number on this page somebody acts on.
-                        #}
-                        {% if ticket.estimate_minutes and ticket.logged_minutes > ticket.estimate_minutes %}
-                            <span class="badge badge--urgent">{{ 'over by {duration}'|t({duration: (ticket.logged_minutes - ticket.estimate_minutes)|duration}) }}</span>
-                        {% endif %}
-                    </dd>
-
-                    {# A parent's own hours, and the whole of it with its
-                       subtasks' — what the work cost, which is what gets asked. #}
-                    {% if ticket.subtask_count > 0 %}
-                        <dt>{{ 'With subtasks'|t }}</dt>
-                        <dd>
-                            {{ (ticket.logged_minutes + ticket.subtask_minutes)|duration }}
-                            {% if ticket.subtask_estimate %}<span class="muted">/ {{ ((ticket.estimate_minutes ?: 0) + ticket.subtask_estimate)|duration }}</span>{% endif %}
-                        </dd>
-                    {% endif %}
-
-                    <dt>{{ 'Left'|t }}</dt>
-                    <dd>
-                        {{ remaining is not null ? remaining|duration : '—' }}
-                        {% if remaining is not null and (ticket.logged_minutes + remaining) > 0 %}
-                            {# Done so far against done plus left — the real size of
-                               the work, which the estimate only guessed. #}
-                            <span class="bar bar--facts"><span class="bar__fill" style="width: {{ (ticket.logged_minutes / (ticket.logged_minutes + remaining) * 100)|round }}%"></span></span>
-                        {% endif %}
-                    </dd>
-
-                    {% for field in custom_fields %}
-                        {% set value = field_values[field.id]|default(null) %}
-                        <dt>{{ field.name }}</dt>
-                        <dd>{% if value is null %}—{% elseif field.kind == 'checkbox' %}{{ 'yes'|t }}{% elseif field.kind == 'date' %}{{ value|day }}{% else %}{{ value }}{% endif %}</dd>
-                    {% endfor %}
-
-                    <dt>{{ 'Created'|t }}</dt>
-                    <dd>{{ ticket.created_at|day }}</dd>
-
-                    {% if ticket.closed_at %}
-                        <dt>{{ 'Finished'|t }}</dt>
-                        <dd>{{ ticket.closed_at|day }}</dd>
-                    {% endif %}
-                </dl>
+                {% include 'tickets/facts.twig' %}
             </section>
 
             {% if pages is not empty %}

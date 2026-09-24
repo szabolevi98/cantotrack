@@ -401,6 +401,31 @@ if ($email === null || $password === null) {
     );
     request($baseUrl . '/tickets/' . $ticketId . '/status', ['_token' => $token, 'status' => 'done'], $jar);
 
+    // A resolution, and one fact changed where it is shown, as the page's
+    // script sends it.
+    $resolved = request($baseUrl . '/tickets/' . $ticketId . '/resolution', ['_token' => $token, 'resolution' => 'wont_do'], $jar);
+    check(
+        'a finished ticket can be marked as not to be done',
+        $resolved['status'] === 302 && str_contains(request($baseUrl . '/tickets/' . $ticketId, [], $jar)['body'], 'changed the resolution from Done to Won’t do')
+    );
+    request($baseUrl . '/tickets/' . $ticketId . '/resolution', ['_token' => $token, 'resolution' => 'done'], $jar);
+
+    $inline = request($baseUrl . '/tickets/' . $ticketId . '/field', ['_token' => $token, 'field' => 'priority', 'value' => 'high'], $jar, ['Accept: application/json']);
+    $refused = request($baseUrl . '/tickets/' . $ticketId . '/field', ['_token' => $token, 'field' => 'title', 'value' => ''], $jar, ['Accept: application/json']);
+    check(
+        'a fact changed in place is saved, and a bad one refused with the reason',
+        $inline['status'] === 200 && str_contains($inline['body'], '"ok":true')
+        && $refused['status'] === 422 && str_contains($refused['body'], 'needs a title'),
+        'status ' . $inline['status'] . ' / ' . $refused['status']
+    );
+
+    $panel = request($baseUrl . '/tickets/' . $ticketId . '/panel', [], $jar);
+    check(
+        'the ticket opens in the panel beside the board, without the page around it',
+        $panel['status'] === 200 && str_contains($panel['body'], 'panel__inner') && !str_contains($panel['body'], '<html'),
+        'status ' . $panel['status']
+    );
+
     $lanes = request($baseUrl . '/projects/' . $projectId . '?lanes=epic&type=task', [], $jar);
     check('the board can be split into lanes and narrowed', $lanes['status'] === 200 && str_contains($lanes['body'], 'board__lane-title'));
 

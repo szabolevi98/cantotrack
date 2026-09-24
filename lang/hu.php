@@ -1333,4 +1333,10 @@ return [
     'resolution' => 'lezárási ok',
     'Resolution' => 'Lezárási ok',
     '“{value}” is not a resolution: done, wont_do, duplicate or cannot_reproduce.' => '„{value}” nem lezárási ok: done, wont_do, duplicate vagy cannot_reproduce.',
+    'Change the {field}' => '{field} módosítása',
+    'That cannot be changed here.' => 'Ezt itt nem lehet módosítani.',
+    'Nothing written down yet — click to write it.' => 'Még nincs leírva semmi — kattints ide, és írd meg.',
+    'Markdown works: **bold**, `code`, lists, and CT-14 becomes a link.' => 'Markdown használható: **félkövér**, `kód`, listák, és a CT-14 linkké válik.',
+    'Nobody' => 'Senki',
+    'the last {count} of {total}' => '{total} közül az utolsó {count}',
 ];

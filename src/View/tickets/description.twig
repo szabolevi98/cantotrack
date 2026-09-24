@@ -1,0 +1,19 @@
+{# A ticket's description, written over where it is read. #}
+<section class="card" data-refresh="description">
+    {% embed 'common/inline.twig' with {field: 'description', label: 'description'|t} %}
+        {% import 'common/macros.twig' as ui %}
+        {% block show %}
+            <h2 class="card__title">{{ 'Description'|t }}</h2>
+            {% if ticket.description %}
+                <div class="card__body prose markdown">{{ ticket.description|markdown }}</div>
+            {% else %}
+                <p class="card__body muted">{{ can_work ? 'Nothing written down yet — click to write it.'|t : 'Nothing written down yet.'|t }}</p>
+            {% endif %}
+        {% endblock %}
+        {% block control %}
+            <label class="card__title" for="description-{{ ticket.id }}">{{ 'Description'|t }}</label>
+            <textarea id="description-{{ ticket.id }}" class="field" name="value" rows="10">{{ ticket.description }}</textarea>
+            <p class="hint">{{ 'Markdown works: **bold**, `code`, lists, and CT-14 becomes a link.'|t }}</p>
+        {% endblock %}
+    {% endembed %}
+</section>

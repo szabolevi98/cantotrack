@@ -55,3 +55,6 @@
 .bi-star::before { content: "\f588"; }
 .bi-star-fill::before { content: "\f586"; }
 .bi-exclamation-circle::before { content: "\f333"; }
+.bi-pencil::before { content: "\f4cb"; }
+.bi-x-lg::before { content: "\f659"; }
+.bi-box-arrow-up-right::before { content: "\f1c5"; }

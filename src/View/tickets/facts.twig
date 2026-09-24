@@ -1,0 +1,244 @@
+{#
+    A ticket's facts, each changeable where it is shown — on its page and
+    in the panel beside the board. `back` is where a moved sprint returns to.
+#}
+{% import 'common/macros.twig' as ui %}
+{% set finished = ticket.status_category == 'done' %}
+{% set back = back|default('/tickets/' ~ ticket.id) %}
+<dl class="facts" data-refresh="facts">
+    <dt>{{ 'Status'|t }}</dt>
+    <dd>
+        {{ ui.status(ticket.status_name, ticket.status_colour) }}
+        {% if ticket.blocked_by > 0 %}<span class="badge badge--red" title="{{ 'Blocked by an unfinished ticket'|t }}">{{ 'Blocked'|t }}</span>{% endif %}
+    </dd>
+
+    {% if finished %}
+        {% set resolutions = {done: 'Done', wont_do: 'Won’t do', duplicate: 'Duplicate', cannot_reproduce: 'Cannot reproduce'} %}
+        <dt>{{ 'Resolution'|t }}</dt>
+        <dd>
+            {% if can_work %}
+                <form class="move" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/resolution') }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                    <input type="hidden" name="back" value="{{ back }}">
+                    <select class="field field--inline" name="resolution" data-autosubmit aria-label="{{ 'Resolution'|t }}">
+                        {% for key, name in resolutions %}
+                            <option value="{{ key }}"{{ ticket.resolution|default('done') == key ? ' selected' : '' }}>{{ name|t }}</option>
+                        {% endfor %}
+                    </select>
+                    <button class="button button--small autosubmit__button" type="submit">{{ 'Save'|t }}</button>
+                </form>
+            {% else %}
+                {{ resolutions[ticket.resolution|default('done')]|t }}
+            {% endif %}
+        </dd>
+    {% endif %}
+
+    <dt>{{ 'Sprint'|t }}</dt>
+    <dd>
+        {% if ticket.sprint_state == 'closed' or not can_work %}
+            {{ ticket.sprint_name|default('Backlog'|t) }}
+        {% else %}
+            <form class="move" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/sprint') }}">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <input type="hidden" name="back" value="{{ back }}">
+                <select class="field field--inline move__select" name="sprint_id" data-autosubmit aria-label="{{ 'Sprint'|t }}">
+                    <option value="">{{ 'Backlog'|t }}</option>
+                    {% for sprint in sprints %}
+                        <option value="{{ sprint.id }}"{{ ticket.sprint_id == sprint.id ? ' selected' : '' }}>{{ sprint.name }}</option>
+                    {% endfor %}
+                </select>
+                <button class="button button--small autosubmit__button" type="submit">{{ 'Move'|t }}</button>
+            </form>
+        {% endif %}
+    </dd>
+
+    <dt>{{ 'Assignee'|t }}</dt>
+    <dd>
+        {% embed 'common/inline.twig' with {field: 'assignee_id', label: 'assignee'|t} %}
+            {% import 'common/macros.twig' as ui %}
+            {% block show %}{{ ui.person(ticket.assignee_name, ticket.assignee_id) }}{% endblock %}
+            {% block control %}
+                <select class="field field--inline" name="value" aria-label="{{ 'Assignee'|t }}" data-inline-auto>
+                    <option value="">{{ 'Nobody'|t }}</option>
+                    {% for person in people %}
+                        <option value="{{ person.id }}"{{ ticket.assignee_id == person.id ? ' selected' : '' }}>{{ person.name }}</option>
+                    {% endfor %}
+                    {% if ticket.assignee_id and ticket.assignee_id not in people|column('id') %}
+                        <option value="{{ ticket.assignee_id }}" selected>{{ ticket.assignee_name }}</option>
+                    {% endif %}
+                </select>
+            {% endblock %}
+        {% endembed %}
+    </dd>
+
+    <dt>{{ 'Priority'|t }}</dt>
+    <dd>
+        {% embed 'common/inline.twig' with {field: 'priority', label: 'priority'|t} %}
+            {% import 'common/macros.twig' as ui %}
+            {% block show %}{{ ticket.priority == 'normal' ? ui.priority_label('normal') : ui.priority(ticket.priority) }}{% endblock %}
+            {% block control %}
+                <select class="field field--inline" name="value" aria-label="{{ 'Priority'|t }}" data-inline-auto>
+                    {% for priority in ['low', 'normal', 'high', 'urgent'] %}
+                        <option value="{{ priority }}"{{ ticket.priority == priority ? ' selected' : '' }}>{{ ui.priority_label(priority) }}</option>
+                    {% endfor %}
+                </select>
+            {% endblock %}
+        {% endembed %}
+    </dd>
+
+    <dt>{{ 'Type'|t }}</dt>
+    <dd class="facts__with-icon">
+        {% embed 'common/inline.twig' with {field: 'type', label: 'type'|t} %}
+            {% import 'common/macros.twig' as ui %}
+            {% block show %}{{ ui.type_icon(ticket.type) }} {{ ui.type_label(ticket.type) }}{% endblock %}
+            {% block control %}
+                <select class="field field--inline" name="value" aria-label="{{ 'Type'|t }}" data-inline-auto>
+                    {% for type in ['task', 'bug', 'story'] %}
+                        <option value="{{ type }}"{{ ticket.type == type ? ' selected' : '' }}>{{ ui.type_label(type) }}</option>
+                    {% endfor %}
+                </select>
+            {% endblock %}
+        {% endembed %}
+    </dd>
+
+    {% if not ticket.parent_id %}
+        <dt>{{ 'Epic'|t }}</dt>
+        <dd>
+            {% embed 'common/inline.twig' with {field: 'epic_id', label: 'epic'|t} %}
+                {% import 'common/macros.twig' as ui %}
+                {% block show %}{% if ticket.epic_id %}<a href="{{ url('/epics/' ~ ticket.epic_id) }}">{{ ticket.epic_title }}</a>{% else %}—{% endif %}{% endblock %}
+                {% block control %}
+                    <select class="field field--inline" name="value" aria-label="{{ 'Epic'|t }}" data-inline-auto>
+                        <option value="">{{ 'No epic'|t }}</option>
+                        {% for epic in epics %}
+                            <option value="{{ epic.id }}"{{ ticket.epic_id == epic.id ? ' selected' : '' }}>{{ epic.title }}</option>
+                        {% endfor %}
+                        {% if ticket.epic_id and ticket.epic_id not in epics|column('id') %}
+                            <option value="{{ ticket.epic_id }}" selected>{{ ticket.epic_title }}</option>
+                        {% endif %}
+                    </select>
+                {% endblock %}
+            {% endembed %}
+        </dd>
+
+        <dt>{{ 'Release'|t }}</dt>
+        <dd>
+            {% embed 'common/inline.twig' with {field: 'release_id', label: 'release'|t} %}
+                {% import 'common/macros.twig' as ui %}
+                {% block show %}
+                    {% if ticket.release_id %}
+                        <a href="{{ url('/releases/' ~ ticket.release_id) }}">{{ ticket.release_name }}</a>
+                        {% if ticket.release_released_at %}<span class="badge badge--green">{{ 'out'|t }}</span>{% endif %}
+                    {% else %}—{% endif %}
+                {% endblock %}
+                {% block control %}
+                    <select class="field field--inline" name="value" aria-label="{{ 'Release'|t }}" data-inline-auto>
+                        <option value="">{{ 'No release'|t }}</option>
+                        {% for release in releases %}
+                            <option value="{{ release.id }}"{{ ticket.release_id == release.id ? ' selected' : '' }}>{{ release.name }}</option>
+                        {% endfor %}
+                        {% if ticket.release_id and ticket.release_id not in releases|column('id') %}
+                            <option value="{{ ticket.release_id }}" selected>{{ ticket.release_name }}</option>
+                        {% endif %}
+                    </select>
+                {% endblock %}
+            {% endembed %}
+        </dd>
+    {% endif %}
+
+    <dt>{{ 'Due'|t }}</dt>
+    <dd>
+        {% embed 'common/inline.twig' with {field: 'due_on', label: 'due date'|t} %}
+            {% import 'common/macros.twig' as ui %}
+            {% block show %}{{ ticket.due_on ? ui.due(ticket.due_on, finished) : '—' }}{% endblock %}
+            {% block control %}
+                <input class="field field--inline" type="date" name="value" value="{{ ticket.due_on }}" aria-label="{{ 'Due'|t }}">
+            {% endblock %}
+        {% endembed %}
+    </dd>
+
+    <dt>{{ 'Points'|t }}</dt>
+    <dd>
+        {% embed 'common/inline.twig' with {field: 'story_points', label: 'story points'|t} %}
+            {% import 'common/macros.twig' as ui %}
+            {% block show %}{{ ticket.story_points is not null ? ticket.story_points : '—' }}{% endblock %}
+            {% block control %}
+                <input class="field field--inline inline__short" type="number" name="value" min="0" max="100"
+                       value="{{ ticket.story_points }}" aria-label="{{ 'Story points'|t }}">
+            {% endblock %}
+        {% endembed %}
+    </dd>
+
+    <dt>{{ 'Estimate'|t }}</dt>
+    <dd>
+        {% embed 'common/inline.twig' with {field: 'estimate', label: 'estimate'|t} %}
+            {% import 'common/macros.twig' as ui %}
+            {% block show %}{{ ticket.estimate_minutes ? ticket.estimate_minutes|duration : '—' }}{% endblock %}
+            {% block control %}
+                <input class="field field--inline inline__short" type="text" name="value" placeholder="3h 30m"
+                       value="{{ ticket.estimate_minutes ? ticket.estimate_minutes|duration : '' }}" aria-label="{{ 'Estimate'|t }}">
+            {% endblock %}
+        {% endembed %}
+    </dd>
+
+    <dt>{{ 'Logged'|t }}</dt>
+    <dd>
+        {{ ticket.logged_minutes > 0 ? ticket.logged_minutes|duration : '—' }}
+        {#
+            The comparison only means anything when there is something to
+            compare against, and it is the one number here somebody acts on.
+        #}
+        {% if ticket.estimate_minutes and ticket.logged_minutes > ticket.estimate_minutes %}
+            <span class="badge badge--urgent">{{ 'over by {duration}'|t({duration: (ticket.logged_minutes - ticket.estimate_minutes)|duration}) }}</span>
+        {% endif %}
+    </dd>
+
+    {# A parent's own hours, and the whole of it with its subtasks' — what
+       the work cost, which is what gets asked. #}
+    {% if ticket.subtask_count > 0 %}
+        <dt>{{ 'With subtasks'|t }}</dt>
+        <dd>
+            {{ (ticket.logged_minutes + ticket.subtask_minutes)|duration }}
+            {% if ticket.subtask_estimate %}<span class="muted">/ {{ ((ticket.estimate_minutes ?: 0) + ticket.subtask_estimate)|duration }}</span>{% endif %}
+        </dd>
+    {% endif %}
+
+    <dt>{{ 'Left'|t }}</dt>
+    <dd>
+        {{ remaining is not null ? remaining|duration : '—' }}
+        {% if remaining is not null and (ticket.logged_minutes + remaining) > 0 %}
+            {# Done so far against done plus left — the real size of the work,
+               which the estimate only guessed. #}
+            <span class="bar bar--facts"><span class="bar__fill" style="width: {{ (ticket.logged_minutes / (ticket.logged_minutes + remaining) * 100)|round }}%"></span></span>
+        {% endif %}
+    </dd>
+
+    <dt>{{ 'Labels'|t }}</dt>
+    <dd>
+        {% embed 'common/inline.twig' with {field: 'labels', label: 'labels'|t} %}
+            {% import 'common/macros.twig' as ui %}
+            {% block show %}{% if labels is not empty %}{{ ui.labels(labels, true) }}{% else %}—{% endif %}{% endblock %}
+            {% block control %}
+                <input class="field field--inline" type="text" name="value" value="{{ labels|join(', ') }}"
+                       placeholder="frontend, urgent" aria-label="{{ 'Labels'|t }}">
+            {% endblock %}
+        {% endembed %}
+    </dd>
+
+    {% for field in custom_fields %}
+        {% set value = field_values[field.id]|default(null) %}
+        <dt>{{ field.name }}</dt>
+        <dd>{% if value is null %}—{% elseif field.kind == 'checkbox' %}{{ 'yes'|t }}{% elseif field.kind == 'date' %}{{ value|day }}{% else %}{{ value }}{% endif %}</dd>
+    {% endfor %}
+
+    <dt>{{ 'Reporter'|t }}</dt>
+    <dd>{{ ui.person(ticket.reporter_name, ticket.reporter_id) }}</dd>
+
+    <dt>{{ 'Created'|t }}</dt>
+    <dd>{{ ticket.created_at|day }}</dd>
+
+    {% if ticket.closed_at %}
+        <dt>{{ 'Finished'|t }}</dt>
+        <dd>{{ ticket.closed_at|day }}</dd>
+    {% endif %}
+</dl>

@@ -1,0 +1,83 @@
+{#
+    A ticket in the panel beside the board — see inline.js. Not a page of
+    its own: no layout, only what the panel shows, and every form in it is
+    sent without leaving the board.
+#}
+{% import 'common/macros.twig' as ui %}
+{% set key = ticket.project_code ~ '-' ~ ticket.number %}
+<div class="panel__inner" data-panel-ticket="{{ ticket.id }}">
+    <header class="panel__head">
+        <p class="panel__key">
+            {{ ui.type_icon(ticket.type) }}
+            <a class="ticket-key" href="{{ url('/tickets/' ~ ticket.id) }}">{{ key }}</a>
+            {% if ticket.parent_id %}
+                · {{ 'a subtask of'|t }} <a href="{{ url('/tickets/' ~ ticket.parent_id) }}" data-panel>{{ ticket.project_code }}-{{ ticket.parent_number }}</a>
+            {% endif %}
+        </p>
+        <div class="panel__title" data-refresh="panel-title">
+            {% embed 'common/inline.twig' with {field: 'title', label: 'title'|t} %}
+                {% import 'common/macros.twig' as ui %}
+                {% block show %}<h2 class="panel__heading" tabindex="-1">{{ ticket.title }}</h2>{% endblock %}
+                {% block control %}
+                    <input class="field" type="text" name="value" value="{{ ticket.title }}" maxlength="250" required aria-label="{{ 'Title'|t }}">
+                {% endblock %}
+            {% endembed %}
+        </div>
+        <div class="panel__actions">
+            {% if can_work %}{{ ui.move(ticket, statuses, back) }}{% endif %}
+            <a class="button button--small" href="{{ url('/tickets/' ~ ticket.id) }}">{{ 'Open the ticket'|t }} <i class="bi bi-box-arrow-up-right" aria-hidden="true"></i></a>
+        </div>
+    </header>
+
+    {% for message in flash %}
+        <p class="flash flash--{{ message.kind }}" role="{{ message.kind == 'danger' ? 'alert' : 'status' }}">{{ message.message }}</p>
+    {% endfor %}
+
+    {% include 'tickets/description.twig' %}
+
+    <section class="card">
+        {% include 'tickets/facts.twig' %}
+    </section>
+
+    {% if subtasks is not empty %}
+        <section class="card">
+            <h3 class="card__title">{{ 'Subtasks'|t }} <span class="muted">{{ subtasks|filter(s => s.status_category == 'done')|length }} / {{ subtasks|length }}</span></h3>
+            <ul class="panel__list">
+                {% for sub in subtasks %}
+                    <li>
+                        <a class="ticket-key" href="{{ url('/tickets/' ~ sub.id) }}" data-panel>{{ sub.project_code }}-{{ sub.number }}</a>
+                        <span>{{ sub.title }}</span>
+                        {{ ui.status(sub.status_name, sub.status_colour) }}
+                    </li>
+                {% endfor %}
+            </ul>
+        </section>
+    {% endif %}
+
+    <section class="card">
+        <h3 class="card__title">{{ 'Comments'|t }}{% if comment_count > comments|length %} <span class="muted">· {{ 'the last {count} of {total}'|t({count: comments|length, total: comment_count}) }}</span>{% endif %}</h3>
+        {% if comments is empty %}
+            <p class="card__body muted">{{ 'Nobody has said anything yet.'|t }}</p>
+        {% else %}
+            <ol class="panel__comments">
+                {% for comment in comments %}
+                    <li>
+                        <p class="panel__comment-head">
+                            {{ ui.face(comment.user_name, comment.user_id, 'avatar avatar--small') }}
+                            <strong>{{ comment.user_name }}</strong>
+                            <time class="muted" datetime="{{ comment.created_at }}">{{ comment.created_at|day }} {{ comment.created_at|date('H:i') }}</time>
+                        </p>
+                        <div class="prose markdown">{{ comment.body|markdown }}</div>
+                    </li>
+                {% endfor %}
+            </ol>
+        {% endif %}
+        <form class="comment-form" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/comments') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <label for="panel-body-{{ ticket.id }}">{{ 'Add a comment'|t }}</label>
+            <textarea id="panel-body-{{ ticket.id }}" class="field" name="body" rows="3" required
+                      placeholder="{{ 'Markdown works. CT-14 links to that ticket, @name tells somebody.'|t }}"></textarea>
+            <button class="button button--primary button--small" type="submit">{{ 'Comment'|t }}</button>
+        </form>
+    </section>
+</div>

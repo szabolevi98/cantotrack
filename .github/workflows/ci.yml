@@ -1,6 +1,7 @@
 # Every push and pull request: the code style, the static analysis, the unit and
-# integration tests against a real MariaDB, and the smoke test over HTTP against
-# a fresh installation — seeded, signed into, and walked through.
+# integration tests against a real MariaDB, the smoke test over HTTP against
+# a fresh installation — seeded, signed into, and walked through — and the
+# browser tests on top of it, in Chromium.
 name: CI
 
 on:
@@ -91,10 +92,41 @@ jobs:
           php database/migrate.php
           php database/seed.php --email=ci@example.test --name="CI Admin" | tee seed.txt
           PASSWORD=$(grep -oP 'password:\s+\K\S+' seed.txt)
-          php -S 127.0.0.1:8080 -t web bin/dev-router.php > server.log 2>&1 &
+          echo "CT_PASSWORD=$PASSWORD" >> "$GITHUB_ENV"
+          PHP_CLI_SERVER_WORKERS=4 php -S 127.0.0.1:8080 -t web bin/dev-router.php > server.log 2>&1 &
           sleep 1
           php tests/smoke.php --url=http://127.0.0.1:8080 --email=ci@example.test --password="$PASSWORD" --throttle
           php database/seed_demo.php
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+
+      - name: Install the browser tests
+        run: |
+          npm ci --no-audit --no-fund
+          npx playwright install --with-deps chromium
+
+      # The smoke test's last checks lock the address out of signing in on
+      # purpose; the browser tests sign in once more.
+      - name: Browser tests
+        env:
+          CT_URL: http://127.0.0.1:8080/
+          CT_EMAIL: ci@example.test
+        run: |
+          mysql -h 127.0.0.1 -u root -proot cantotrack_ci -e 'DELETE FROM login_attempts'
+          npx playwright test
+
+      - name: What the browser tests saw
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            playwright-report/
+            test-results/
+          retention-days: 7
 
       - name: Server log
         if: failure()

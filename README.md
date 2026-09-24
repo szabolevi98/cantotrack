@@ -400,6 +400,9 @@ vendor/bin/phpstan analyse             # static analysis, level 8
 vendor/bin/php-cs-fixer fix --dry-run  # code style
 php bin/i18n_check.php                 # every sentence has its Hungarian
 php tests/smoke.php --email=you@example.com --password=…
+
+npm ci && npx playwright install chromium          # once, for the browser tests
+CT_URL=http://127.0.0.1:8080/ CT_EMAIL=you@example.com CT_PASSWORD=… npx playwright test
 ```
 
 The smoke test walks the application over real HTTP rather than calling the
@@ -410,6 +413,17 @@ with a token, a signed GitHub push, and an import. It creates what it needs and
 deletes it again; the one thing it leaves behind is a deactivated account,
 because the application does not delete people and the checks do not make an
 exception for themselves.
+
+The browser tests (`tests/e2e`, Playwright) check what only a browser can:
+a card dragged across the board and still there after a reload, the same move
+made with a keyboard, a ticket opened in the panel and changed there, facts
+changed in place without the page reloading, the `@` and ticket suggestions,
+a screenshot pasted into a comment, a file dropped on the attachments, a
+deleted comment taken back, Ctrl+K, the quick "Log time" dialog, a dashboard
+piece dragged into the other column, and an epic's bar dragged along the
+roadmap. Each file makes a project of its own and deletes it afterwards; a
+script error on any page fails the test that opened it. `CT_CHANNEL=chrome`
+uses the Chrome already on the machine instead of downloading Chromium.
 
 Most of what breaks in a PHP application of this shape breaks outside PHP — in
 the rewrite rules, the session cookie or a redirect — and none of that is
@@ -429,7 +443,7 @@ src/Controller/ one class per area of the application
 src/Model/      repositories: everything that touches the database
 src/Service/    the rules: tickets, hours, sprints, calendar, notifications, webhooks
 src/View/       Twig templates, and the CSS and JavaScript sources
-tests/          unit and integration tests, and the smoke test over HTTP
+tests/          unit and integration tests, the smoke test over HTTP, the browser tests
 web/            the document root: the front controller and the built assets
 ```
 

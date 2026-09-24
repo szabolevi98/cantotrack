@@ -1,0 +1,11 @@
+{
+  "name": "cantotrack-e2e",
+  "private": true,
+  "description": "The browser tests: what only a real browser can check — dragging, editing in place, the dialogs.",
+  "scripts": {
+    "e2e": "playwright test"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.63.0"
+  }
+}

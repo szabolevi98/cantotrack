@@ -2,7 +2,9 @@
 
 # CantoTrack
 
-An issue tracker with time tracking for a small team: work is broken down into
+An issue tracker with time tracking, for teams that plan their work and bill
+their hours — from a handful of people to several teams across many projects
+and clients. Work is broken down into
 **projects → epics → tickets**, planned on boards and in sprints, and the hours
 that go into it are logged against the tickets, handed in a week at a time,
 approved, and added up for invoicing.

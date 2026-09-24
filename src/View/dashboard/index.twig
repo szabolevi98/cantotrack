@@ -5,201 +5,38 @@
 {# Greeted by what they asked to be called, or by their whole name — never by
    the first word of it, which in a Hungarian name is the surname. #}
 {% block heading %}{{ 'Hello, {name}'|t({name: current_user.short_name ?: current_user.name}) }}{% endblock %}
-{% block subheading %}<p class="content__sub">{{ 'What is on your plate today.'|t }}</p>{% endblock %}
+{% block subheading %}<p class="content__sub">{{ editing ? 'Drag the pieces where you want them, or change what is on the page.'|t : 'What is on your plate today.'|t }}</p>{% endblock %}
 
 {% block actions %}
-    {% if can_work %}<a class="button button--primary" href="{{ url('/tickets/create') }}">{{ 'New ticket'|t }}</a>{% endif %}
+    {% if editing %}
+        <a class="button button--primary" href="{{ url('/') }}"><i class="bi bi-check-lg" aria-hidden="true"></i> {{ 'Done'|t }}</a>
+    {% else %}
+        <a class="button" href="{{ url('/?edit=1') }}"><i class="bi bi-sliders" aria-hidden="true"></i> {{ 'Customize'|t }}</a>
+        {% if can_work %}<a class="button button--primary" href="{{ url('/tickets/create') }}">{{ 'New ticket'|t }}</a>{% endif %}
+    {% endif %}
 {% endblock %}
 
+{#
+    The dashboard: two columns of pieces, each where the person put it. In
+    the customizing mode every piece can be dragged, moved a step with its
+    buttons, changed or taken off, and the panel above offers more.
+#}
 {% block content %}
-    <div class="stats">
-        <a class="stat stat--link" href="{{ url('/tickets?assignee=' ~ current_user.id ~ '&open=1') }}">
-            <div class="stat__label">{{ 'Assigned to you'|t }}</div>
-            <div class="stat__value">{{ mine|length }}</div>
-        </a>
-        <div class="stat">
-            <div class="stat__label">{{ 'In progress'|t }}</div>
-            <div class="stat__value">{{ in_progress }}</div>
-        </div>
-        <a class="stat stat--link{{ overdue > 0 ? ' stat--alert' : '' }}" href="{{ url('/tickets?assignee=' ~ current_user.id ~ '&due=overdue') }}">
-            <div class="stat__label">{{ 'Overdue'|t }}</div>
-            <div class="stat__value">{{ overdue }}</div>
-        </a>
-        <a class="stat stat--link" href="{{ url('/projects') }}">
-            <div class="stat__label">{{ 'Projects'|t }}</div>
-            <div class="stat__value">{{ projects|length }}</div>
-        </a>
-    </div>
+    {% if editing %}{% include 'dashboard/editor.twig' %}{% endif %}
 
-    <div class="split">
-        <div class="split__main">
-            {% include 'dashboard/gadgets.twig' %}
-
-            <section class="card card--flush">
-                <header class="card__head">
-                    <h2 class="card__title">{{ 'Your open tickets'|t }}</h2>
-                    <a href="{{ url('/tickets?assignee=' ~ current_user.id ~ '&open=1') }}">{{ 'See all'|t }}</a>
-                </header>
-
-                {% if mine is empty %}
-                    <p class="card__empty">
-                        {{ 'Nothing is assigned to you.'|t }}
-                        {% if projects is empty %}
-                            {{ 'There are no projects yet either.'|t }}
-                        {% else %}
-                            <a href="{{ url('/projects') }}">{{ 'Pick something up from a project board.'|t }}</a>
-                        {% endif %}
-                    </p>
-                {% else %}
-                    <table class="table">
-                        <thead>
-                        <tr>
-                            <th class="table__key">{{ 'Ticket'|t }}</th>
-                            <th>{{ 'Title'|t }}</th>
-                            <th>{{ 'Status'|t }}</th>
-                            <th>{{ 'Due'|t }}</th>
-                            <th class="table__number">{{ 'Logged'|t }}</th>
-                        </tr>
-                        </thead>
-                        <tbody>
-                        {% for ticket in mine %}
-                            <tr>
-                                <td class="table__key">{{ ui.type_icon(ticket.type) }} {{ ui.ticket_key(ticket) }}</td>
-                                <td>
-                                    <a href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a>{{ ui.family(ticket) }}
-                                    {{ ui.priority(ticket.priority) }}
-                                </td>
-                                <td>{{ ui.status(ticket.status_name, ticket.status_colour) }}</td>
-                                <td>{{ ui.due(ticket.due_on, false) }}</td>
-                                <td class="table__number">{{ ticket.logged_minutes > 0 ? ticket.logged_minutes|duration : '—' }}</td>
-                            </tr>
-                        {% endfor %}
-                        </tbody>
-                    </table>
+    <div class="dash{{ editing ? ' dash--editing' : '' }}" data-dashboard{% if editing %} data-arrange-url="{{ url('/dashboard/layout') }}"{% endif %}>
+        {% for area, pieces in {main: main, side: side} %}
+            <div class="dash__column dash__column--{{ area }}" data-area="{{ area }}"
+                 aria-label="{{ area == 'main' ? 'The main column'|t : 'The side column'|t }}">
+                {% for piece in pieces %}
+                    {% include 'dashboard/piece.twig' with {piece: piece, first: loop.first, last: loop.last, area: area} %}
+                {% endfor %}
+                {% if editing %}
+                    <p class="dash__drop muted">{{ pieces is empty ? 'Drag a piece here.'|t : '' }}</p>
+                {% elseif pieces is empty and area == 'main' %}
+                    <p class="card card__empty">{{ 'Nothing on your dashboard.'|t }} <a href="{{ url('/?edit=1') }}">{{ 'Customize it'|t }}</a></p>
                 {% endif %}
-            </section>
-        </div>
-
-        {# What happened lately, across the projects: the thing somebody back
-           from a day off wants to read first. #}
-        <aside class="split__side">
-            {% if week %}
-                {% set behind = week.so_far - week.logged %}
-                <a class="card dash-week" href="{{ url('/timesheet') }}">
-                    <h2 class="card__title">{{ 'Your week'|t }}</h2>
-                    <div class="dash-week__figure"><strong>{{ week.logged|duration }}</strong> <span class="muted">/ {{ week.expected|duration }}</span></div>
-                    <span class="bar"><span class="bar__fill" style="width: {{ week.expected > 0 ? min(100, week.logged / week.expected * 100)|round : 0 }}%"></span></span>
-                    <p class="muted dash-week__note">{{ behind > 30 ? '{time} behind the days so far'|t({time: behind|duration}) : 'Up to date with the days so far'|t }}</p>
-                </a>
-            {% endif %}
-
-            {% if budgets|default([]) is not empty %}
-                <section class="card">
-                    <h2 class="card__title">{{ 'Budgets running out'|t }}</h2>
-                    <ul class="page-results">
-                        {% for item in budgets %}
-                            {% set share = max(item.budget.hours_share ?? 0, item.budget.amount_share ?? 0) %}
-                            <li>
-                                <a href="{{ url('/projects/' ~ item.project.id) }}"><strong>{{ item.project.code }}</strong> {{ item.project.name }}</a>
-                                <span class="badge {{ item.budget.over ? 'badge--red' : 'badge--amber' }}">{{ share }}%</span>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                </section>
-            {% endif %}
-
-            {% if sprints is not empty %}
-                <section class="card">
-                    <h2 class="card__title">{{ 'Sprints running'|t }}</h2>
-                    <ul class="dash-list">
-                        {% for sprint in sprints %}
-                            <li>
-                                <a href="{{ url('/sprints/' ~ sprint.id) }}"><strong>{{ sprint.name }}</strong></a>
-                                <span class="muted">{{ sprint.project_code }}{% if sprint.days_left is not null %} · {{ sprint.days_left >= 0 ? plural('{count} day left', '{count} days left', sprint.days_left) : 'over'|t }}{% endif %}</span>
-                                <span class="bar"><span class="bar__fill" style="width: {{ sprint.ticket_count > 0 ? (sprint.done_count / sprint.ticket_count * 100)|round : 0 }}%"></span></span>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                </section>
-            {% endif %}
-
-            {% if releases is not empty %}
-                <section class="card">
-                    <h2 class="card__title">{{ 'Releases coming'|t }}</h2>
-                    <ul class="dash-list">
-                        {% for release in releases %}
-                            <li>
-                                <a href="{{ url('/releases/' ~ release.id) }}"><strong>{{ release.project_code }} {{ release.name }}</strong></a>
-                                <span class="{{ release.release_on < 'now'|date('Y-m-d') ? 'dash-list__late' : 'muted' }}">{{ release.release_on|day }} · {{ '{done} of {count} done'|t({done: release.done_count, count: release.ticket_count}) }}</span>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                </section>
-            {% endif %}
-
-            {% if starred is not empty %}
-                <section class="card">
-                    <h2 class="card__title">{{ 'Starred'|t }}</h2>
-                    <ul class="dash-list">
-                        {% for ticket in starred %}
-                            <li>{{ ui.ticket_key(ticket) }} <a href="{{ url('/tickets/' ~ ticket.id) }}">{{ ticket.title }}</a></li>
-                        {% endfor %}
-                    </ul>
-                </section>
-            {% endif %}
-
-            {% if looked_at is not empty %}
-                <section class="card">
-                    <h2 class="card__title">{{ 'You looked at lately'|t }}</h2>
-                    <ul class="page-results">
-                        {% for item in looked_at %}
-                            <li>
-                                <a href="{{ url(item.url) }}"{{ item.kind == 'ticket' ? ' data-panel' : '' }}>{{ item.label }}</a>
-                                <span class="muted">{{ item.hint }}</span>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                    <p class="hint">{{ 'Ctrl+K jumps to any of them, and to anything else.'|t }}</p>
-                </section>
-            {% endif %}
-
-            {% if pages is not empty %}
-                <section class="card">
-                    <h2 class="card__title">{{ 'Pages lately'|t }}</h2>
-                    <ul class="dash-list">
-                        {% for page in pages %}
-                            <li>
-                                <a href="{{ url('/pages/' ~ page.id) }}">{{ page.title }}</a>
-                                <span class="muted">{{ page.project_code }} · {{ page.updated_by_name|default('—') }} · {{ page.updated_at|day }}</span>
-                            </li>
-                        {% endfor %}
-                    </ul>
-                </section>
-            {% endif %}
-
-            <section class="card">
-                <h2 class="card__title">{{ 'Lately'|t }}</h2>
-                {% if recent is empty %}
-                    <p class="card__body muted">{{ 'Nothing has happened yet.'|t }}</p>
-                {% else %}
-                    <ol class="feed">
-                        {% for item in recent %}
-                            <li class="feed__item">
-                                <a class="ticket-key" href="{{ url('/tickets/' ~ item.ticket_id ~ (item.comment_id ? '#comment-' ~ item.comment_id : '')) }}">{{ item.project_code }}-{{ item.ticket_number }}</a>
-                                <span class="feed__what">
-                                    {% if item.kind == 'commented' %}
-                                        {{ '{who} commented'|t({who: item.user_name}) }}:
-                                        <span class="muted">{{ item.body|striptags|slice(0, 90) }}{{ item.body|length > 90 ? '…' }}</span>
-                                    {% else %}
-                                        {{ ui.event_line(item) }}
-                                    {% endif %}
-                                </span>
-                                <time class="feed__when muted" datetime="{{ item.created_at }}">{{ item.created_at|day }}</time>
-                            </li>
-                        {% endfor %}
-                    </ol>
-                {% endif %}
-            </section>
-        </aside>
+            </div>
+        {% endfor %}
     </div>
 {% endblock %}

@@ -1,0 +1,7 @@
+<h2 class="card__title"><a href="{{ url(piece.link) }}">{{ title }}</a></h2>
+{% if piece.error %}
+    <p class="flash flash--danger">{{ piece.error }}</p>
+{% else %}
+    <a class="gadget__count" href="{{ url(piece.link) }}">{{ piece.count }}</a>
+    <p class="muted gadget__query"><code>{{ piece.query ?: '—' }}</code></p>
+{% endif %}

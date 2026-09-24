@@ -467,9 +467,19 @@ if ($email === null || $password === null) {
     request($baseUrl . '/dashboard/gadgets', ['_token' => $token, 'kind' => 'breakdown', 'title' => 'Smoke split', 'query' => 'project = ' . $code, 'group_by' => 'status'], $jar);
     $dashboard = request($baseUrl . '/', [], $jar)['body'];
     check('a piece of the person’s own can be put on the dashboard', str_contains($dashboard, 'Smoke split') && str_contains($dashboard, 'gadget__bars'));
-    // The one just added is the last; the ones the person had stay.
-    if (preg_match_all('#/dashboard/gadgets/(\d+)/delete#', $dashboard, $m) > 0) {
-        request($baseUrl . '/dashboard/gadgets/' . end($m[1]) . '/delete', ['_token' => $token], $jar);
+    // Customizing: the piece changed in place, a hidden one put back, and
+    // the layout dragged — then the smoke's own piece taken off again.
+    $smokePiece = preg_match('#id="gadget-(\d+)"[^>]*aria-label="Smoke split"#', $dashboard, $m) === 1 ? (int) $m[1] : 0;
+    request($baseUrl . '/dashboard/gadgets/' . $smokePiece, ['_token' => $token, 'kind' => 'count', 'title' => 'Smoke count', 'query' => 'project = ' . $code, 'group_by' => ''], $jar);
+    $editing = request($baseUrl . '/?edit=1', [], $jar)['body'];
+    check(
+        'a piece of the dashboard can be changed in place, and the page can be customized',
+        $smokePiece > 0 && str_contains($editing, 'aria-label="Smoke count"') && str_contains($editing, 'dash--editing') && str_contains($editing, 'data-arrange-url')
+    );
+    $arranged = request($baseUrl . '/dashboard/layout', [], $jar, ['Content-Type: application/json', 'Accept: application/json', 'X-CSRF-Token: ' . $token], 'POST');
+    check('and the layout, as it was dragged, is taken', $arranged['status'] === 200 && str_contains($arranged['body'], '"ok":true'), 'status ' . $arranged['status']);
+    if ($smokePiece > 0) {
+        request($baseUrl . '/dashboard/gadgets/' . $smokePiece . '/delete', ['_token' => $token], $jar);
     }
 
     $suggested = request($baseUrl . '/suggest?kind=tickets&q=' . $code . '-', [], $jar);

@@ -1,0 +1,14 @@
+<h2 class="card__title">{{ title }}</h2>
+{% if sprints is empty %}
+    <p class="card__body muted">{{ 'No sprint is running.'|t }}</p>
+{% else %}
+    <ul class="dash-list">
+        {% for sprint in sprints %}
+            <li>
+                <a href="{{ url('/sprints/' ~ sprint.id) }}"><strong>{{ sprint.name }}</strong></a>
+                <span class="muted">{{ sprint.project_code }}{% if sprint.days_left is not null %} · {{ sprint.days_left >= 0 ? plural('{count} day left', '{count} days left', sprint.days_left) : 'over'|t }}{% endif %}</span>
+                <span class="bar"><span class="bar__fill" style="width: {{ sprint.ticket_count > 0 ? (sprint.done_count / sprint.ticket_count * 100)|round : 0 }}%"></span></span>
+            </li>
+        {% endfor %}
+    </ul>
+{% endif %}

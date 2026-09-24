@@ -167,7 +167,239 @@
 }
 
 /* ---------------------------------------------------------------------------
- * A person's own dashboard: pieces made of queries.
+ * The dashboard: two columns of pieces, each where the person put it.
+ * ------------------------------------------------------------------------- */
+.dash {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 340px;
+    gap: var(--ct-gap);
+    align-items: start;
+}
+
+.dash__column {
+    display: flex;
+    flex-direction: column;
+    gap: var(--ct-gap);
+    min-width: 0;
+    min-height: 80px;
+}
+
+.piece {
+    margin: 0;
+    min-width: 0;
+}
+
+.piece--bare .stats {
+    margin: 0;
+}
+
+/* The four numbers side by side, however narrow the column gets — two by
+   two on a phone. */
+.piece--numbers .stats {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+@media (max-width: 700px) {
+    .piece--numbers .stats {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+/* Customizing, a piece's name is on its bar; the one in it would say it twice. */
+.dash--editing .piece__body > .card__title:first-child,
+.dash--editing .piece__body > .card__head > .card__title,
+.dash--editing .piece__body .dash-week > .card__title {
+    display: none;
+}
+
+.piece__scroll {
+    overflow-x: auto;
+}
+
+.piece--mine {
+    padding: 0;
+    overflow: hidden;
+}
+
+.piece--mine .card__head {
+    padding: 16px 18px 8px;
+}
+
+/* Customizing: every piece a thing to pick up. */
+.dash--editing .dash__column {
+    padding: 8px;
+    border: 2px dashed var(--ct-border);
+    border-radius: var(--ct-radius);
+}
+
+.dash--editing .piece {
+    cursor: grab;
+    outline: 1px solid var(--ct-primary-border);
+}
+
+.dash--editing .piece--bare {
+    padding: 10px;
+    border-radius: var(--ct-radius);
+    background: var(--ct-surface);
+}
+
+.dash--editing .piece--mine .piece__tools {
+    margin: 10px 14px 0;
+}
+
+.piece.is-dragging {
+    opacity: 0.4;
+}
+
+.dash.is-saving {
+    cursor: progress;
+}
+
+.piece__tools {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 8px;
+    align-items: center;
+    margin-bottom: 10px;
+    padding-bottom: 8px;
+    border-bottom: 1px dashed var(--ct-border);
+}
+
+.piece__handle {
+    color: var(--ct-muted);
+    cursor: grab;
+}
+
+.piece__name {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.88rem;
+}
+
+.piece__buttons {
+    display: inline-flex;
+    gap: 2px;
+}
+
+.piece__edit {
+    margin-bottom: 12px;
+    padding: 12px;
+    border-radius: var(--ct-radius-sm);
+    background: var(--ct-bg);
+}
+
+.dash__marker {
+    border: 2px dashed var(--ct-primary);
+    border-radius: var(--ct-radius);
+    background: var(--ct-primary-soft);
+}
+
+.dash__drop {
+    margin: 0;
+    padding: 12px;
+    text-align: center;
+    font-size: 0.86rem;
+}
+
+.dash__drop:empty {
+    display: none;
+}
+
+/* The customizing panel above the columns. */
+.dash-editor {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1.4fr);
+    gap: var(--ct-gap);
+    margin-bottom: var(--ct-gap);
+}
+
+.dash-editor__own {
+    grid-column: 1 / -1;
+}
+
+.dash-editor__own summary {
+    cursor: pointer;
+}
+
+.dash-editor__own form {
+    max-width: 720px;
+    margin-top: 10px;
+}
+
+.dash-editor__tips {
+    margin: 0 0 12px;
+    padding-left: 18px;
+    font-size: 0.9rem;
+    line-height: 1.5;
+}
+
+.dash-editor__list {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 8px;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.dash-editor__add {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    width: 100%;
+    height: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-sm);
+    background: var(--ct-surface);
+    color: inherit;
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+}
+
+.dash-editor__add:hover,
+.dash-editor__add:focus-visible {
+    border-color: var(--ct-primary);
+    background: var(--ct-primary-soft);
+}
+
+.dash-editor__add .bi {
+    margin-top: 2px;
+    color: var(--ct-primary);
+}
+
+.dash-editor__add span {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.dash-editor__add small {
+    overflow: hidden;
+    color: var(--ct-muted);
+    font-size: 0.76rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dash-editor__add--builtin {
+    border-style: dashed;
+}
+
+@media (max-width: 1000px) {
+    .dash,
+    .dash-editor {
+        grid-template-columns: minmax(0, 1fr);
+    }
+}
+
+/* ---------------------------------------------------------------------------
+ * The pieces made of queries.
  * ------------------------------------------------------------------------- */
 .gadgets {
     display: grid;

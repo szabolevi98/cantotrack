@@ -1,0 +1,13 @@
+<h2 class="card__title">{{ title }}</h2>
+{% if releases is empty %}
+    <p class="card__body muted">{{ 'No release has a day set.'|t }}</p>
+{% else %}
+    <ul class="dash-list">
+        {% for release in releases %}
+            <li>
+                <a href="{{ url('/releases/' ~ release.id) }}"><strong>{{ release.project_code }} {{ release.name }}</strong></a>
+                <span class="{{ release.release_on < 'now'|date('Y-m-d') ? 'dash-list__late' : 'muted' }}">{{ release.release_on|day }} · {{ '{done} of {count} done'|t({done: release.done_count, count: release.ticket_count}) }}</span>
+            </li>
+        {% endfor %}
+    </ul>
+{% endif %}

@@ -1,0 +1,14 @@
+<h2 class="card__title">{{ title }}</h2>
+{% if looked_at is empty %}
+    <p class="card__body muted">{{ 'The tickets and pages you open come here.'|t }}</p>
+{% else %}
+    <ul class="page-results">
+        {% for item in looked_at %}
+            <li>
+                <a href="{{ url(item.url) }}"{{ item.kind == 'ticket' ? ' data-panel' : '' }}>{{ item.label }}</a>
+                <span class="muted">{{ item.hint }}</span>
+            </li>
+        {% endfor %}
+    </ul>
+    <p class="hint">{{ 'Ctrl+K jumps to any of them, and to anything else.'|t }}</p>
+{% endif %}

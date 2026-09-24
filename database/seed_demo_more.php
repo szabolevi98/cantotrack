@@ -1177,11 +1177,13 @@ foreach (['BIKE' => 'zsofia', 'CLINIC' => 'gergo'] as $leadCode => $leadHandle) 
 // A dashboard of their own, for the two people most likely to be looked
 // at first.
 $database->prepare('DELETE FROM dashboard_gadgets WHERE user_id IN (:me, :anna)')->execute(['me' => $who['me'], 'anna' => $who['anna']]);
+// Laid out afresh on their next visit, the usual pieces around these.
+$database->prepare('UPDATE users SET dashboard_laid_out = 0 WHERE id IN (:me, :anna)')->execute(['me' => $who['me'], 'anna' => $who['anna']]);
 $gadgets = new CantoTrack\Model\GadgetRepository();
 $gadgets->create($who['me'], 'breakdown', 'Open work by person', 'category != done', 'assignee');
 $gadgets->create($who['me'], 'count', 'Urgent and open', 'priority = urgent AND category != done', null);
 $gadgets->create($who['me'], 'list', 'Bugs this week', 'type = bug AND created >= startOfWeek() ORDER BY priority DESC', null);
-$gadgets->create($who['me'], 'breakdown', 'Where the sprints are', 'sprint IN openSprints()', 'status');
+$gadgets->create($who['me'], 'breakdown', 'Where the sprints are', 'sprint IN openSprints()', 'status', 'side');
 $gadgets->create($who['anna'], 'list', 'Mine, most urgent first', 'assignee = me AND category != done ORDER BY priority DESC', null);
 $gadgets->create($who['anna'], 'breakdown', 'Everything open, by project', 'category != done', 'project');
 

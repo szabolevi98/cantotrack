@@ -1,0 +1,12 @@
+{% if week %}
+    {% set behind = week.so_far - week.logged %}
+    <a class="dash-week" href="{{ url('/timesheet') }}">
+        <h2 class="card__title">{{ title }}</h2>
+        <div class="dash-week__figure"><strong>{{ week.logged|duration }}</strong> <span class="muted">/ {{ week.expected|duration }}</span></div>
+        <span class="bar"><span class="bar__fill" style="width: {{ week.expected > 0 ? min(100, week.logged / week.expected * 100)|round : 0 }}%"></span></span>
+        <p class="muted dash-week__note">{{ behind > 30 ? '{time} behind the days so far'|t({time: behind|duration}) : 'Up to date with the days so far'|t }}</p>
+    </a>
+{% else %}
+    <h2 class="card__title">{{ title }}</h2>
+    <p class="card__body muted">{{ 'Guests log no hours.'|t }}</p>
+{% endif %}

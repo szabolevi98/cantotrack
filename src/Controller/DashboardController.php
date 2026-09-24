@@ -12,12 +12,12 @@ use CantoTrack\Model\TicketRepository;
 use CantoTrack\Service\Gadgets;
 
 /**
- * The page a signed-in person lands on: their own open tickets first, and what
- * has happened lately around them.
+ * The page a signed-in person lands on, laid out the way they want it: what
+ * they are doing today, what they missed, and the pieces of their own they
+ * put there (see Gadgets).
  *
- * Not a summary of everything — a dashboard that shows the whole company's
- * numbers is one people look at once. What belongs here is what somebody needs
- * to answer "what am I doing today", and "what did I miss".
+ * Each piece's figures are read only when the piece is on the page — a
+ * dashboard without the budgets does not add up the budgets.
  */
 class DashboardController extends Controller
 {
@@ -25,46 +25,88 @@ class DashboardController extends Controller
     {
         Auth::require();
 
-        $tickets = new TicketRepository();
-        $mine = $tickets->openFor((int) Auth::id(), 25);
+        $userId = (int) Auth::id();
+        $gadgets = new Gadgets();
+        $gadgets->layOut($userId);
 
-        $this->render('dashboard/index.twig', [
+        $pieces = $gadgets->drawn($userId);
+        $has = array_flip(array_map(static fn(array $g): string => (string) $g['kind'], $pieces));
+        $tickets = new TicketRepository();
+        $isGuest = (Auth::user()['role'] ?? '') === 'guest';
+
+        // The person's own open tickets feed the numbers as well as the list.
+        $mine = isset($has['mine']) || isset($has['numbers']) ? $tickets->openFor($userId, 25) : [];
+
+        $data = [
             'mine' => $mine,
             // In progress is the count that matters: several at once is the
             // thing a person can see about their own week and act on.
             'in_progress' => count(array_filter($mine, static fn(array $t): bool => $t['status_category'] === 'in_progress')),
-            'overdue' => count(array_filter(
-                $mine,
-                static fn(array $t): bool => $t['due_on'] !== null && $t['due_on'] < date('Y-m-d')
-            )),
+            'overdue' => count(array_filter($mine, static fn(array $t): bool => $t['due_on'] !== null && $t['due_on'] < date('Y-m-d'))),
             'projects' => (new ProjectRepository())->allWithCounts(),
-            'recent' => (new EventRepository())->recent(15),
-            'week' => (Auth::user()['role'] ?? '') !== 'guest' ? $this->week() : null,
-            'sprints' => $this->runningSprints(),
-            'releases' => $this->comingReleases(),
-            'pages' => (new \CantoTrack\Model\PageRepository())->recent(5),
-            'starred' => $tickets->favouritesOf((int) Auth::id(), 6),
-            'gadgets' => (new Gadgets())->drawn((int) Auth::id()),
+            'recent' => isset($has['activity']) ? (new EventRepository())->recent(15) : [],
+            'week' => isset($has['week']) && !$isGuest ? $this->week() : null,
+            'sprints' => isset($has['sprints']) ? $this->runningSprints() : [],
+            'releases' => isset($has['releases']) ? $this->comingReleases() : [],
+            'pages' => isset($has['pages']) ? (new \CantoTrack\Model\PageRepository())->recent(5) : [],
+            'starred' => isset($has['starred']) ? $tickets->favouritesOf($userId, 6) : [],
             // Budgets past their warning, for whoever looks after them.
-            'budgets' => Auth::isAdmin() ? (new \CantoTrack\Service\Budget())->running((new ProjectRepository())->allWithCounts()) : [],
-            'looked_at' => (new \CantoTrack\Model\RecentRepository())->latest((int) Auth::id(), 5),
+            'budgets' => isset($has['budgets']) && Auth::isAdmin() ? (new \CantoTrack\Service\Budget())->running((new ProjectRepository())->allWithCounts()) : [],
+            'looked_at' => isset($has['looked_at']) ? (new \CantoTrack\Model\RecentRepository())->latest($userId, 5) : [],
+        ];
+
+        $this->render('dashboard/index.twig', $data + [
+            'main' => array_values(array_filter($pieces, static fn(array $g): bool => $g['area'] === 'main')),
+            'side' => array_values(array_filter($pieces, static fn(array $g): bool => $g['area'] === 'side')),
+            'editing' => ($_GET['edit'] ?? '') === '1',
+            'hidden_builtins' => array_values(array_filter(array_keys(Gadgets::BUILTIN), static fn(string $k): bool => !isset($has[$k]))),
+            'examples' => Gadgets::examples(),
             'gadget_groups' => array_keys(Gadgets::GROUPS),
         ]);
     }
 
-    /** A piece added to one's own dashboard. */
+    /** A piece of one's own, added to the dashboard. */
     public function addGadget(): void
     {
         Auth::require();
 
         try {
-            (new Gadgets())->add((int) Auth::id(), $this->input('kind'), $this->input('title'), $this->input('query'), $this->input('group_by'));
+            (new Gadgets())->add((int) Auth::id(), $this->input('kind'), $this->input('title'), $this->input('query'), $this->input('group_by'), $this->input('area', 'main'));
             $this->flash(__('Added to your dashboard.'));
         } catch (ValidationError $e) {
             $this->flash($e->getMessage(), 'danger');
         }
 
-        $this->redirect('/#gadgets');
+        $this->redirect('/?edit=1');
+    }
+
+    /** A piece of one's own, changed where it is. */
+    public function updateGadget(int $id): void
+    {
+        Auth::require();
+
+        try {
+            (new Gadgets())->update((int) Auth::id(), $id, $this->input('kind'), $this->input('title'), $this->input('query'), $this->input('group_by'));
+            $this->flash(__('Saved.'));
+        } catch (ValidationError $e) {
+            $this->flash($e->getMessage(), 'danger');
+        }
+
+        $this->redirect('/?edit=1#gadget-' . $id);
+    }
+
+    /** One of the pieces every dashboard starts with, put back. */
+    public function addBuiltin(): void
+    {
+        Auth::require();
+
+        try {
+            $id = (new Gadgets())->addBuiltin((int) Auth::id(), $this->input('kind'));
+            $this->redirect('/?edit=1#gadget-' . $id);
+        } catch (ValidationError $e) {
+            $this->flash($e->getMessage(), 'danger');
+            $this->redirect('/?edit=1');
+        }
     }
 
     public function removeGadget(int $id): void
@@ -72,15 +114,39 @@ class DashboardController extends Controller
         Auth::require();
 
         (new GadgetRepository())->delete($id, (int) Auth::id());
-        $this->redirect('/#gadgets');
+        $this->redirect('/?edit=1');
     }
 
+    /** A step up or down, or over to the other column — without dragging. */
     public function moveGadget(int $id): void
     {
         Auth::require();
 
-        (new GadgetRepository())->move($id, (int) Auth::id(), $this->input('direction') === 'up' ? -1 : 1);
-        $this->redirect('/#gadgets');
+        $direction = in_array($this->input('direction'), ['up', 'down', 'other'], true) ? $this->input('direction') : 'down';
+        (new GadgetRepository())->move($id, (int) Auth::id(), $direction);
+        $this->redirect('/?edit=1#gadget-' . $id);
+    }
+
+    /** The layout as it was dragged, sent by the page's script. */
+    public function arrange(): void
+    {
+        Auth::require();
+
+        $body = json_decode((string) file_get_contents('php://input'), true);
+        $ids = static fn(mixed $list): array => array_values(array_map('intval', array_filter(is_array($list) ? $list : [], 'is_numeric')));
+
+        (new GadgetRepository())->arrange((int) Auth::id(), $ids($body['main'] ?? []), $ids($body['side'] ?? []));
+        $this->json(['ok' => true]);
+    }
+
+    /** Back to how a dashboard starts; one's own pieces are kept. */
+    public function reset(): void
+    {
+        Auth::require();
+
+        (new Gadgets())->reset((int) Auth::id());
+        $this->flash(__('Your dashboard is back as it starts. Your own pieces are still on it.'));
+        $this->redirect('/?edit=1');
     }
 
     /**

@@ -49,7 +49,7 @@ final class GadgetsTest extends DatabaseTestCase
         $second = $gadgets->add($me, 'count', 'Two', '', '');
         $repository = new GadgetRepository($this->db);
 
-        $repository->move($second, $me, -1);
+        $repository->move($second, $me, 'up');
         self::assertSame(['Two', 'One'], array_column($repository->forUser($me), 'title'));
 
         $repository->delete($first, $other);
@@ -60,5 +60,56 @@ final class GadgetsTest extends DatabaseTestCase
     {
         self::assertSame('(category != done) AND assignee = "Anna" ORDER BY priority DESC', Gadgets::narrowed('category != done ORDER BY priority DESC', 'assignee', 'Anna'));
         self::assertSame('epic IS EMPTY', Gadgets::narrowed('', 'epic', ''));
+    }
+
+    public function testADashboardStartsWithTheUsualPiecesAroundThePersonsOwn(): void
+    {
+        $me = $this->person();
+        $gadgets = new Gadgets($this->db);
+        $own = $gadgets->add($me, 'count', 'Mine', '', '');
+
+        $gadgets->layOut($me);
+        $gadgets->layOut($me);
+
+        $pieces = (new GadgetRepository($this->db))->forUser($me);
+        $main = array_values(array_filter($pieces, static fn(array $g): bool => $g['area'] === 'main'));
+        self::assertSame(['numbers', 'count', 'mine'], array_column($main, 'kind'), 'the own piece after the numbers, laid out once');
+        self::assertCount(count(Gadgets::BUILTIN) + 1, $pieces);
+        self::assertSame($own, (int) $main[1]['id']);
+    }
+
+    public function testAHiddenPieceCanBePutBackAndTheLayoutRearranged(): void
+    {
+        $me = $this->person();
+        $gadgets = new Gadgets($this->db);
+        $repository = new GadgetRepository($this->db);
+        $gadgets->layOut($me);
+        $week = array_values(array_filter($repository->forUser($me), static fn(array $g): bool => $g['kind'] === 'week'))[0];
+
+        $repository->delete((int) $week['id'], $me);
+        $back = $gadgets->addBuiltin($me, 'week');
+        self::assertSame($back, $gadgets->addBuiltin($me, 'week'), 'only ever once');
+
+        $repository->arrange($me, [$back], []);
+        self::assertSame('main', $repository->find($back, $me)['area']);
+
+        $repository->move($back, $me, 'other');
+        self::assertSame('side', $repository->find($back, $me)['area']);
+    }
+
+    public function testAPieceOfOnesOwnIsChangedInPlaceButABuiltinIsNot(): void
+    {
+        $me = $this->person();
+        $gadgets = new Gadgets($this->db);
+        $id = $gadgets->add($me, 'list', 'Bugs', 'type = bug', '');
+
+        $gadgets->update($me, $id, 'breakdown', 'Bugs by status', 'type = bug', 'status');
+        $row = (new GadgetRepository($this->db))->find($id, $me);
+        self::assertSame(['breakdown', 'Bugs by status', 'status'], [$row['kind'], $row['title'], $row['group_by']]);
+
+        $gadgets->layOut($me);
+        $numbers = array_values(array_filter((new GadgetRepository($this->db))->forUser($me), static fn(array $g): bool => $g['kind'] === 'numbers'))[0];
+        $this->expectException(ValidationError::class);
+        $gadgets->update($me, (int) $numbers['id'], 'list', 'x', '', '');
     }
 }

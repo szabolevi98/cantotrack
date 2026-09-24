@@ -1,0 +1,18 @@
+<div class="stats">
+    <a class="stat stat--link" href="{{ url('/tickets?assignee=' ~ current_user.id ~ '&open=1') }}">
+        <div class="stat__label">{{ 'Assigned to you'|t }}</div>
+        <div class="stat__value">{{ mine|length }}</div>
+    </a>
+    <div class="stat">
+        <div class="stat__label">{{ 'In progress'|t }}</div>
+        <div class="stat__value">{{ in_progress }}</div>
+    </div>
+    <a class="stat stat--link{{ overdue > 0 ? ' stat--alert' : '' }}" href="{{ url('/tickets?assignee=' ~ current_user.id ~ '&due=overdue') }}">
+        <div class="stat__label">{{ 'Overdue'|t }}</div>
+        <div class="stat__value">{{ overdue }}</div>
+    </a>
+    <a class="stat stat--link" href="{{ url('/projects') }}">
+        <div class="stat__label">{{ 'Projects'|t }}</div>
+        <div class="stat__value">{{ projects|length }}</div>
+    </a>
+</div>

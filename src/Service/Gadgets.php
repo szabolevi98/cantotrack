@@ -9,14 +9,33 @@ use CantoTrack\Model\TicketRepository;
 use PDO;
 
 /**
- * The pieces of a person's dashboard, each drawn from a query: the tickets
- * it finds, how many, or how they split by a field — see the 0034
- * migration. Each is read as the person who is looking, so it only ever
- * counts what they may see.
+ * The pieces a dashboard is made of — see the 0034 and 0041 migrations.
+ *
+ * Some are drawn from a query the person wrote: the tickets it finds, how
+ * many, or how they split by a field. The rest are the ones every
+ * dashboard starts with — the numbers, one's own tickets, one's week, the
+ * sprints running — which can be hidden, put back and moved like any other.
+ * Each is read as the person who is looking, so it only ever counts what
+ * they may see.
  */
 final class Gadgets
 {
+    /** The pieces made of a query. */
     public const KINDS = ['list', 'count', 'breakdown'];
+
+    /** The pieces every dashboard starts with, and the column each starts in. */
+    public const BUILTIN = [
+        'numbers' => 'main',
+        'mine' => 'main',
+        'week' => 'side',
+        'budgets' => 'side',
+        'sprints' => 'side',
+        'releases' => 'side',
+        'starred' => 'side',
+        'looked_at' => 'side',
+        'pages' => 'side',
+        'activity' => 'side',
+    ];
 
     /** What a breakdown can split by: the field's name in the query language, and its column. */
     public const GROUPS = [
@@ -30,6 +49,23 @@ final class Gadgets
         'project' => 'p.code',
     ];
 
+    /**
+     * Ready-made pieces, one click each — the help's examples.
+     *
+     * @return list<array{title: string, kind: string, query: string, group_by: string}>
+     */
+    public static function examples(): array
+    {
+        return [
+            ['title' => __('Mine, the most urgent first'), 'kind' => 'list', 'query' => 'assignee = me AND category != done ORDER BY priority DESC', 'group_by' => ''],
+            ['title' => __('Mine, due this week'), 'kind' => 'list', 'query' => 'assignee = me AND due <= endOfWeek() AND category != done ORDER BY due ASC', 'group_by' => ''],
+            ['title' => __('Stuck for three days'), 'kind' => 'list', 'query' => 'category = "in progress" AND updated <= -3d ORDER BY updated ASC', 'group_by' => ''],
+            ['title' => __('Open work by person'), 'kind' => 'breakdown', 'query' => 'category != done', 'group_by' => 'assignee'],
+            ['title' => __('Where the sprints are'), 'kind' => 'breakdown', 'query' => 'sprint IN openSprints()', 'group_by' => 'status'],
+            ['title' => __('Bugs opened this week'), 'kind' => 'count', 'query' => 'type = bug AND created >= startOfWeek()', 'group_by' => ''],
+        ];
+    }
+
     private GadgetRepository $gadgets;
     private TicketRepository $tickets;
     private ?PDO $db;
@@ -42,11 +78,107 @@ final class Gadgets
     }
 
     /**
-     * Adds a piece to someone's dashboard, once its query reads.
+     * A dashboard laid out for the first time: the pieces every dashboard
+     * starts with, with whatever the person had made kept in the main
+     * column, after the numbers.
+     */
+    public function layOut(int $userId): void
+    {
+        if ($this->gadgets->isLaidOut($userId)) {
+            return;
+        }
+
+        $this->reset($userId);
+    }
+
+    /**
+     * Back to how a dashboard starts: every built-in piece where it starts,
+     * in its order, and the person's own pieces kept in their columns.
+     */
+    public function reset(int $userId): void
+    {
+        // The person's own pieces stay in the column they were in: in the
+        // main one after the numbers, in the side one after the usual pieces.
+        $own = ['main' => [], 'side' => []];
+        foreach ($this->gadgets->forUser($userId) as $gadget) {
+            if (isset(self::BUILTIN[$gadget['kind']])) {
+                $this->gadgets->delete((int) $gadget['id'], $userId);
+            } else {
+                $own[$gadget['area'] === 'side' ? 'side' : 'main'][] = (int) $gadget['id'];
+            }
+        }
+
+        $main = [];
+        $side = [];
+        foreach (self::BUILTIN as $kind => $area) {
+            $id = $this->gadgets->create($userId, $kind, '', '', null, $area);
+            if ($area === 'side') {
+                $side[] = $id;
+            } elseif ($kind === 'numbers') {
+                $main = array_merge([$id], $own['main']);
+            } else {
+                $main[] = $id;
+            }
+        }
+
+        $this->gadgets->arrange($userId, $main, array_merge($side, $own['side']));
+        $this->gadgets->markLaidOut($userId);
+    }
+
+    /**
+     * Puts a built-in piece back, where it starts.
      *
      * @throws ValidationError
      */
-    public function add(int $userId, string $kind, string $title, string $query, string $groupBy): int
+    public function addBuiltin(int $userId, string $kind): int
+    {
+        if (!isset(self::BUILTIN[$kind])) {
+            throw new ValidationError(__('There is no such piece.'));
+        }
+
+        foreach ($this->gadgets->forUser($userId) as $gadget) {
+            if ($gadget['kind'] === $kind) {
+                return (int) $gadget['id'];
+            }
+        }
+
+        return $this->gadgets->create($userId, $kind, '', '', null, self::BUILTIN[$kind]);
+    }
+
+    /**
+     * Adds a piece of the person's own, once its query reads.
+     *
+     * @throws ValidationError
+     */
+    public function add(int $userId, string $kind, string $title, string $query, string $groupBy, string $area = 'main'): int
+    {
+        [$title, $query, $groupBy] = $this->checked($userId, $kind, $title, $query, $groupBy);
+
+        return $this->gadgets->create($userId, $kind, $title, $query, $groupBy, $area);
+    }
+
+    /**
+     * Changes a piece of the person's own in place.
+     *
+     * @throws ValidationError
+     */
+    public function update(int $userId, int $id, string $kind, string $title, string $query, string $groupBy): void
+    {
+        $gadget = $this->gadgets->find($id, $userId);
+
+        if ($gadget === null || isset(self::BUILTIN[$gadget['kind']])) {
+            throw new ValidationError(__('There is no such piece.'));
+        }
+
+        [$title, $query, $groupBy] = $this->checked($userId, $kind, $title, $query, $groupBy);
+        $this->gadgets->update($id, $userId, $kind, $title, $query, $groupBy);
+    }
+
+    /**
+     * @return array{0: string, 1: string, 2: ?string}
+     * @throws ValidationError
+     */
+    private function checked(int $userId, string $kind, string $title, string $query, string $groupBy): array
     {
         if (!in_array($kind, self::KINDS, true)) {
             throw new ValidationError(__('Pick what it should show.'));
@@ -64,11 +196,13 @@ final class Gadgets
         // Checked now, so a typo is said at once rather than on every visit.
         $this->compile(trim($query), $userId);
 
-        return $this->gadgets->create($userId, $kind, mb_substr($title, 0, 120), mb_substr(trim($query), 0, 1000), $kind === 'breakdown' ? $groupBy : null);
+        return [mb_substr($title, 0, 120), mb_substr(trim($query), 0, 1000), $kind === 'breakdown' ? $groupBy : null];
     }
 
     /**
-     * Each of a person's pieces, read now: what it shows, or why it cannot.
+     * Each of a person's pieces, read now: what a query piece shows, or why
+     * it cannot. The built-in ones are passed through for the dashboard to
+     * fill in.
      *
      * @return list<array<string, mixed>>
      */
@@ -77,8 +211,13 @@ final class Gadgets
         $drawn = [];
 
         foreach ($this->gadgets->forUser($userId) as $gadget) {
+            if (isset(self::BUILTIN[$gadget['kind']])) {
+                $drawn[] = $gadget + ['builtin' => true];
+                continue;
+            }
+
             $query = (string) $gadget['query'];
-            $piece = $gadget + ['error' => null, 'tickets' => [], 'count' => 0, 'groups' => [], 'link' => '/tickets?' . http_build_query(['query' => $query])];
+            $piece = $gadget + ['builtin' => false, 'error' => null, 'tickets' => [], 'count' => 0, 'groups' => [], 'link' => '/tickets?' . http_build_query(['query' => $query])];
 
             try {
                 $filters = $this->compile($query, $userId);

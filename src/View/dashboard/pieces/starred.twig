@@ -1,0 +1,11 @@
+{% import 'common/macros.twig' as ui %}
+<h2 class="card__title">{{ title }}</h2>
+{% if starred is empty %}
+    <p class="card__body muted">{{ 'The star on a ticket puts it here.'|t }}</p>
+{% else %}
+    <ul class="dash-list">
+        {% for ticket in starred %}
+            <li>{{ ui.ticket_key(ticket) }} <a href="{{ url('/tickets/' ~ ticket.id) }}" data-panel>{{ ticket.title }}</a></li>
+        {% endfor %}
+    </ul>
+{% endif %}

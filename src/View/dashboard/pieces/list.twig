@@ -1,0 +1,20 @@
+{% import 'common/macros.twig' as ui %}
+<h2 class="card__title"><a href="{{ url(piece.link) }}">{{ title }}</a>{% if not piece.error %} <span class="muted">{{ piece.count }}</span>{% endif %}</h2>
+{% if piece.error %}
+    <p class="flash flash--danger">{{ piece.error }}</p>
+{% elseif piece.tickets is empty %}
+    <p class="card__body muted">{{ 'Nothing matches it.'|t }}</p>
+{% else %}
+    <ul class="gadget__list">
+        {% for ticket in piece.tickets %}
+            <li>
+                <span class="gadget__key">{{ ui.type_icon(ticket.type) }} {{ ui.ticket_key(ticket) }}</span>
+                <a href="{{ url('/tickets/' ~ ticket.id) }}" data-panel>{{ ticket.title }}</a>
+                {{ ui.status(ticket.status_name, ticket.status_colour) }}
+            </li>
+        {% endfor %}
+    </ul>
+    {% if piece.count > piece.tickets|length %}
+        <p class="gadget__more"><a href="{{ url(piece.link) }}">{{ 'All {count}'|t({count: piece.count}) }}</a></p>
+    {% endif %}
+{% endif %}

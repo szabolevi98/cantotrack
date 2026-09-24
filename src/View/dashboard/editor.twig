@@ -1,0 +1,74 @@
+{#
+    The customizing panel: what can be done, pieces ready to add, the ones
+    hidden, and a piece of one's own.
+#}
+<div class="dash-editor">
+    <section class="card dash-editor__help">
+        <h2 class="card__title"><i class="bi bi-info-circle" aria-hidden="true"></i> {{ 'How it works'|t }}</h2>
+        <ul class="dash-editor__tips">
+            <li>{{ 'Drag a piece by its handle to another place, or into the other column. The arrows do the same from the keyboard.'|t }}</li>
+            <li>{{ 'The × takes a piece off. The ones every dashboard has can be put back from here; your own are gone.'|t }}</li>
+            <li>{{ 'A piece of your own is a query, as on the ticket list, shown as the tickets it finds, how many there are, or how they split by a field. The pencil changes it.'|t }}</li>
+            <li>{{ 'Everything is saved as you go. Done takes you back to the dashboard.'|t }}</li>
+        </ul>
+        <form method="post" action="{{ url('/dashboard/reset') }}" data-confirm="{{ 'Put the dashboard back as it starts? Your own pieces stay.'|t }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <button class="button button--small" type="submit"><i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i> {{ 'Back to how it starts'|t }}</button>
+        </form>
+    </section>
+
+    <section class="card dash-editor__examples">
+        <h2 class="card__title">{{ 'Ready to add'|t }}</h2>
+        <ul class="dash-editor__list">
+            {% for example in examples %}
+                <li>
+                    <form method="post" action="{{ url('/dashboard/gadgets') }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                        {% for name in ['title', 'kind', 'query', 'group_by'] %}<input type="hidden" name="{{ name }}" value="{{ example[name] }}">{% endfor %}
+                        <button class="dash-editor__add" type="submit" title="{{ example.query }}">
+                            <i class="bi bi-plus-lg" aria-hidden="true"></i>
+                            <span><strong>{{ example.title }}</strong><small><code>{{ example.query }}</code></small></span>
+                        </button>
+                    </form>
+                </li>
+            {% endfor %}
+            {% set names = {
+                numbers: 'Your numbers', mine: 'Your open tickets', week: 'Your week', budgets: 'Budgets running out',
+                sprints: 'Sprints running', releases: 'Releases coming', starred: 'Starred', looked_at: 'You looked at lately',
+                pages: 'Pages lately', activity: 'What happened lately'
+            } %}
+            {% for kind in hidden_builtins %}
+                {% if kind != 'budgets' or is_admin %}
+                    <li>
+                        <form method="post" action="{{ url('/dashboard/builtins') }}">
+                            <input type="hidden" name="_token" value="{{ csrf_token }}">
+                            <input type="hidden" name="kind" value="{{ kind }}">
+                            <button class="dash-editor__add dash-editor__add--builtin" type="submit">
+                                <i class="bi bi-arrow-counterclockwise" aria-hidden="true"></i>
+                                <span><strong>{{ names[kind]|t }}</strong><small>{{ 'Put it back'|t }}</small></span>
+                            </button>
+                        </form>
+                    </li>
+                {% endif %}
+            {% endfor %}
+        </ul>
+    </section>
+
+    <details class="card dash-editor__own">
+        <summary class="card__title">{{ 'A piece of your own'|t }}</summary>
+        <form method="post" action="{{ url('/dashboard/gadgets') }}" data-piece-form>
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            {% include 'dashboard/fields.twig' with {values: {}, prefix: 'new'} %}
+            <label for="new-area">{{ 'Where'|t }}</label>
+            <select id="new-area" class="field" name="area">
+                <option value="main">{{ 'The main column'|t }}</option>
+                <option value="side">{{ 'The side column'|t }}</option>
+            </select>
+            <p class="hint">{{ 'The query is written as on the ticket list: field, operator, value — joined with AND and OR, with ORDER BY at the end. Left empty, it takes every ticket you can see.'|t }}
+                <a href="{{ url('/tickets?mode=query') }}">{{ 'Try one out on the ticket list'|t }}</a></p>
+            <div class="form__actions">
+                <button class="button button--primary" type="submit">{{ 'Add'|t }}</button>
+            </div>
+        </form>
+    </details>
+</div>

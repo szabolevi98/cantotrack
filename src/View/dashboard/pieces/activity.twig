@@ -1,0 +1,22 @@
+{% import 'common/macros.twig' as ui %}
+<h2 class="card__title">{{ title }}</h2>
+{% if recent is empty %}
+    <p class="card__body muted">{{ 'Nothing has happened yet.'|t }}</p>
+{% else %}
+    <ol class="feed">
+        {% for item in recent %}
+            <li class="feed__item">
+                <a class="ticket-key" href="{{ url('/tickets/' ~ item.ticket_id ~ (item.comment_id ? '#comment-' ~ item.comment_id : '')) }}">{{ item.project_code }}-{{ item.ticket_number }}</a>
+                <span class="feed__what">
+                    {% if item.kind == 'commented' %}
+                        {{ '{who} commented'|t({who: item.user_name}) }}:
+                        <span class="muted">{{ item.body|striptags|slice(0, 90) }}{{ item.body|length > 90 ? '…' }}</span>
+                    {% else %}
+                        {{ ui.event_line(item) }}
+                    {% endif %}
+                </span>
+                <time class="feed__when muted" datetime="{{ item.created_at }}">{{ item.created_at|day }}</time>
+            </li>
+        {% endfor %}
+    </ol>
+{% endif %}

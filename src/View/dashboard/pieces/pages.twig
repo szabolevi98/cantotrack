@@ -1,0 +1,13 @@
+<h2 class="card__title">{{ title }}</h2>
+{% if pages is empty %}
+    <p class="card__body muted">{{ 'No page was written yet.'|t }}</p>
+{% else %}
+    <ul class="dash-list">
+        {% for page in pages %}
+            <li>
+                <a href="{{ url('/pages/' ~ page.id) }}">{{ page.title }}</a>
+                <span class="muted">{{ page.project_code }} · {{ page.updated_by_name|default('—') }} · {{ page.updated_at|day }}</span>
+            </li>
+        {% endfor %}
+    </ul>
+{% endif %}

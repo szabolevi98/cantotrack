@@ -1,0 +1,14 @@
+<h2 class="card__title">{{ title }}</h2>
+{% if budgets is empty %}
+    <p class="card__body muted">{{ is_admin ? 'No budget is near its end.'|t : 'Budgets are for the administrators.'|t }}</p>
+{% else %}
+    <ul class="page-results">
+        {% for item in budgets %}
+            {% set share = max(item.budget.hours_share ?? 0, item.budget.amount_share ?? 0) %}
+            <li>
+                <a href="{{ url('/projects/' ~ item.project.id) }}"><strong>{{ item.project.code }}</strong> {{ item.project.name }}</a>
+                <span class="badge {{ item.budget.over ? 'badge--red' : 'badge--amber' }}">{{ share }}%</span>
+            </li>
+        {% endfor %}
+    </ul>
+{% endif %}

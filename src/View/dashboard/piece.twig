@@ -1,0 +1,51 @@
+{#
+    One piece of the dashboard, in its frame: what it shows, and in the
+    customizing mode, the handle to drag it by and its buttons.
+#}
+{% import 'common/macros.twig' as ui %}
+{% set names = {
+    numbers: 'Your numbers', mine: 'Your open tickets', week: 'Your week', budgets: 'Budgets running out',
+    sprints: 'Sprints running', releases: 'Releases coming', starred: 'Starred', looked_at: 'You looked at lately',
+    pages: 'Pages lately', activity: 'What happened lately'
+} %}
+{% set title = piece.builtin ? names[piece.kind]|default(piece.kind)|t : piece.title %}
+<section class="piece piece--{{ piece.kind }}{{ piece.kind == 'numbers' ? ' piece--bare' : ' card' }}" id="gadget-{{ piece.id }}"
+         data-gadget-id="{{ piece.id }}"{% if editing %} draggable="true"{% endif %} aria-label="{{ title }}">
+    {% if editing %}
+        <header class="piece__tools">
+            <span class="piece__handle" title="{{ 'Drag to move it'|t }}" aria-hidden="true"><i class="bi bi-grip-vertical"></i></span>
+            <strong class="piece__name">{{ title }}</strong>
+            <form method="post" action="{{ url('/dashboard/gadgets/' ~ piece.id ~ '/move') }}" class="piece__buttons">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <button class="link-button" type="submit" name="direction" value="up" {{ first ? 'disabled' : '' }} aria-label="{{ 'Move {name} up'|t({name: title}) }}" title="{{ 'Move up'|t }}">↑</button>
+                <button class="link-button" type="submit" name="direction" value="down" {{ last ? 'disabled' : '' }} aria-label="{{ 'Move {name} down'|t({name: title}) }}" title="{{ 'Move down'|t }}">↓</button>
+                <button class="link-button" type="submit" name="direction" value="other"
+                        aria-label="{{ area == 'main' ? 'Move {name} to the side column'|t({name: title}) : 'Move {name} to the main column'|t({name: title}) }}"
+                        title="{{ area == 'main' ? 'To the side column'|t : 'To the main column'|t }}">{{ area == 'main' ? '→' : '←' }}</button>
+            </form>
+            {% if not piece.builtin %}
+                <button class="link-button" type="button" data-piece-edit aria-expanded="false" aria-controls="edit-{{ piece.id }}" title="{{ 'Change it'|t }}">
+                    <i class="bi bi-pencil" aria-hidden="true"></i><span class="visually-hidden">{{ 'Change {name}'|t({name: title}) }}</span>
+                </button>
+            {% endif %}
+            <form method="post" action="{{ url('/dashboard/gadgets/' ~ piece.id ~ '/delete') }}"{% if not piece.builtin %} data-confirm="{{ 'Take {name} off your dashboard?'|t({name: title}) }}"{% endif %}>
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <button class="link-button" type="submit" aria-label="{{ 'Take {name} off your dashboard'|t({name: title}) }}" title="{{ piece.builtin ? 'Hide it — the panel above puts it back'|t : 'Take it off'|t }}">×</button>
+            </form>
+        </header>
+        {% if not piece.builtin %}
+            <form class="piece__edit" id="edit-{{ piece.id }}" method="post" action="{{ url('/dashboard/gadgets/' ~ piece.id) }}" hidden data-piece-form>
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                {% include 'dashboard/fields.twig' with {values: piece, prefix: 'edit-' ~ piece.id} %}
+                <div class="form__actions">
+                    <button class="button button--primary button--small" type="submit">{{ 'Save'|t }}</button>
+                    <button class="button button--small" type="button" data-piece-edit>{{ 'Cancel'|t }}</button>
+                </div>
+            </form>
+        {% endif %}
+    {% endif %}
+
+    <div class="piece__body">
+        {% include 'dashboard/pieces/' ~ piece.kind ~ '.twig' ignore missing with {piece: piece, title: title} %}
+    </div>
+</section>

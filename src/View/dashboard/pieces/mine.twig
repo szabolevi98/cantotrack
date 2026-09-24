@@ -1,0 +1,36 @@
+{% import 'common/macros.twig' as ui %}
+<header class="card__head">
+    <h2 class="card__title">{{ title }}</h2>
+    <a href="{{ url('/tickets?assignee=' ~ current_user.id ~ '&open=1') }}">{{ 'See all'|t }}</a>
+</header>
+{% if mine is empty %}
+    <p class="card__empty">
+        {{ 'Nothing is assigned to you.'|t }}
+        {% if projects is empty %}{{ 'There are no projects yet either.'|t }}{% else %}<a href="{{ url('/projects') }}">{{ 'Pick something up from a project board.'|t }}</a>{% endif %}
+    </p>
+{% else %}
+    <div class="piece__scroll">
+        <table class="table">
+            <thead>
+            <tr>
+                <th class="table__key">{{ 'Ticket'|t }}</th>
+                <th>{{ 'Title'|t }}</th>
+                <th>{{ 'Status'|t }}</th>
+                <th>{{ 'Due'|t }}</th>
+                <th class="table__number">{{ 'Logged'|t }}</th>
+            </tr>
+            </thead>
+            <tbody>
+            {% for ticket in mine %}
+                <tr>
+                    <td class="table__key">{{ ui.type_icon(ticket.type) }} {{ ui.ticket_key(ticket) }}</td>
+                    <td><a href="{{ url('/tickets/' ~ ticket.id) }}" data-panel>{{ ticket.title }}</a>{{ ui.family(ticket) }} {{ ui.priority(ticket.priority) }}</td>
+                    <td>{{ ui.status(ticket.status_name, ticket.status_colour) }}</td>
+                    <td>{{ ui.due(ticket.due_on, false) }}</td>
+                    <td class="table__number">{{ ticket.logged_minutes > 0 ? ticket.logged_minutes|duration : '—' }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+{% endif %}

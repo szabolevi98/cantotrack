@@ -1,0 +1,27 @@
+{# The fields of a piece made of a query: for a new one and for changing one. #}
+{% set values = values|default({}) %}
+<label for="{{ prefix }}-title">{{ 'Title'|t }}</label>
+<input id="{{ prefix }}-title" class="field" type="text" name="title" maxlength="120" required value="{{ values.title|default('') }}" placeholder="{{ 'Urgent bugs'|t }}">
+
+<label for="{{ prefix }}-query">{{ 'Query'|t }}</label>
+<input id="{{ prefix }}-query" class="field field--code" type="text" name="query" maxlength="1000" value="{{ values.query|default('') }}"
+       placeholder="type = bug AND priority = urgent AND category != done">
+
+<div class="form__row">
+    <div>
+        <label for="{{ prefix }}-kind">{{ 'Show'|t }}</label>
+        <select id="{{ prefix }}-kind" class="field" name="kind" data-piece-kind>
+            {% for kind, label in {list: 'The tickets', count: 'How many', breakdown: 'How they split'} %}
+                <option value="{{ kind }}"{{ values.kind|default('list') == kind ? ' selected' : '' }}>{{ label|t }}</option>
+            {% endfor %}
+        </select>
+    </div>
+    <div data-piece-group>
+        <label for="{{ prefix }}-group">{{ 'Split by'|t }}</label>
+        <select id="{{ prefix }}-group" class="field" name="group_by">
+            {% for group in gadget_groups %}
+                <option value="{{ group }}"{{ values.group_by|default('status') == group ? ' selected' : '' }}>{{ group|capitalize|t }}</option>
+            {% endfor %}
+        </select>
+    </div>
+</div>

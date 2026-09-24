@@ -1,0 +1,19 @@
+<h2 class="card__title"><a href="{{ url(piece.link) }}">{{ title }}</a>{% if not piece.error %} <span class="muted">{{ piece.count }}</span>{% endif %}</h2>
+{% if piece.error %}
+    <p class="flash flash--danger">{{ piece.error }}</p>
+{% elseif piece.groups is empty %}
+    <p class="card__body muted">{{ 'Nothing matches it.'|t }}</p>
+{% else %}
+    {% set most = max(piece.groups|column('count')|merge([1])) %}
+    <ul class="gadget__bars">
+        {% for group in piece.groups %}
+            <li>
+                <a href="{{ url(group.link) }}">
+                    <span class="gadget__label">{{ not group.label ? (piece.group_by == 'assignee' ? 'Nobody'|t : 'None'|t) : (piece.group_by in ['priority', 'type'] ? group.label|capitalize|t : (piece.group_by == 'status' ? group.label|t : group.label)) }}</span>
+                    <span class="gadget__bar"><span style="width: {{ (group.count / most * 100)|round }}%"></span></span>
+                    <span class="gadget__number">{{ group.count }}</span>
+                </a>
+            </li>
+        {% endfor %}
+    </ul>
+{% endif %}

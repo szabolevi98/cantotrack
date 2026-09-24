@@ -38,6 +38,13 @@ test.afterAll(async ({ request }) => {
         await post(request, `worklogs/${id}/delete`);
     }
     await removeProject(request, project);
+
+    // And the client, which nothing names any more.
+    const clients = await (await request.get('clients')).text();
+    const match = clients.match(new RegExp('/clients/(\\d+)">\\s*<strong>' + CLIENT));
+    if (match) {
+        await post(request, `clients/${match[1]}/delete`);
+    }
 });
 
 test('a client’s month becomes a draft, is corrected, and is thrown away again', async ({ page }) => {

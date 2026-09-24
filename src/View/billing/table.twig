@@ -20,7 +20,7 @@
                     <a href="{{ url('/billing/statements/' ~ s.id) }}">{{ s.number ?: 'Draft'|t }}</a>
                     {% if s.state == 'draft' %}<span class="badge">{{ 'Draft'|t }}</span>{% endif %}
                 </td>
-                <td>{{ s.client }}</td>
+                <td>{% if is_admin %}<a href="{{ url('/clients/' ~ s.client_id) }}">{{ s.client }}</a>{% else %}{{ s.client }}{% endif %}</td>
                 <td>{{ s.period_from|day }} — {{ s.period_to|day }}</td>
                 <td class="table__number">{{ (s.total_minutes ?: 0)|hours }}</td>
                 <td class="table__number">{{ (s.total_amount ?: 0)|money(s.currency) }}</td>

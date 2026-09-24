@@ -36,7 +36,7 @@
                 <tbody>
                 {% for row in unbilled %}
                     <tr>
-                        <td><strong>{{ row.client }}</strong> <span class="muted">· {{ plural('{count} entry', '{count} entries', row.entries) }}</span></td>
+                        <td><a href="{{ url('/clients/' ~ row.client_id) }}"><strong>{{ row.client }}</strong></a> <span class="muted">· {{ plural('{count} entry', '{count} entries', row.entries) }}</span></td>
                         <td class="table__number">{{ row.minutes|hours }}</td>
                         <td class="table__number">{{ row.amount|money }}</td>
                         <td>

@@ -201,6 +201,9 @@ deploy with `git pull`.
   saved as a PDF straight from the browser, downloaded as a spreadsheet, and
   read by the client's own guests. An hour goes on one statement only, and
   one issued by mistake is opened again and reissued under its number.
+- **Clients**, each with a page of its own: its billing address, tax number,
+  contact and a note — what its statements are addressed to — beside its
+  projects, its billable hours this month and last, and its statements.
 - **One's own dates in one's calendar**: a private address a calendar
   subscribes to, with the days one's tickets are due, the releases coming and
   the sprints' last days.

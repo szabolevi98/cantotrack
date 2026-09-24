@@ -1,0 +1,50 @@
+{% extends 'layout.twig' %}
+
+{# The clients: each with its projects, this month's billable hours, and when it was last billed. #}
+{% block title %}{{ 'Clients'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Clients'|t }}{% endblock %}
+{% block subheading %}<p class="content__sub">{{ 'Who the work is for: made the first time a project names one, and filled in here.'|t }}</p>{% endblock %}
+
+{% block actions %}
+    <form class="client-new" method="post" action="{{ url('/clients') }}">
+        <input type="hidden" name="_token" value="{{ csrf_token }}">
+        <input class="field field--inline" type="text" name="name" maxlength="120" required placeholder="{{ 'A new client’s name'|t }}" aria-label="{{ 'Name'|t }}">
+        <button class="button button--primary" type="submit">{{ 'Add'|t }}</button>
+    </form>
+{% endblock %}
+
+{% block content %}
+    <section class="card card--flush">
+        {% if clients is empty %}
+            <p class="card__empty">{{ 'No clients yet. Name one on a project, or add one here.'|t }}</p>
+        {% else %}
+            <table class="table">
+                <thead>
+                <tr>
+                    <th>{{ 'Client'|t }}</th>
+                    <th>{{ 'Contact'|t }}</th>
+                    <th class="table__number">{{ 'Projects'|t }}</th>
+                    <th class="table__number">{{ 'This month'|t }}</th>
+                    <th class="table__number">{{ 'Worth'|t }}</th>
+                    <th>{{ 'Last billed'|t }}</th>
+                </tr>
+                </thead>
+                <tbody>
+                {% for c in clients %}
+                    <tr>
+                        <td>
+                            <a href="{{ url('/clients/' ~ c.id) }}"><strong>{{ c.name }}</strong></a>
+                            {% if not c.billing_address %}<span class="badge badge--amber" title="{{ 'Statements to it are addressed to its name only'|t }}">{{ 'No address'|t }}</span>{% endif %}
+                        </td>
+                        <td>{{ c.contact_name ?: '—' }}{% if c.contact_email %} <span class="muted">{{ c.contact_email }}</span>{% endif %}</td>
+                        <td class="table__number">{{ c.project_count }}</td>
+                        <td class="table__number">{{ c.month_minutes > 0 ? c.month_minutes|hours ~ ' h' : '—' }}</td>
+                        <td class="table__number">{{ c.month_amount > 0 ? c.month_amount|money : '—' }}</td>
+                        <td>{{ c.last_issued ? c.last_issued|day : '—' }}</td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        {% endif %}
+    </section>
+{% endblock %}

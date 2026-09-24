@@ -1,0 +1,95 @@
+{% extends 'layout.twig' %}
+
+{#
+    One client: who they are on paper and who to talk to — what their
+    statements are addressed to — beside their projects, their hours this
+    month and last, and their statements.
+#}
+{% block title %}{{ client.name }} — {{ 'Clients'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ client.name }}{% endblock %}
+{% block subheading %}<p class="content__sub"><a href="{{ url('/clients') }}">{{ 'Clients'|t }}</a></p>{% endblock %}
+
+{% block actions %}
+    <a class="button" href="{{ url('/reports?client=' ~ client.id) }}">{{ 'Its hours in the reports'|t }}</a>
+    <a class="button" href="{{ url('/billing') }}#unbilled">{{ 'Billing'|t }}</a>
+{% endblock %}
+
+{% block content %}
+    <div class="split">
+        <div class="split__main">
+            <div class="stats">
+                {% for m in [this_month, last_month] %}
+                    <div class="stat">
+                        <div class="stat__label">{{ m.label }}</div>
+                        <div class="stat__value">{{ m.minutes|hours }} h</div>
+                        <div class="muted">{{ m.amount|money }}{% if m.unbilled > 0 and m.unbilled != m.minutes %} · {{ '{hours} h not billed yet'|t({hours: m.unbilled|hours}) }}{% elseif m.unbilled > 0 %} · {{ 'not billed yet'|t }}{% endif %}</div>
+                    </div>
+                {% endfor %}
+            </div>
+
+            <section class="card card--flush">
+                <h2 class="card__title billing__title">{{ 'Projects'|t }}</h2>
+                {% if projects is empty %}
+                    <p class="card__empty">{{ 'No project names this client.'|t }}</p>
+                {% else %}
+                    <table class="table">
+                        <tbody>
+                        {% for p in projects %}
+                            <tr>
+                                <td><span class="ticket-key">{{ p.code }}</span> <a href="{{ url('/projects/' ~ p.id) }}">{{ p.name }}</a>{% if p.is_archived %} <span class="badge">{{ 'Archived'|t }}</span>{% endif %}</td>
+                                <td class="table__number">{{ p.hourly_rate ? p.hourly_rate|money ~ ' / h' : '—' }}</td>
+                                <td class="table__actions"><a href="{{ url('/projects/' ~ p.id ~ '/edit') }}">{{ 'Settings'|t }}</a></td>
+                            </tr>
+                        {% endfor %}
+                        </tbody>
+                    </table>
+                {% endif %}
+            </section>
+
+            <section class="card card--flush">
+                <h2 class="card__title billing__title">{{ 'Statements'|t }}</h2>
+                {% include 'billing/table.twig' %}
+            </section>
+        </div>
+
+        <aside class="split__side">
+            <section class="card">
+                <h2 class="card__title">{{ 'Details'|t }}</h2>
+                <form method="post" action="{{ url('/clients/' ~ client.id) }}">
+                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                    <label for="client-name">{{ 'Name'|t }}</label>
+                    <input id="client-name" class="field" type="text" name="name" value="{{ client.name }}" maxlength="120" required>
+
+                    <label for="client-address">{{ 'Billing address'|t }}</label>
+                    <textarea id="client-address" class="field" name="billing_address" rows="3" maxlength="1000"
+                              placeholder="{{ 'Post code, town, street and number'|t }}">{{ client.billing_address }}</textarea>
+
+                    <label for="client-tax">{{ 'Tax number'|t }}</label>
+                    <input id="client-tax" class="field" type="text" name="tax_number" value="{{ client.tax_number }}" maxlength="40">
+
+                    <label for="client-contact">{{ 'Contact'|t }}</label>
+                    <input id="client-contact" class="field" type="text" name="contact_name" value="{{ client.contact_name }}" maxlength="120" placeholder="{{ 'Name'|t }}">
+                    <input class="field client-form__email" type="email" name="contact_email" value="{{ client.contact_email }}" maxlength="190" placeholder="{{ 'Email'|t }}" aria-label="{{ 'Contact’s email'|t }}">
+
+                    <label for="client-note">{{ 'Note'|t }}</label>
+                    <textarea id="client-note" class="field" name="note" rows="3" maxlength="5000"
+                              placeholder="{{ 'Invoices go to accounting; payment within 15 days.'|t }}">{{ client.note }}</textarea>
+
+                    <p class="hint">{{ 'Statements are addressed to the name, the address and the tax number.'|t }}</p>
+                    <div class="form__actions"><button class="button button--primary" type="submit">{{ 'Save'|t }}</button></div>
+                </form>
+            </section>
+
+            {% if not in_use %}
+                <section class="card">
+                    <h2 class="card__title">{{ 'Delete'|t }}</h2>
+                    <form method="post" action="{{ url('/clients/' ~ client.id ~ '/delete') }}" data-confirm="{{ 'Delete {name}?'|t({name: client.name}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                        <p class="card__body">{{ 'No project and no statement names it, so it can go.'|t }}</p>
+                        <button class="button button--danger" type="submit">{{ 'Delete the client'|t }}</button>
+                    </form>
+                </section>
+            {% endif %}
+        </aside>
+    </div>
+{% endblock %}

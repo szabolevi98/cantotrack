@@ -67,6 +67,21 @@ final class StatementsTest extends DatabaseTestCase
         self::assertSame(60000.0, round(array_sum(array_column($entries, 'amount')), 2));
     }
 
+    public function testADraftIsAddressedAsTheClientsPageSays(): void
+    {
+        $clients = new ClientRepository($this->db);
+        $client = (array) $clients->find($this->client);
+        $clients->update($this->client, ['name' => (string) $client['name'], 'billing_address' => '7624 Pécs, Szigeti út 3.', 'tax_number' => '18934527-2-02', 'contact_name' => null, 'contact_email' => null, 'note' => null]);
+        $this->log($this->ticket, '2h');
+
+        $id = $this->service->draft($this->client, $this->from, $this->to, $this->me);
+        $billTo = (string) $this->statements->find($id)['bill_to'];
+
+        self::assertStringStartsWith($client['name'] . "\n7624 Pécs, Szigeti út 3.\n", $billTo);
+        self::assertStringContainsString('18934527-2-02', $billTo);
+        self::assertNull(ClientRepository::billTo(['name' => 'Nobody yet', 'billing_address' => '', 'tax_number' => null]));
+    }
+
     public function testAnHourGoesOnOneStatementOnly(): void
     {
         $this->log($this->ticket, '2h');

@@ -206,3 +206,14 @@
 .stat__value--danger {
     color: var(--ct-danger);
 }
+
+/* The clients: a name typed in the page's head to add one, and the second
+   line of a contact. */
+.client-new {
+    display: flex;
+    gap: 8px;
+}
+
+.client-form__email {
+    margin-top: 6px;
+}

@@ -46,7 +46,10 @@
             <input id="client" class="field" type="text" name="client" value="{{ project.client_name|default('') }}"
                    maxlength="120" list="known-clients" placeholder="{{ 'Nobody — an internal project'|t }}">
             <datalist id="known-clients">{% for client in clients|default([]) %}<option value="{{ client.name }}">{% endfor %}</datalist>
-            <p class="hint">{{ 'A client is made the first time a project names one. The reports can add up the hours by client.'|t }}</p>
+            <p class="hint">
+                {{ 'A client is made the first time a project names one. The reports can add up the hours by client.'|t }}
+                {% if is_admin and project.client_id|default(null) %}<a href="{{ url('/clients/' ~ project.client_id) }}">{{ 'Its address and contact'|t }}</a>{% endif %}
+            </p>
 
             {# New projects bill by default; an existing one says what it says. #}
             <label class="check">

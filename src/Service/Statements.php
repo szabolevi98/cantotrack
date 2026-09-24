@@ -36,8 +36,8 @@ final class Statements
     }
 
     /**
-     * A draft of a client's billable hours in a span, addressed the way
-     * their last statement was. Refused when none are left to bill.
+     * A draft of a client's billable hours in a span, addressed to them as
+     * their page says. Refused when none are left to bill.
      *
      * @throws ValidationError
      */
@@ -47,18 +47,25 @@ final class Statements
             throw new ValidationError(__('The span ends before it starts.'));
         }
 
-        $client = $this->db->prepare('SELECT name FROM clients WHERE id = :id');
-        $client->execute(['id' => $clientId]);
-        $name = $client->fetchColumn();
+        $client = (new \CantoTrack\Model\ClientRepository($this->db))->find($clientId);
 
-        if (!is_string($name)) {
+        if ($client === null) {
             throw new ValidationError(__('There is no such client.'));
         }
+
+        $name = (string) $client['name'];
 
         $this->db->beginTransaction();
 
         try {
-            $id = $this->statements->create($clientId, $from, $to, $this->statements->lastBillTo($clientId) ?? $name, $userId);
+            $id = $this->statements->create(
+                $clientId,
+                $from,
+                $to,
+                // Addressed the way the client's page says, or the way the last one was.
+                \CantoTrack\Model\ClientRepository::billTo($client) ?? $this->statements->lastBillTo($clientId) ?? $name,
+                $userId
+            );
             $claimed = $this->statements->claim($id);
 
             if ($claimed['added'] === 0) {

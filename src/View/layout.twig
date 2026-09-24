@@ -96,6 +96,8 @@
                href="{{ url('/people') }}"><i class="bi bi-people" aria-hidden="true"></i><span>{{ 'People'|t }}</span></a>
             <a class="sidebar__link{{ current_path starts with '/timesheet/approvals' ? ' is-active' : '' }}"
                href="{{ url('/timesheet/approvals') }}"><i class="bi bi-clipboard-check" aria-hidden="true"></i><span>{{ 'Approvals'|t }}</span>{% set waiting = pending_weeks() %}{% if waiting > 0 %} <span class="sidebar__count">{{ waiting }}</span>{% endif %}</a>
+            <a class="sidebar__link{{ current_path starts with '/clients' ? ' is-active' : '' }}"
+               href="{{ url('/clients') }}"><i class="bi bi-briefcase" aria-hidden="true"></i><span>{{ 'Clients'|t }}</span></a>
             <a class="sidebar__link{{ current_path starts with '/billing' ? ' is-active' : '' }}"
                href="{{ url('/billing') }}"><i class="bi bi-receipt" aria-hidden="true"></i><span>{{ 'Billing'|t }}</span></a>
             <a class="sidebar__link{{ current_path starts with '/settings/work-types' ? ' is-active' : '' }}"

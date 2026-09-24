@@ -1080,6 +1080,17 @@ if ($email === null || $password === null) {
     check('and a new ticket starts from it', str_contains($fromTemplate, 'value="Smoke ' . date('Y-m-d') . '"') && str_contains($fromTemplate, 'name="template_id"'));
     request($baseUrl . '/templates/' . $templateId . '/delete', ['_token' => $token], $jar);
 
+    // The clients: the list, and one client's page with its details.
+    $clientList = request($baseUrl . '/clients', [], $jar);
+    check('the clients answer', $clientList['status'] === 200);
+    $madeClient = request($baseUrl . '/clients', ['_token' => $token, 'name' => 'Smoke client ' . $code], $jar);
+    preg_match('#/clients/(\d+)#', $madeClient['headers'], $m);
+    $clientId = (int) ($m[1] ?? 0);
+    request($baseUrl . '/clients/' . $clientId, ['_token' => $token, 'name' => 'Smoke client ' . $code, 'billing_address' => '1 Smoke Street', 'tax_number' => '123'], $jar);
+    check('a client can be filled in', str_contains(request($baseUrl . '/clients/' . $clientId, [], $jar)['body'], '1 Smoke Street'));
+    request($baseUrl . '/clients/' . $clientId . '/delete', ['_token' => $token], $jar);
+    check('and one nothing names can be deleted', request($baseUrl . '/clients/' . $clientId, [], $jar)['status'] === 404);
+
     // The email: what waits, what did not go, and a test message to oneself,
     // which goes at once rather than within the minute.
     $mailPage = request($baseUrl . '/settings/email', [], $jar);

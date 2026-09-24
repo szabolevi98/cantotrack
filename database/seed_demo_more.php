@@ -1307,14 +1307,27 @@ $lastMonthFrom = (new DateTimeImmutable('first day of last month'))->format('Y-m
 $lastMonthTo = (new DateTimeImmutable('last day of last month'))->format('Y-m-d');
 $billing = new CantoTrack\Service\Statements();
 $billed = new CantoTrack\Model\StatementRepository();
-foreach (['Mecsek Clinic' => "Mecsek Clinic Zrt.\n7624 Pécs, Szigeti út 3.", 'Balaton Bikes Kft.' => "Balaton Bikes Kft.\n8230 Balatonfüred, Tagore sétány 1."] as $clientName => $billTo) {
+// Who the clients are on paper, and who to talk to — what their statements
+// are addressed to.
+foreach ([
+    'Balaton Bikes Kft.' => ['8230 Balatonfüred, Tagore sétány 1.', '24567812-2-19', 'Péter Lakatos', 'peter@balatonbikes.demo', 'Rentals peak from June to August; nothing is deployed in those weeks without asking.'],
+    'Mecsek Clinic' => ['7624 Pécs, Szigeti út 3.', '18934527-2-02', 'Kata Fehér', 'kata@mecsekclinic.demo', 'Statements go to accounting by the 5th of the month.'],
+    'Villányi Borház' => ['7773 Villány, Baross Gábor utca 41.', '27781234-2-02', 'Imre Takács', 'imre@villanyiborhaz.demo', null],
+    'Nordic Coffee Roasters' => ['Birger Jarlsgatan 12, 114 34 Stockholm, Sweden', 'SE556677889901', 'Linnea Berg', 'linnea@nordiccoffee.demo', 'Billed in euro, in English.'],
+] as $clientName => [$address, $taxNumber, $contact, $contactEmail, $clientNote]) {
+    $clientId = $clients->findOrCreate($clientName);
+    if ($clientId !== null) {
+        $clients->update($clientId, ['name' => $clientName, 'billing_address' => $address, 'tax_number' => $taxNumber, 'contact_name' => $contact, 'contact_email' => $contactEmail, 'note' => $clientNote]);
+    }
+}
+
+foreach (['Mecsek Clinic', 'Balaton Bikes Kft.'] as $clientName) {
     $clientId = $clients->findOrCreate($clientName);
     try {
         $statementId = $billing->draft((int) $clientId, $lastMonthFrom, $lastMonthTo, $who['tamas']);
     } catch (CantoTrack\Core\ValidationError) {
         continue;
     }
-    $billed->setWording($statementId, $billTo, null);
     if ($clientName === 'Mecsek Clinic') {
         $billing->issue((array) $billed->find($statementId), $who['tamas']);
     }

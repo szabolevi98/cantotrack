@@ -129,7 +129,10 @@ deploy with `git pull`.
   suggestions as it is typed, and a mistake pointed at where it is. Every value
   is a bound parameter, and a query can only narrow what somebody may see.
 - **Saved filters**, private or shared with the team, and a ticket list that
-  filters into the URL, so a list can be bookmarked or sent to somebody.
+  filters into the URL, so a list can be bookmarked or sent to somebody. The
+  ticket, people and client lists sort by a click on a column header —
+  ascending, descending, then back to the list's own order — and the order is
+  part of the URL too.
 - **Bulk changes** from the ticket list, **CSV import** of tickets from a
   spreadsheet (columns recognised by name, in English or Hungarian, with a
   preview of every row before anything is made), and keyboard shortcuts (`?`

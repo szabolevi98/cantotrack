@@ -126,6 +126,13 @@ class TicketRepository
         // from its own list — with the newest last for ties.
         $order = !empty($filters['query_order']) ? ' ORDER BY ' . $filters['query_order'] . ', t.id DESC' : self::ORDER;
 
+        // A column header clicked on the list comes first, and the order the
+        // list would otherwise have breaks its ties. Only ever TicketQuery's
+        // own SQL for one of its fields.
+        if (!empty($filters['header_order'])) {
+            $order = ' ORDER BY ' . $filters['header_order'] . ', ' . substr($order, strlen(' ORDER BY '));
+        }
+
         // Searched for words, the best match first: a word in the title
         // counts three times what it does in the text.
         if (($filters['order'] ?? '') === 'relevance' && isset($parameters['ft'])) {

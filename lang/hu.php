@@ -1838,4 +1838,7 @@ Az E-mail oldalról küldted.',
     'Download PDF' => 'PDF letöltése',
     'Print' => 'Nyomtatás',
     'Page {PAGE_NUM} of {PAGE_COUNT}' => '{PAGE_NUM}. oldal / {PAGE_COUNT}',
+    'Sort ascending' => 'Rendezés növekvő sorrendben',
+    'Sort descending' => 'Rendezés csökkenő sorrendben',
+    'Back to the list’s own order' => 'Vissza az alapértelmezett sorrendre',
 ];

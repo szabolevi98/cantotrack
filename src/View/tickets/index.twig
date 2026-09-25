@@ -25,6 +25,7 @@
         <form class="card query-form" method="get" action="{{ url('/tickets') }}" data-query-form
               data-values-url="{{ url('/tickets/query/values') }}"
               data-fields="{{ vocabulary.fields|merge(custom_names|map(n => n matches '/^[\\w]+$/' ? n : '"' ~ n ~ '"'))|json_encode }}">
+            {{ sort_inputs() }}
             <label class="visually-hidden" for="query">{{ 'Query'|t }}</label>
             <div class="query-form__row">
                 <div class="query-form__box">
@@ -79,6 +80,7 @@
         resubmitting anything.
     #}
     <form class="filters card" method="get" action="{{ url('/tickets') }}">
+        {{ sort_inputs() }}
         <input class="field field--inline filters__search" type="search" name="q"
                value="{{ filters.q }}" placeholder="{{ 'Search title, text or CT-14'|t }}" aria-label="{{ 'Search tickets'|t }}">
 
@@ -209,13 +211,13 @@
                     <th class="table__check">
                         <input type="checkbox" data-bulk-all aria-label="{{ 'Tick every ticket on this page'|t }}">
                     </th>
-                    <th class="table__key">{{ 'Ticket'|t }}</th>
-                    <th>{{ 'Title'|t }}</th>
-                    <th>{{ 'Status'|t }}</th>
-                    <th>{{ 'Assignee'|t }}</th>
-                    <th>{{ 'Due'|t }}</th>
-                    <th class="table__number">{{ 'Est.'|t }}</th>
-                    <th class="table__number">{{ 'Logged'|t }}</th>
+                    <th class="table__key" {{ sort_aria('key') }}>{{ sort_link('key', 'Ticket'|t) }}</th>
+                    <th {{ sort_aria('title') }}>{{ sort_link('title', 'Title'|t) }}</th>
+                    <th {{ sort_aria('status') }}>{{ sort_link('status', 'Status'|t) }}</th>
+                    <th {{ sort_aria('assignee') }}>{{ sort_link('assignee', 'Assignee'|t) }}</th>
+                    <th {{ sort_aria('due') }}>{{ sort_link('due', 'Due'|t) }}</th>
+                    <th class="table__number" {{ sort_aria('estimate') }}>{{ sort_link('estimate', 'Est.'|t) }}</th>
+                    <th class="table__number" {{ sort_aria('logged') }}>{{ sort_link('logged', 'Logged'|t) }}</th>
                 </tr>
                 </thead>
                 <tbody>

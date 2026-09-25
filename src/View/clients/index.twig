@@ -21,12 +21,12 @@
             <table class="table">
                 <thead>
                 <tr>
-                    <th>{{ 'Client'|t }}</th>
-                    <th>{{ 'Contact'|t }}</th>
-                    <th class="table__number">{{ 'Projects'|t }}</th>
-                    <th class="table__number">{{ 'This month'|t }}</th>
-                    <th class="table__number">{{ 'Worth'|t }}</th>
-                    <th>{{ 'Last billed'|t }}</th>
+                    <th {{ sort_aria('name') }}>{{ sort_link('name', 'Client'|t) }}</th>
+                    <th {{ sort_aria('contact') }}>{{ sort_link('contact', 'Contact'|t) }}</th>
+                    <th class="table__number" {{ sort_aria('projects') }}>{{ sort_link('projects', 'Projects'|t) }}</th>
+                    <th class="table__number" {{ sort_aria('month') }}>{{ sort_link('month', 'This month'|t) }}</th>
+                    <th class="table__number" {{ sort_aria('worth') }}>{{ sort_link('worth', 'Worth'|t) }}</th>
+                    <th {{ sort_aria('last_billed') }}>{{ sort_link('last_billed', 'Last billed'|t) }}</th>
                 </tr>
                 </thead>
                 <tbody>

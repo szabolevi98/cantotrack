@@ -88,6 +88,11 @@ class View
 
         $twig->addFunction(new TwigFunction('asset', [self::class, 'asset']));
 
+        // A list's column headers that put it in order — see Sort.
+        $twig->addFunction(new TwigFunction('sort_link', [Sort::class, 'link'], ['is_safe' => ['html']]));
+        $twig->addFunction(new TwigFunction('sort_aria', [Sort::class, 'aria'], ['is_safe' => ['html']]));
+        $twig->addFunction(new TwigFunction('sort_inputs', [Sort::class, 'inputs'], ['is_safe' => ['html']]));
+
         // What people typed, as HTML. Safe to print unescaped only because the
         // renderer escapes any HTML in the text itself — see Markdown.
         $twig->addFilter(new TwigFilter('markdown', static fn(?string $text): string => Markdown::toHtml($text), ['is_safe' => ['html']]));

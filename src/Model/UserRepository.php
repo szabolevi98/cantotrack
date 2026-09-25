@@ -4,6 +4,7 @@ namespace CantoTrack\Model;
 
 use CantoTrack\Core\DatabaseConnection;
 use CantoTrack\Core\Password;
+use CantoTrack\Core\Sort;
 use PDO;
 
 /**
@@ -16,6 +17,16 @@ use PDO;
  */
 class UserRepository
 {
+    /** The people page's columns that sort it, and the SQL for each. */
+    public const SORTS = [
+        'name' => 'u.name',
+        'email' => 'u.email',
+        'role' => 'FIELD(u.role, \'admin\', \'member\', \'guest\')',
+        'open' => 'open_tickets',
+        'logged' => 'minutes_30d',
+        'last_seen' => 'u.last_login_at',
+    ];
+
     private PDO $db;
 
     public function __construct(?PDO $db = null)
@@ -273,7 +284,7 @@ class UserRepository
                     (SELECT COALESCE(SUM(w.minutes), 0) FROM worklogs w
                      WHERE w.user_id = u.id AND w.work_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)) AS minutes_30d
              FROM users u
-             ORDER BY u.is_active DESC, u.name'
+             ORDER BY ' . Sort::orderBy(self::SORTS, 'u.is_active DESC, u.name')
         );
     }
 

@@ -3,11 +3,22 @@
 namespace CantoTrack\Model;
 
 use CantoTrack\Core\DatabaseConnection;
+use CantoTrack\Core\Sort;
 use PDO;
 
 /** Who the work is for. Made the first time a project names them. */
 class ClientRepository
 {
+    /** The clients page's columns that sort it, and the SQL for each. */
+    public const SORTS = [
+        'name' => 'c.name',
+        'contact' => 'c.contact_name',
+        'projects' => 'project_count',
+        'month' => 'month_minutes',
+        'worth' => 'month_amount',
+        'last_billed' => 'last_issued',
+    ];
+
     private PDO $db;
 
     public function __construct(?PDO $db = null)
@@ -44,7 +55,7 @@ class ClientRepository
                       JOIN projects p ON p.id = t.project_id JOIN users u ON u.id = w.user_id
                       WHERE p.client_id = c.id AND w.work_date BETWEEN :from2 AND :to2) AS month_amount,
                     (SELECT MAX(s.issued_at) FROM statements s WHERE s.client_id = c.id AND s.state = \'issued\') AS last_issued
-             FROM clients c ORDER BY c.name'
+             FROM clients c ORDER BY ' . Sort::orderBy(self::SORTS, 'c.name')
         );
         $statement->execute(['from' => $monthFrom, 'to' => $monthTo, 'from2' => $monthFrom, 'to2' => $monthTo]);
 

@@ -6,6 +6,7 @@ use CantoTrack\Core\Auth;
 use CantoTrack\Core\ConflictError;
 use CantoTrack\Core\Controller;
 use CantoTrack\Core\Format;
+use CantoTrack\Core\Sort;
 use CantoTrack\Core\ValidationError;
 use CantoTrack\Core\View;
 use CantoTrack\Model\AttachmentRepository;
@@ -40,6 +41,9 @@ class TicketController extends Controller
 {
     /** Rows per page of the list. */
     private const PER_PAGE = 50;
+
+    /** The columns of the list that sort it, by TicketQuery's names for them. */
+    private const SORTS = ['key', 'title', 'status', 'assignee', 'due', 'estimate', 'logged'];
 
     public function index(): void
     {
@@ -96,6 +100,13 @@ class TicketController extends Controller
     {
         $filters = $this->filters();
         $query = trim((string) ($_GET['query'] ?? ''));
+
+        // A column header clicked: it goes before whatever order the list
+        // would otherwise have, the query's own included.
+        $sort = Sort::current();
+        if ($sort !== null && in_array($sort['key'], self::SORTS, true)) {
+            $filters['header_order'] = \CantoTrack\Service\TicketQuery::orderFor($sort['key'], $sort['dir']);
+        }
 
         if ($query === '') {
             return [$filters, null];

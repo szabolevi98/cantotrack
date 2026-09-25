@@ -81,6 +81,9 @@ final class TicketQuery
         'rank' => ['t.`rank`'], 'logged' => ['logged_minutes'],
     ];
 
+    /** The orderable fields a ticket can leave empty. */
+    private const MAYBE_EMPTY = ['resolved', 'due', 'points', 'estimate', 'assignee'];
+
     private const CATEGORY_WORDS = ['todo' => 'todo', 'to do' => 'todo', 'in progress' => 'in_progress', 'in_progress' => 'in_progress', 'done' => 'done'];
 
     /** @var list<array{type: string, value: string, at: int}> */
@@ -128,6 +131,30 @@ final class TicketQuery
         }
 
         return ['where' => $where, 'params' => $compiler->params, 'order' => $order];
+    }
+
+    /**
+     * The SQL that orders the ticket list by one of the fields it can be put
+     * in order by, the way ORDER BY in a query would, but with the empty
+     * ones last — for the list's column headers. Null for a field it cannot be.
+     *
+     * @param 'asc'|'desc' $direction
+     */
+    public static function orderFor(string $field, string $direction): ?string
+    {
+        if (!isset(self::ORDERS[$field])) {
+            return null;
+        }
+        $direction = $direction === 'desc' ? 'DESC' : 'ASC';
+        $columns = array_map(static fn(string $column): string => $column . ' ' . $direction, self::ORDERS[$field]);
+
+        // The tickets without one last, whichever way: a click on "Due" is
+        // asking what is due first, not which have no date.
+        if (in_array($field, self::MAYBE_EMPTY, true)) {
+            array_unshift($columns, self::ORDERS[$field][0] . ' IS NULL');
+        }
+
+        return implode(', ', $columns);
     }
 
     /**

@@ -34,12 +34,12 @@
         <table class="table">
             <thead>
             <tr>
-                <th>{{ 'Name'|t }}</th>
-                <th>{{ 'Signs in with'|t }}</th>
-                <th>{{ 'Role'|t }}</th>
-                <th class="table__number">{{ 'Open'|t }}</th>
-                <th class="table__number">{{ 'Logged, 30 days'|t }}</th>
-                <th>{{ 'Last seen'|t }}</th>
+                <th {{ sort_aria('name') }}>{{ sort_link('name', 'Name'|t) }}</th>
+                <th {{ sort_aria('email') }}>{{ sort_link('email', 'Signs in with'|t) }}</th>
+                <th {{ sort_aria('role') }}>{{ sort_link('role', 'Role'|t) }}</th>
+                <th class="table__number" {{ sort_aria('open') }}>{{ sort_link('open', 'Open'|t) }}</th>
+                <th class="table__number" {{ sort_aria('logged') }}>{{ sort_link('logged', 'Logged, 30 days'|t) }}</th>
+                <th {{ sort_aria('last_seen') }}>{{ sort_link('last_seen', 'Last seen'|t) }}</th>
                 <th></th>
             </tr>
             </thead>

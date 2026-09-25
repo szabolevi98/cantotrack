@@ -1,7 +1,7 @@
 {
     "name": "szabolevi98/cantotrack",
     "description": "An issue tracker with time logging: projects, epics, tickets and timesheets.",
-    "license": "MIT",
+    "license": "AGPL-3.0-only",
     "require": {
         "php": ">=8.4",
         "ext-curl": "*",

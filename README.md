@@ -483,4 +483,4 @@ web/            the document root: the front controller and the built assets
 
 ## License
 
-MIT. See [LICENSE](LICENSE).
+[GNU AGPLv3](LICENSE) — © 2026 [szabolevi98](https://github.com/szabolevi98/cantotrack)

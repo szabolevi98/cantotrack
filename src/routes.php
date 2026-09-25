@@ -17,6 +17,7 @@ use CantoTrack\Controller\AuditController;
 use CantoTrack\Controller\AutomationController;
 use CantoTrack\Controller\AvatarController;
 use CantoTrack\Controller\BillingController;
+use CantoTrack\Controller\BoardController;
 use CantoTrack\Controller\CalendarExportController;
 use CantoTrack\Controller\ClientController;
 use CantoTrack\Controller\CommentController;
@@ -139,6 +140,17 @@ $router->post('/projects/{id}/delete', static fn($id) => (new ProjectController(
 // Planning: the backlog, the sprints, and each sprint's report.
 $router->get('/projects/{id}/backlog', static fn($id) => (new SprintController())->backlog((int) $id));
 $router->post('/projects/{id}/sprints', static fn($id) => (new SprintController())->create((int) $id));
+
+// Shared boards: several projects planned together — see the 0047 migration.
+$router->get('/boards', static fn() => (new BoardController())->index());
+$router->post('/boards', static fn() => (new BoardController())->create());
+$router->get('/boards/{id}', static fn($id) => (new BoardController())->show((int) $id));
+$router->get('/boards/{id}/backlog', static fn($id) => (new SprintController())->boardBacklog((int) $id));
+$router->post('/boards/{id}/sprints', static fn($id) => (new SprintController())->createOnBoard((int) $id));
+$router->get('/boards/{id}/settings', static fn($id) => (new BoardController())->settings((int) $id));
+$router->post('/boards/{id}/settings', static fn($id) => (new BoardController())->update((int) $id));
+$router->post('/boards/{id}/columns', static fn($id) => (new BoardController())->columns((int) $id));
+$router->post('/boards/{id}/delete', static fn($id) => (new BoardController())->delete((int) $id));
 $router->get('/sprints/{id}', static fn($id) => (new SprintController())->show((int) $id));
 $router->post('/sprints/{id}', static fn($id) => (new SprintController())->update((int) $id));
 $router->post('/sprints/{id}/start', static fn($id) => (new SprintController())->start((int) $id));

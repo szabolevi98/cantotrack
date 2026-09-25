@@ -118,6 +118,9 @@ class ProjectRepository
         // settings page changes them from there.
         (new StatusRepository($this->db))->createDefaults($id);
 
+        // And with a board of its own, which its sprints are planned on.
+        (new BoardRepository($this->db))->createOwn($id, strtoupper(trim($code)));
+
         return $id;
     }
 

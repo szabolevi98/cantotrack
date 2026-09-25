@@ -106,6 +106,23 @@ final class Access
         return $sql === '' ? null : substr($sql, strlen(' AND '));
     }
 
+    /**
+     * The same for a board, whose projects are in a table of their own: a
+     * board is somebody's to see when one of its projects is, or when it has
+     * no projects yet. `$boardColumn` is the column holding the board's id.
+     */
+    public static function boardSql(string $boardColumn): string
+    {
+        $in = self::where('bpa.project_id');
+
+        if ($in === null) {
+            return '';
+        }
+
+        return ' AND (EXISTS (SELECT 1 FROM board_projects bpa WHERE bpa.board_id = ' . $boardColumn . ' AND ' . $in . ')'
+            . ' OR NOT EXISTS (SELECT 1 FROM board_projects bpe WHERE bpe.board_id = ' . $boardColumn . '))';
+    }
+
     /** A guest reads and comments; changing the work is for the team. */
     public static function isGuest(): bool
     {

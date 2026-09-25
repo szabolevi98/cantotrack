@@ -372,16 +372,51 @@ final class Automation
                 return __('commented');
 
             case 'sprint':
-                $sprint = strtolower($value) === 'backlog' ? null : (new SprintRepository($this->db))->active((int) $ticket['project_id']);
-                if (strtolower($value) !== 'backlog' && $sprint === null) {
-                    throw new ValidationError(__('The project has no sprint running.'));
-                }
+                $sprint = strtolower(trim($value)) === 'backlog' ? null : $this->runningSprint($ticket, $value);
                 (new SprintService($this->db))->assign([$id], $sprint === null ? null : (int) $sprint['id'], $actor);
 
                 return $sprint === null ? __('to the backlog') : __('into {value}', ['value' => (string) $sprint['name']]);
         }
 
         throw new ValidationError(__('The rule has an action it does not know: “{value}”.', ['value' => $type]));
+    }
+
+    /**
+     * The running sprint a rule means: "active" is the one on the project's
+     * own board, or — when that has none — the one running on the only
+     * shared board of the project that has one; "active: Board name" the one
+     * on that board.
+     *
+     * @throws ValidationError
+     */
+    private function runningSprint(array $ticket, string $value): array
+    {
+        $running = (new SprintRepository($this->db))->activeForProject((int) $ticket['project_id']);
+        $named = trim((string) (explode(':', $value, 2)[1] ?? ''));
+
+        if ($named !== '') {
+            foreach ($running as $sprint) {
+                if (mb_strtolower((string) $sprint['board_name']) === mb_strtolower($named)) {
+                    return $sprint;
+                }
+            }
+
+            throw new ValidationError(__('No sprint is running on {board} for this project.', ['board' => $named]));
+        }
+
+        foreach ($running as $sprint) {
+            if ($sprint['board_project_id'] !== null) {
+                return $sprint;
+            }
+        }
+
+        if (count($running) === 1) {
+            return $running[0];
+        }
+
+        throw new ValidationError($running === []
+            ? __('The project has no sprint running.')
+            : __('Sprints are running on several boards of the project; name one: “active: {board}”.', ['board' => $running[0]['board_name']]));
     }
 
     /**

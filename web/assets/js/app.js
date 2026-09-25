@@ -560,7 +560,14 @@
         var row = column.closest('.board__row');
         var body = new URLSearchParams();
 
-        body.set('status', column.dataset.statusId);
+        // A shared board's column holds several projects' statuses; the
+        // server works out which one of the card's own project it means.
+        if (board.dataset.boardId) {
+            body.set('board', board.dataset.boardId);
+            body.set('column', column.dataset.statusId);
+        } else {
+            body.set('status', column.dataset.statusId);
+        }
         body.set('above', neighbour(card, -1));
         body.set('below', neighbour(card, 1));
 
@@ -573,7 +580,7 @@
         // The select on the card follows, so a keyboard user after a drag
         // sees the column the card is in.
         var select = card.querySelector('select[name="status"]');
-        if (select) {
+        if (select && !board.dataset.boardId) {
             select.value = column.dataset.statusId;
         }
 
@@ -592,6 +599,8 @@
                 if (!response.ok || !result.ok) {
                     window.alert(result.error || board.dataset.moveFailed);
                     window.location.reload();
+                } else if (select && result.status) {
+                    select.value = String(result.status);
                 }
             });
         }).catch(function () {

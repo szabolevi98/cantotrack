@@ -174,15 +174,31 @@ class DashboardController extends Controller
         ];
     }
 
-    /** @return list<array<string, mixed>> the sprints running in the projects one may see, with their project */
+    /**
+     * The sprints running on the boards one may see — the projects' own and
+     * the shared ones — each with where it runs: the project's code, or the
+     * shared board's name.
+     *
+     * @return list<array<string, mixed>>
+     */
     private function runningSprints(): array
     {
-        $out = [];
+        $sprints = new \CantoTrack\Model\SprintRepository();
+        $boards = new \CantoTrack\Model\BoardRepository();
+        $where = [];
 
         foreach ((new ProjectRepository())->allWithCounts() as $project) {
-            foreach ((new \CantoTrack\Model\SprintRepository())->forProject((int) $project['id']) as $sprint) {
+            $where[] = [(int) $boards->ownOf((int) $project['id'])['id'], (string) $project['code']];
+        }
+        foreach ($boards->shared() as $board) {
+            $where[] = [(int) $board['id'], (string) $board['name']];
+        }
+
+        $out = [];
+        foreach ($where as [$boardId, $label]) {
+            foreach ($sprints->forBoard($boardId) as $sprint) {
                 if ($sprint['state'] === 'active') {
-                    $sprint['project_code'] = $project['code'];
+                    $sprint['project_code'] = $label;
                     $sprint['days_left'] = $sprint['ends_on'] === null ? null : (int) floor((strtotime((string) $sprint['ends_on']) - strtotime('today')) / 86400);
                     $out[] = $sprint;
                 }

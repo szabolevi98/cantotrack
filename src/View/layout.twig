@@ -52,6 +52,7 @@
         {% set items = [
             { path: '/', label: 'Dashboard', icon: 'speedometer2' },
             { path: '/projects', label: 'Projects', icon: 'kanban' },
+            { path: '/boards', label: 'Boards', icon: 'layout-three-columns' },
             { path: '/roadmap', label: 'Roadmap', icon: 'signpost-split' },
             { path: '/tickets', label: 'Tickets', icon: 'card-checklist' },
             { path: '/timesheet', label: 'Timesheet', icon: 'calendar-week' },
@@ -76,6 +77,19 @@
                {{ active ? 'aria-current="page"' : '' }}><i class="bi bi-{{ item.icon }}" aria-hidden="true"></i><span>{{ item.label|t }}</span></a>
         {% endfor %}
 
+
+        {# The shared boards, each straight to its running sprint. #}
+        {% set sidebar_boards = shared_boards() %}
+        {% if sidebar_boards is not empty %}
+            <span class="sidebar__section">{{ 'Boards'|t }}</span>
+            {% for one in sidebar_boards %}
+                {% set here = current_path starts with '/boards/' ~ one.id and (current_path == '/boards/' ~ one.id or current_path starts with '/boards/' ~ one.id ~ '/') %}
+                <a class="sidebar__link sidebar__link--filter{{ here ? ' is-active' : '' }}" href="{{ url('/boards/' ~ one.id) }}"
+                   {{ here ? 'aria-current="page"' : '' }}>
+                    <i class="bi bi-layout-three-columns" aria-hidden="true"></i><span>{{ one.name }}</span>
+                </a>
+            {% endfor %}
+        {% endif %}
 
         {# Named apart from `filters`, which the list pages use for their own:
            a template and its layout share one set of variables. #}

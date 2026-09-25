@@ -1,0 +1,62 @@
+{% extends 'layout.twig' %}
+
+{% block title %}{{ 'Boards'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'Boards'|t }}{% endblock %}
+{% block subheading %}
+    <p class="content__sub">{{ 'A board plans sprints from several projects at once. Every project also has a board of its own, on its page.'|t }}</p>
+{% endblock %}
+
+{% block content %}
+    {% if boards is empty %}
+        <section class="card">
+            <p class="card__empty">{{ 'No shared boards yet.'|t }}</p>
+        </section>
+    {% else %}
+        <div class="project-grid">
+            {% for board in boards %}
+                <a class="project" href="{{ url('/boards/' ~ board.id) }}">
+                    <span class="project__code">{{ board.project_codes ?: '—' }}</span>
+                    <h2 class="project__name">{{ board.name }}</h2>
+                    {% if board.query %}<p class="project__note"><code>{{ board.query }}</code></p>{% endif %}
+                    <div class="project__meta">
+                        {% if board.active_sprint_id %}
+                            <span class="badge badge--blue">{{ 'Sprint running'|t }}</span>
+                        {% else %}
+                            <span class="muted">{{ 'No sprint running'|t }}</span>
+                        {% endif %}
+                    </div>
+                </a>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {% if can_work %}
+        <section class="card">
+            <h2 class="card__title">{{ 'New board'|t }}</h2>
+            <form class="card__body" method="post" action="{{ url('/boards') }}">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <label for="board-name">{{ 'Name'|t }}</label>
+                <input id="board-name" class="field" type="text" name="name" maxlength="80" required
+                       placeholder="{{ 'Development Scrum Board'|t }}">
+
+                <fieldset class="choice card-fields">
+                    <legend>{{ 'Projects on it'|t }}</legend>
+                    {% for project in projects %}
+                        <label class="check">
+                            <input type="checkbox" name="projects[]" value="{{ project.id }}">
+                            <span class="project__code">{{ project.code }}</span> {{ project.name }}
+                        </label>
+                    {% endfor %}
+                </fieldset>
+
+                <label for="board-query">{{ 'Only the tickets that match (optional)'|t }}</label>
+                <input id="board-query" class="field" type="text" name="query" maxlength="1000" placeholder="labels = fejlesztés">
+                <p class="hint">{{ 'In the query language of the ticket list. Empty: every ticket of the projects.'|t }} <a href="{{ url('/tickets?mode=query') }}">{{ 'How to write a query'|t }}</a></p>
+
+                <div class="form__actions">
+                    <button class="button button--primary" type="submit">{{ 'Make board'|t }}</button>
+                </div>
+            </form>
+        </section>
+    {% endif %}
+{% endblock %}

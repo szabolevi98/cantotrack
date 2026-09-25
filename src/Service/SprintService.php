@@ -4,6 +4,7 @@ namespace CantoTrack\Service;
 
 use CantoTrack\Core\DatabaseConnection;
 use CantoTrack\Core\ValidationError;
+use CantoTrack\Model\BoardRepository;
 use CantoTrack\Model\ProjectRepository;
 use CantoTrack\Model\SprintRepository;
 use CantoTrack\Model\TicketRepository;
@@ -12,8 +13,9 @@ use PDO;
 /**
  * Sprints: planning them, starting one, and closing it.
  *
- * A project has at most one sprint running. Starting it writes down what it
- * set out to do — the points and the number of tickets — because that is
+ * A sprint is a board's, and holds tickets of the board's projects — see the
+ * 0047 migration. A board has at most one sprint running. Starting it writes
+ * down what it set out to do — the points and the number of tickets — because that is
  * what the burndown and the velocity measure against, and a sprint's
  * contents change while it runs. Closing it writes down what got done, and
  * sends whatever did not get done on: back to the backlog, or into the next
@@ -27,6 +29,7 @@ class SprintService
     private SprintRepository $sprints;
     private TicketRepository $tickets;
     private ProjectRepository $projects;
+    private BoardRepository $boards;
     private Activity $activity;
 
     public function __construct(?PDO $db = null)
@@ -36,22 +39,42 @@ class SprintService
         $this->sprints = new SprintRepository($db);
         $this->tickets = new TicketRepository($db);
         $this->projects = new ProjectRepository($db);
+        $this->boards = new BoardRepository($db);
         $this->activity = new Activity($db);
     }
 
-    /** @throws ValidationError */
-    public function create(int $projectId, string $name, string $goal, string $startsOn, string $endsOn): int
+    /**
+     * Plans a sprint on a board. Without a name it is called after the board
+     * and how many it has had: "CT Sprint 4" on a project's own board.
+     *
+     * @throws ValidationError
+     */
+    public function create(int $boardId, string $name, string $goal, string $startsOn, string $endsOn): int
     {
-        $project = $this->projects->find($projectId);
+        $board = $this->boards->find($boardId);
 
-        if ($project === null) {
-            throw new ValidationError(__('There is no such project.'));
+        if ($board === null) {
+            throw new ValidationError(__('There is no such board.'));
         }
 
-        $name = trim($name) ?: $project['code'] . ' ' . __('Sprint {number}', ['number' => $this->sprints->countForProject($projectId) + 1]);
+        $name = trim($name) ?: self::prefix($board, $this->projects) . ' ' . __('Sprint {number}', ['number' => $this->sprints->countForBoard($boardId) + 1]);
         [$start, $end] = $this->dates($startsOn, $endsOn);
 
-        return $this->sprints->create($projectId, mb_substr($name, 0, 80), trim($goal) ?: null, $start, $end);
+        return $this->sprints->create($boardId, mb_substr($name, 0, 80), trim($goal) ?: null, $start, $end);
+    }
+
+    /** What a board's sprints are called after: its project's code, or its own name. */
+    public static function prefix(array $board, ?ProjectRepository $projects = null): string
+    {
+        if ($board['project_id'] !== null) {
+            $project = ($projects ?? new ProjectRepository())->find((int) $board['project_id']);
+
+            if ($project !== null) {
+                return (string) $project['code'];
+            }
+        }
+
+        return (string) $board['name'];
     }
 
     /** @throws ValidationError */
@@ -73,8 +96,8 @@ class SprintService
             throw new ValidationError(__('Only a planned sprint can be started.'));
         }
 
-        if ($this->sprints->active((int) $sprint['project_id']) !== null) {
-            throw new ValidationError(__('Another sprint is already running in this project. Close it first.'));
+        if ($this->sprints->active((int) $sprint['board_id']) !== null) {
+            throw new ValidationError(__('Another sprint is already running on this board. Close it first.'));
         }
 
         $tickets = $this->sprints->tickets((int) $sprint['id']);
@@ -99,8 +122,8 @@ class SprintService
         }
 
         $next = $carryTo === null ? null : $this->sprints->find($carryTo);
-        if ($carryTo !== null && ($next === null || (int) $next['project_id'] !== (int) $sprint['project_id'] || $next['state'] !== 'planned')) {
-            throw new ValidationError(__('Unfinished work can only go on to a planned sprint of the same project.'));
+        if ($carryTo !== null && ($next === null || (int) $next['board_id'] !== (int) $sprint['board_id'] || $next['state'] !== 'planned')) {
+            throw new ValidationError(__('Unfinished work can only go on to a planned sprint of the same board.'));
         }
 
         $tickets = $this->sprints->tickets((int) $sprint['id']);
@@ -127,7 +150,8 @@ class SprintService
 
     /**
      * Puts tickets into a sprint, or back in the backlog with null. A closed
-     * sprint takes nothing more: what it did is what it did.
+     * sprint takes nothing more: what it did is what it did. A ticket of a
+     * project that is not on the sprint's board stays where it is.
      *
      * @param list<int> $ticketIds
      * @throws ValidationError
@@ -139,6 +163,8 @@ class SprintService
         if ($sprintId !== null && ($sprint === null || $sprint['state'] === 'closed')) {
             throw new ValidationError(__('That sprint is closed, or does not exist.'));
         }
+
+        $onBoard = $sprint === null ? [] : $this->boards->projectIds((int) $sprint['board_id']);
 
         // A ticket's subtasks go where it goes: they are steps of its work.
         foreach ($ticketIds as $id) {
@@ -152,7 +178,7 @@ class SprintService
         foreach ($ticketIds as $id) {
             $ticket = $this->tickets->find($id);
 
-            if ($ticket === null || ($sprint !== null && (int) $ticket['project_id'] !== (int) $sprint['project_id'])) {
+            if ($ticket === null || ($sprint !== null && !in_array((int) $ticket['project_id'], $onBoard, true))) {
                 continue;
             }
 

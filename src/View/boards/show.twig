@@ -1,0 +1,151 @@
+{% extends 'layout.twig' %}
+{% import 'common/macros.twig' as ui %}
+
+{#
+    A shared board: several projects' tickets in the board's own columns —
+    see the 0047 migration and Service\BoardColumns for which status goes
+    where. The same board as a project's, apart from the columns: each holds
+    statuses of several projects, so a card dropped in one goes to its own
+    project's status there.
+#}
+{% block title %}{{ board.name }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ board.name }}{% endblock %}
+
+{% block subheading %}
+    <p class="content__sub">
+        {% for one in board_projects %}<a class="project__code" href="{{ url('/projects/' ~ one.id) }}">{{ one.code }}</a> {% endfor %}
+        {% if board.query %}<code>{{ board.query }}</code>{% endif %}
+    </p>
+{% endblock %}
+
+{% block actions %}
+    {% if can_work %}
+        <a class="button button--primary" href="{{ url('/tickets/create') }}">{{ 'New ticket'|t }}</a>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    {% include 'common/board_tabs.twig' with {board: board, active: 'board'} only %}
+
+    {% if board_projects is empty %}
+        <p class="card card__empty">{{ 'This board has no projects yet.'|t }} <a href="{{ url('/boards/' ~ board.id ~ '/settings') }}">{{ 'Choose them in its settings.'|t }}</a></p>
+    {% endif %}
+
+    {% if active_sprint %}
+        {% set progress = sprint_progress %}
+        <section class="card sprint-bar">
+            <div class="sprint-bar__what">
+                <strong>{{ active_sprint.name }}</strong>
+                {% if active_sprint.ends_on %}
+                    {% set left = ((active_sprint.ends_on|date('U') - 'today'|date('U')) / 86400)|round %}
+                    <span class="muted">{{ left >= 0 ? plural('{count} day left', '{count} days left', left) : 'Ended {day}'|t({day: active_sprint.ends_on|day}) }}</span>
+                {% endif %}
+                {% if active_sprint.goal %}<span class="sprint-bar__goal">{{ active_sprint.goal }}</span>{% endif %}
+            </div>
+            <div class="sprint-bar__progress">
+                <span class="muted">{{ '{done} of {total} done'|t({done: progress.done, total: progress.total}) }}{% if progress.points > 0 %} · {{ '{done} of {total} points'|t({done: progress.done_points, total: progress.points}) }}{% endif %}</span>
+                <span class="bar"><span class="bar__fill" style="width: {{ progress.total > 0 ? (progress.done / progress.total * 100)|round : 0 }}%"></span></span>
+            </div>
+            <nav class="segmented" aria-label="{{ 'Show'|t }}">
+                <a class="segmented__item{{ scope == 'sprint' ? ' is-active' : '' }}" href="{{ url('/boards/' ~ board.id) }}">{{ 'This sprint'|t }}</a>
+                <a class="segmented__item{{ scope == 'all' ? ' is-active' : '' }}" href="{{ url('/boards/' ~ board.id ~ '?scope=all') }}">{{ 'Everything'|t }}</a>
+            </nav>
+            <a class="button button--small" href="{{ url('/sprints/' ~ active_sprint.id) }}">{{ 'Burndown'|t }}</a>
+        </section>
+    {% endif %}
+
+    <form class="filters card board-filters" method="get" action="{{ url('/boards/' ~ board.id) }}">
+        {% if scope == 'all' and active_sprint %}<input type="hidden" name="scope" value="all">{% endif %}
+        <input class="field field--inline filters__search" type="search" name="q" value="{{ filters.q }}"
+               placeholder="{{ 'Filter the cards'|t }}" aria-label="{{ 'Filter the cards'|t }}">
+
+        <select class="field field--inline" name="who" data-autosubmit aria-label="{{ 'Whose'|t }}">
+            <option value="">{{ 'Everybody’s'|t }}</option>
+            <option value="me"{{ who == 'me' ? ' selected' : '' }}>{{ 'Only mine'|t }}</option>
+            <option value="none"{{ who == 'none' ? ' selected' : '' }}>{{ 'Unassigned'|t }}</option>
+            {% for person in people %}
+                <option value="{{ person.id }}"{{ who == person.id ~ '' ? ' selected' : '' }}>{{ person.name }}</option>
+            {% endfor %}
+        </select>
+
+        {% if epics is not empty %}
+            <select class="field field--inline" name="epic" data-autosubmit aria-label="{{ 'Epic'|t }}">
+                <option value="">{{ 'Every epic'|t }}</option>
+                <option value="none"{{ epic == 'none' ? ' selected' : '' }}>{{ 'No epic'|t }}</option>
+                {% for one in epics %}
+                    <option value="{{ one.id }}"{{ epic == one.id ~ '' ? ' selected' : '' }}>{{ one.project_code }} · {{ one.title }}</option>
+                {% endfor %}
+            </select>
+        {% endif %}
+
+        <select class="field field--inline" name="type" data-autosubmit aria-label="{{ 'Type'|t }}">
+            <option value="">{{ 'Any type'|t }}</option>
+            {% for value in types %}
+                <option value="{{ value }}"{{ filters.type == value ? ' selected' : '' }}>{{ ui.type_label(value) }}</option>
+            {% endfor %}
+        </select>
+
+        {% if labels is not empty %}
+            <select class="field field--inline" name="label" data-autosubmit aria-label="{{ 'Label'|t }}">
+                <option value="">{{ 'Any label'|t }}</option>
+                {% for label in labels %}
+                    <option value="{{ label.name }}"{{ filters.label == label.name ? ' selected' : '' }}>{{ label.name }}</option>
+                {% endfor %}
+            </select>
+        {% endif %}
+
+        <select class="field field--inline" name="lanes" data-autosubmit aria-label="{{ 'Swimlanes'|t }}">
+            <option value="">{{ 'No swimlanes'|t }}</option>
+            <option value="assignee"{{ lanes_by == 'assignee' ? ' selected' : '' }}>{{ 'A lane per person'|t }}</option>
+            <option value="epic"{{ lanes_by == 'epic' ? ' selected' : '' }}>{{ 'A lane per epic'|t }}</option>
+        </select>
+
+        <button class="button autosubmit__button" type="submit">{{ 'Filter'|t }}</button>
+        {% if narrowed or lanes_by != 'none' %}
+            <a class="button" href="{{ url('/boards/' ~ board.id) }}">{{ 'Clear'|t }}</a>
+        {% endif %}
+    </form>
+
+    {# Each card goes by its own project's columns: the select on it, and what
+       the drop means. The workflow's limits on moves are the projects', and
+       the server says when one refuses. #}
+    {% set shows = ['priority', 'epic', 'labels', 'family', 'assignee', 'due', 'points', 'logged'] %}
+    <div class="board" style="--columns: {{ columns|length }}" data-board-id="{{ board.id }}"
+         data-move-url="{{ url('/tickets/{id}/move') }}" data-move-failed="{{ 'The move did not go through.'|t }}" data-board>
+        <div class="board__row board__row--heads">
+            {% for column in columns %}
+                <header class="board__head" data-head-for="{{ column.id }}">
+                    {{ ui.status(column.name, column.colour) }}
+                    <span class="board__count"><span data-count>{{ counts[column.id]|default(0) }}</span></span>
+                </header>
+            {% endfor %}
+        </div>
+
+        {% for lane in lanes %}
+            {% if lane.title %}
+                <h3 class="board__lane-title">
+                    {% if lanes_by == 'assignee' and lane.value %}{{ ui.person(lane.title, lane.value) }}{% else %}{{ lane.title }}{% endif %}
+                </h3>
+            {% endif %}
+
+            <div class="board__row" data-lane-field="{{ lane.field }}" data-lane-value="{{ lane.value }}">
+                {% for column in columns %}
+                    <section class="board__column" data-status-id="{{ column.id }}"
+                             aria-label="{{ column.name|t }}{{ lane.title ? ' — ' ~ lane.title : '' }}">
+                        {% for ticket in lane.columns[column.id]|default([]) %}
+                            {% include 'common/ticket_card.twig' with {ticket: ticket, shows: shows, lanes_by: lanes_by, can_work: can_work, statuses: statuses_of[ticket.project_id]|default([]), back: '/boards/' ~ board.id} only %}
+                        {% endfor %}
+
+                        {% if loop.parent.loop.last and more[column.id]|default(0) > 0 and not narrowed %}
+                            <a class="board__more" href="{{ url(more_urls[column.id]) }}">
+                                {{ plural('and {count} more', 'and {count} more', more[column.id]) }}
+                            </a>
+                        {% endif %}
+                    </section>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="card card__empty">{{ 'No cards match these filters.'|t }}</p>
+        {% endfor %}
+    </div>
+{% endblock %}

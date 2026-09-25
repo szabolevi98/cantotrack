@@ -5,59 +5,62 @@ namespace CantoTrack\Controller;
 use CantoTrack\Core\Auth;
 use CantoTrack\Core\Controller;
 use CantoTrack\Core\ValidationError;
+use CantoTrack\Model\BoardRepository;
 use CantoTrack\Model\ProjectRepository;
 use CantoTrack\Model\SprintRepository;
-use CantoTrack\Model\StatusRepository;
 use CantoTrack\Model\TicketRepository;
+use CantoTrack\Service\BoardService;
 use CantoTrack\Service\SprintService;
 
 /**
- * Planning: a project's backlog and its sprints, and the report of each
+ * Planning: a board's backlog and its sprints, and the report of each
  * sprint — its burndown and what it did.
+ *
+ * A project's own board is planned under the project, as its Backlog tab; a
+ * shared board under /boards — see the 0047 migration.
  */
 class SprintController extends Controller
 {
-    /** The backlog: every sprint that is not closed, and what waits outside them. */
+    /** A project's backlog: its own board's. */
     public function backlog(int $projectId): void
     {
         Auth::require();
 
         $project = $this->projectOr404($projectId);
-        $sprints = new SprintRepository();
-        $all = $sprints->forProject($projectId);
 
-        $this->render('sprints/backlog.twig', [
-            'project' => $project,
-            'sprints' => array_values(array_filter($all, static fn(array $s): bool => $s['state'] !== 'closed')),
-            'closed' => array_values(array_filter($all, static fn(array $s): bool => $s['state'] === 'closed')),
-            'tickets' => (new TicketRepository())->planning($projectId),
-            'statuses' => (new StatusRepository())->forProject($projectId),
-            'velocity' => $sprints->closed($projectId),
-            'today' => date('Y-m-d'),
-            'in_two_weeks' => date('Y-m-d', strtotime('+' . (SprintService::DEFAULT_DAYS - 1) . ' days')),
-        ]);
+        $this->renderBacklog((new BoardRepository())->ownOf($projectId), $project);
     }
 
+    /** A shared board's backlog. */
+    public function boardBacklog(int $boardId): void
+    {
+        Auth::require();
+
+        $board = $this->boardOr404($boardId);
+
+        if ($board['project_id'] !== null) {
+            $this->redirect('/projects/' . $board['project_id'] . '/backlog');
+        }
+
+        $this->renderBacklog($board, null);
+    }
+
+    /** A sprint planned on a project's own board. */
     public function create(int $projectId): void
     {
         Auth::requireMember();
 
         $this->projectOr404($projectId);
 
-        try {
-            (new SprintService())->create(
-                $projectId,
-                $this->input('name'),
-                $this->input('goal'),
-                $this->input('starts_on'),
-                $this->input('ends_on')
-            );
-            $this->flash(__('Sprint planned.'));
-        } catch (ValidationError $e) {
-            $this->flash($e->getMessage(), 'danger');
-        }
+        $this->plan((new BoardRepository())->ownOf($projectId));
+    }
 
-        $this->redirect('/projects/' . $projectId . '/backlog');
+    /** A sprint planned on a shared board. */
+    public function createOnBoard(int $boardId): void
+    {
+        Auth::requireMember();
+
+        $this->plan($this->boardOr404($boardId));
     }
 
     /** A sprint's report: the burndown, and its tickets as they stand. */
@@ -66,16 +69,20 @@ class SprintController extends Controller
         Auth::require();
 
         $sprint = $this->sprintOr404($id);
-        $project = $this->projectOr404((int) $sprint['project_id']);
+        $board = $this->boardOr404((int) $sprint['board_id']);
         $tickets = (new TicketRepository())->search(['sprint_id' => $id], 500);
+        $project = $board['project_id'] === null ? null : (new ProjectRepository())->find((int) $board['project_id']);
 
         $this->render('sprints/show.twig', [
             'sprint' => $sprint,
-            'project' => $project,
+            'board' => $board,
+            'home_name' => $project['name'] ?? $board['name'],
+            'board_url' => BoardService::url($board),
+            'backlog_url' => BoardService::url($board, '/backlog'),
             'tickets' => $tickets,
             'burndown' => (new SprintService())->burndown($sprint),
             'planned' => array_values(array_filter(
-                (new SprintRepository())->forProject((int) $project['id']),
+                (new SprintRepository())->forBoard((int) $board['id']),
                 static fn(array $s): bool => $s['state'] === 'planned' && (int) $s['id'] !== $id
             )),
         ]);
@@ -102,14 +109,15 @@ class SprintController extends Controller
         Auth::requireMember();
 
         $sprint = $this->sprintOr404($id);
+        $board = $this->boardOr404((int) $sprint['board_id']);
 
         try {
             (new SprintService())->start($sprint);
             $this->flash(__('{name} is running.', ['name' => $sprint['name']]));
-            $this->redirect('/projects/' . $sprint['project_id']);
+            $this->redirect(BoardService::url($board));
         } catch (ValidationError $e) {
             $this->flash($e->getMessage(), 'danger');
-            $this->redirect('/projects/' . $sprint['project_id'] . '/backlog');
+            $this->redirect(BoardService::url($board, '/backlog'));
         }
     }
 
@@ -134,6 +142,7 @@ class SprintController extends Controller
         Auth::requireMember();
 
         $sprint = $this->sprintOr404($id);
+        $board = $this->boardOr404((int) $sprint['board_id']);
 
         try {
             (new SprintService())->delete($sprint);
@@ -142,7 +151,7 @@ class SprintController extends Controller
             $this->flash($e->getMessage(), 'danger');
         }
 
-        $this->redirect('/projects/' . $sprint['project_id'] . '/backlog');
+        $this->redirect(BoardService::url($board, '/backlog'));
     }
 
     /** One ticket into a sprint, or back to the backlog. */
@@ -164,6 +173,50 @@ class SprintController extends Controller
         $this->back('/projects/' . $ticket['project_id'] . '/backlog');
     }
 
+    /** The backlog of a board: every sprint on it that is not closed, and what waits outside them. */
+    private function renderBacklog(array $board, ?array $project): void
+    {
+        $sprints = new SprintRepository();
+        $all = $sprints->forBoard((int) $board['id']);
+        $boards = new BoardService();
+        $scope = $boards->scope($board);
+        $tickets = new TicketRepository();
+
+        $this->render('sprints/backlog.twig', [
+            'board' => $board,
+            'project' => $project,
+            'board_projects' => $project === null ? (new BoardRepository())->projects((int) $board['id']) : [$project],
+            'backlog_url' => BoardService::url($board, '/backlog'),
+            'plan_url' => $project === null ? '/boards/' . $board['id'] . '/sprints' : '/projects/' . $project['id'] . '/sprints',
+            'name_prefix' => SprintService::prefix($board),
+            'sprints' => array_values(array_filter($all, static fn(array $s): bool => $s['state'] !== 'closed')),
+            'closed' => array_values(array_filter($all, static fn(array $s): bool => $s['state'] === 'closed')),
+            'tickets' => $tickets->planning((int) $board['id'], $scope),
+            'elsewhere' => $tickets->plannedElsewhere((int) $board['id'], $scope),
+            'velocity' => $sprints->closed((int) $board['id']),
+            'today' => date('Y-m-d'),
+            'in_two_weeks' => date('Y-m-d', strtotime('+' . (SprintService::DEFAULT_DAYS - 1) . ' days')),
+        ]);
+    }
+
+    private function plan(array $board): never
+    {
+        try {
+            (new SprintService())->create(
+                (int) $board['id'],
+                $this->input('name'),
+                $this->input('goal'),
+                $this->input('starts_on'),
+                $this->input('ends_on')
+            );
+            $this->flash(__('Sprint planned.'));
+        } catch (ValidationError $e) {
+            $this->flash($e->getMessage(), 'danger');
+        }
+
+        $this->redirect(BoardService::url($board, '/backlog'));
+    }
+
     private function sprintOr404(int $id): array
     {
         $sprint = (new SprintRepository())->find($id);
@@ -173,6 +226,17 @@ class SprintController extends Controller
         }
 
         return $sprint;
+    }
+
+    private function boardOr404(int $id): array
+    {
+        $board = (new BoardRepository())->find($id);
+
+        if ($board === null) {
+            $this->notFound(__('There is no such board.'));
+        }
+
+        return $board;
     }
 
     private function projectOr404(int $id): array

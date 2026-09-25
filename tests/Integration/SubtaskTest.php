@@ -30,7 +30,7 @@ final class SubtaskTest extends DatabaseTestCase
     {
         $epic = (new EpicRepository($this->db))->create($this->project, 'Checkout', null);
         $sprints = new SprintService($this->db);
-        $sprint = $sprints->create($this->project, 'Sprint 1', '', '2026-10-05', '2026-10-16');
+        $sprint = $sprints->create($this->ownBoard($this->project), 'Sprint 1', '', '2026-10-05', '2026-10-16');
         $parent = $this->service->create(['project_id' => $this->project, 'title' => 'Pay by card', 'epic_id' => $epic], $this->me);
         $sprints->assign([$parent], $sprint, $this->me);
 

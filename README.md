@@ -38,8 +38,15 @@ deploy with `git pull`.
   done, won't do, duplicate, cannot be reproduced.
 - **Backlog and sprints.** A sprint writes down what it committed to when it
   starts; closing it hands the unfinished work on to the next one. Each sprint
-  has a burndown, and the project a velocity chart — drawn on the server as
+  has a burndown, and each board a velocity chart — drawn on the server as
   SVG, so there is no charting library.
+- **Shared boards**, for a team that works on several projects at once: a
+  board holds any projects (and, if it likes, a query narrowing them —
+  `labels = fejlesztés`), and its sprints hold their tickets together, as in
+  Jira. Its columns are its projects' by name — "In progress" in two projects
+  is one column — or its own, with each project's statuses put in them; a
+  card dropped in one goes to its own project's status there. Every project
+  keeps a board of its own, and one sprint can run on each board at a time.
 - **Subtasks**, one level deep: a ticket broken into steps, each with its own
   person, column and hours. The parent shows how many are done and what the
   whole of it cost, and its subtasks follow it into its epic and its sprints.
@@ -229,7 +236,8 @@ deploy with `git pull`.
   matches a condition in the query language, move it, resolve it, give it to
   somebody, set its priority, due date or a field of the project's own, add or
   take off a label, have somebody follow it, comment, add a subtask, or put it
-  in the running sprint.
+  in the running sprint (`active`, or `active: Board name` for a shared
+  board's).
 - A rule answers what happened, never another rule, so two rules cannot undo
   each other for ever; its lines in a ticket's history name it, and its log
   says what it did and what failed.

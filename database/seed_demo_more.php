@@ -38,6 +38,7 @@
  * @var int $julia
  */
 
+use CantoTrack\Model\BoardRepository;
 use CantoTrack\Model\ClientRepository;
 use CantoTrack\Model\ReleaseRepository;
 use CantoTrack\Service\Planning;
@@ -480,7 +481,7 @@ foreach ($catalogue as $code => $project) {
         $sprintIds = [];
         for ($k = 0; $k < 6; $k++) {
             $from = $lastMonday->modify(sprintf('%+d days', ($k - 4) * $sprintLength));
-            $sprintIds[$k] = [$sprintService->create($projectId, $project['sprints'] . ' ' . ($k + 1), '', $ymd($from), $ymd($from->modify('+11 days'))), $from];
+            $sprintIds[$k] = [$sprintService->create((int) (new BoardRepository())->ownOf($projectId)['id'], $project['sprints'] . ' ' . ($k + 1), '', $ymd($from), $ymd($from->modify('+11 days'))), $from];
         }
 
         // About two thirds go through the sprints; the rest waits in the backlog.
@@ -938,12 +939,12 @@ foreach ($sprintDates as $sprintId => $from) {
     $set('UPDATE sprints SET started_at = CASE WHEN started_at IS NULL THEN NULL ELSE :started END, closed_at = :closed WHERE id = :id', [
         'started' => $ymd($from) . ' 09:00:00', 'closed' => $closed, 'id' => $sprintId,
     ]);
-    $set("UPDATE ticket_events e JOIN tickets t ON t.id = e.ticket_id SET e.created_at = :at WHERE t.project_id = :project AND e.kind = 'sprint' AND e.old_value IS NULL AND e.new_value = :name", [
-        'at' => $ymd($from) . ' 08:45:00', 'project' => $sprint['project_id'], 'name' => $sprint['name'],
+    $set("UPDATE ticket_events e JOIN tickets t ON t.id = e.ticket_id SET e.created_at = :at WHERE t.project_id IN (SELECT bp.project_id FROM board_projects bp WHERE bp.board_id = :board) AND e.kind = 'sprint' AND e.old_value IS NULL AND e.new_value = :name", [
+        'at' => $ymd($from) . ' 08:45:00', 'board' => $sprint['board_id'], 'name' => $sprint['name'],
     ]);
     if ($closed !== null) {
-        $set("UPDATE ticket_events e JOIN tickets t ON t.id = e.ticket_id SET e.created_at = :at WHERE t.project_id = :project AND e.kind = 'sprint' AND e.old_value = :name", [
-            'at' => $closed, 'project' => $sprint['project_id'], 'name' => $sprint['name'],
+        $set("UPDATE ticket_events e JOIN tickets t ON t.id = e.ticket_id SET e.created_at = :at WHERE t.project_id IN (SELECT bp.project_id FROM board_projects bp WHERE bp.board_id = :board) AND e.kind = 'sprint' AND e.old_value = :name", [
+            'at' => $closed, 'board' => $sprint['board_id'], 'name' => $sprint['name'],
         ]);
     }
 }

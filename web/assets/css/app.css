@@ -3930,6 +3930,7 @@ a.family:hover {
 
 .bi-speedometer2::before { content: "\f580"; }
 .bi-kanban::before { content: "\f44d"; }
+.bi-layout-three-columns::before { content: "\f465"; }
 .bi-card-checklist::before { content: "\f224"; }
 .bi-calendar-week::before { content: "\f1f3"; }
 .bi-bar-chart-line::before { content: "\f17c"; }

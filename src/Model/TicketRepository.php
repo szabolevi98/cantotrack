@@ -219,6 +219,18 @@ class TicketRepository
             $parameters['project_id'] = (int) $filters['project_id'];
         }
 
+        // A board's projects, several at once. Integers, so written in as
+        // they are; none at all is nothing, not everything.
+        if (isset($filters['project_ids']) && is_array($filters['project_ids'])) {
+            $ids = array_map('intval', $filters['project_ids']);
+            $where[] = $ids === [] ? 'FALSE' : 't.project_id IN (' . implode(',', $ids) . ')';
+        }
+
+        if (isset($filters['status_ids']) && is_array($filters['status_ids'])) {
+            $ids = array_map('intval', $filters['status_ids']);
+            $where[] = $ids === [] ? 'FALSE' : 't.status_id IN (' . implode(',', $ids) . ')';
+        }
+
         if (!empty($filters['epic_id'])) {
             $where[] = 't.epic_id = :epic_id';
             $parameters['epic_id'] = (int) $filters['epic_id'];
@@ -408,6 +420,68 @@ class TicketRepository
     }
 
     /**
+     * A shared board's tickets in its columns — the same as board(), for
+     * columns that each hold statuses of several projects (see
+     * Service\BoardColumns). The filters carry the board's projects and its
+     * query as well as what the page narrowed it to.
+     *
+     * A column where only finished work ends up shows the latest of it, and
+     * says how many more there are; with `$allDone` — a sprint's board — all
+     * of it.
+     *
+     * @param list<array> $columns each with `id`, `status_ids` and `done` (see Service\BoardColumns)
+     * @return array{columns: array<string, array>, more: array<string, int>, counts: array<string, int>}
+     */
+    public function boardColumns(array $columns, array $filters, bool $allDone = false, int $doneShown = 20): array
+    {
+        $drawn = [];
+        $of = [];
+        $open = [];
+        foreach ($columns as $column) {
+            $drawn[$column['id']] = [];
+
+            foreach ($column['status_ids'] as $statusId) {
+                $of[$statusId] = $column['id'];
+
+                if (!$column['done'] || $allDone) {
+                    $open[] = $statusId;
+                }
+            }
+        }
+
+        [$where, $parameters] = $this->conditions(['status_ids' => $open] + $filters);
+        $statement = $this->db->prepare(self::SELECT . ' WHERE ' . implode(' AND ', $where) . ' ORDER BY t.`rank`, t.id');
+        $statement->execute($parameters);
+
+        foreach ($statement->fetchAll() as $ticket) {
+            $drawn[$of[(int) $ticket['status_id']]][] = $ticket;
+        }
+
+        $more = [];
+        $counts = [];
+        foreach ($columns as $column) {
+            $key = $column['id'];
+
+            if (!$column['done'] || $allDone) {
+                $counts[$key] = count($drawn[$key]);
+                continue;
+            }
+
+            [$where, $parameters] = $this->conditions(['status_ids' => $column['status_ids']] + $filters);
+            $done = $this->db->prepare(
+                self::SELECT . ' WHERE ' . implode(' AND ', $where) . ' ORDER BY t.closed_at DESC, t.id DESC LIMIT ' . max(1, $doneShown)
+            );
+            $done->execute($parameters);
+            $drawn[$key] = $done->fetchAll();
+
+            $counts[$key] = $this->count(['status_ids' => $column['status_ids']] + $filters);
+            $more[$key] = max(0, $counts[$key] - count($drawn[$key]));
+        }
+
+        return ['columns' => $drawn, 'more' => $more, 'counts' => $counts];
+    }
+
+    /**
      * Puts a ticket between two others in a column: the one above it and the
      * one below it, either of which may be missing (the top, the bottom, an
      * empty column).
@@ -416,26 +490,30 @@ class TicketRepository
      * between them, the column is renumbered first — 1024 apart again, in the
      * same order — which is rare and costs one statement per card.
      */
-    public function place(int $id, int $statusId, ?int $aboveId, ?int $belowId): void
+    public function place(int $id, int $statusId, ?int $aboveId, ?int $belowId, array $columnStatusIds = []): void
     {
-        $rank = $this->rankBetween($statusId, $aboveId, $belowId);
+        // On a shared board a column holds several projects' statuses, and
+        // the cards in it are in one order: the column is those statuses.
+        $column = array_values(array_unique(array_map('intval', array_merge([$statusId], $columnStatusIds))));
+        $rank = $this->rankBetween($column, $aboveId, $belowId);
 
         if ($rank === null) {
-            $this->renumber($statusId);
-            $rank = (int) $this->rankBetween($statusId, $aboveId, $belowId);
+            $this->renumber($column);
+            $rank = (int) $this->rankBetween($column, $aboveId, $belowId);
         }
 
         $this->db->prepare('UPDATE tickets SET `rank` = :rank WHERE id = :id')->execute(['rank' => $rank, 'id' => $id]);
     }
 
-    private function rankBetween(int $statusId, ?int $aboveId, ?int $belowId): ?int
+    /** @param list<int> $column */
+    private function rankBetween(array $column, ?int $aboveId, ?int $belowId): ?int
     {
         $above = $aboveId === null ? null : $this->rankOf($aboveId);
         $below = $belowId === null ? null : $this->rankOf($belowId);
 
         if ($above === null && $below === null) {
-            $last = $this->db->prepare('SELECT MAX(`rank`) FROM tickets WHERE status_id = :status');
-            $last->execute(['status' => $statusId]);
+            $last = $this->db->prepare('SELECT MAX(`rank`) FROM tickets WHERE status_id IN (' . implode(',', $column) . ')');
+            $last->execute();
 
             return (int) $last->fetchColumn() + 1024;
         }
@@ -460,10 +538,11 @@ class TicketRepository
         return $rank === false ? null : (int) $rank;
     }
 
-    private function renumber(int $statusId): void
+    /** @param list<int> $column */
+    private function renumber(array $column): void
     {
-        $statement = $this->db->prepare('SELECT id FROM tickets WHERE status_id = :status ORDER BY `rank`, id');
-        $statement->execute(['status' => $statusId]);
+        $statement = $this->db->prepare('SELECT id FROM tickets WHERE status_id IN (' . implode(',', $column) . ') ORDER BY `rank`, id');
+        $statement->execute();
 
         $update = $this->db->prepare('UPDATE tickets SET `rank` = :rank WHERE id = :id');
         foreach ($statement->fetchAll(PDO::FETCH_COLUMN) as $position => $ticketId) {
@@ -777,28 +856,79 @@ class TicketRepository
     }
 
     /**
-     * A project's planning view: every ticket that is not finished, and every
-     * ticket of a sprint that is still open, keyed by sprint (0 for the
-     * backlog) and in rank order — the order the board uses too. Subtasks
-     * are not planned on their own: they go wherever their parent goes.
+     * A board's planning view, keyed by sprint (0 for the backlog) and in
+     * rank order — the order the board uses too: every ticket in the board's
+     * sprints that are still open, and every unfinished ticket of its
+     * projects that is in no open sprint at all. Subtasks are not planned on
+     * their own: they go wherever their parent goes.
      *
-     * @return array<int, list<array>>
+     * `$scope` is what the board holds — its projects, and its query — which
+     * decides the backlog. A sprint shows what is in it, whatever the query.
+     *
+     * @return array<int, array<int, array>>
      */
-    public function planning(int $projectId): array
+    public function planning(int $boardId, array $scope): array
     {
+        $grouped = [];
+
         $statement = $this->db->prepare(
-            self::SELECT . ' WHERE t.project_id = :project' . Access::sql('t.project_id') . '
+            self::SELECT . ' WHERE sp.board_id = :board AND sp.state <> \'closed\'' . Access::sql('t.project_id') . '
                AND t.parent_id IS NULL
-               AND (s.category <> \'done\' OR (t.sprint_id IS NOT NULL AND sp.state <> \'closed\'))
              ORDER BY t.`rank`, t.id'
         );
-        $statement->execute(['project' => $projectId]);
+        $statement->execute(['board' => $boardId]);
 
-        $grouped = [];
         foreach ($statement->fetchAll() as $ticket) {
-            $grouped[(int) ($ticket['sprint_id'] ?? 0)][] = $ticket;
+            $grouped[(int) $ticket['sprint_id']][] = $ticket;
         }
 
+        [$where, $parameters] = $this->conditions(['top_level' => true, 'open_only' => true] + $scope);
+        $statement = $this->db->prepare(
+            self::SELECT . ' WHERE ' . implode(' AND ', $where) . '
+               AND (t.sprint_id IS NULL OR sp.state = \'closed\')
+             ORDER BY t.`rank`, t.id'
+        );
+        $statement->execute($parameters);
+        $grouped[0] = $statement->fetchAll();
+
         return $grouped;
+    }
+
+    /**
+     * The unfinished tickets of a board's projects that another board's
+     * sprint has — not in this backlog, and not lost either: how many, by
+     * sprint.
+     *
+     * @return list<array{sprint_id: int, sprint_name: string, board_id: int, board_name: string, count: int}>
+     */
+    public function plannedElsewhere(int $boardId, array $scope): array
+    {
+        [$where, $parameters] = $this->conditions(['top_level' => true, 'open_only' => true] + $scope);
+        $parameters['this_board'] = $boardId;
+
+        $statement = $this->db->prepare(
+            'SELECT sp.id AS sprint_id, sp.name AS sprint_name, b.id AS board_id, COALESCE(bp.name, b.name) AS board_name, COUNT(*) AS count
+             FROM tickets t
+             JOIN projects p ON p.id = t.project_id
+             JOIN statuses s ON s.id = t.status_id
+             JOIN sprints sp ON sp.id = t.sprint_id
+             JOIN boards b ON b.id = sp.board_id
+             LEFT JOIN projects bp ON bp.id = b.project_id
+             LEFT JOIN releases rl ON rl.id = t.release_id
+             LEFT JOIN epics e ON e.id = t.epic_id
+             LEFT JOIN users a ON a.id = t.assignee_id
+             WHERE ' . implode(' AND ', $where) . ' AND sp.state <> \'closed\' AND sp.board_id <> :this_board
+             GROUP BY sp.id, sp.name, b.id, b.name, bp.name
+             ORDER BY b.name, sp.name'
+        );
+        $statement->execute($parameters);
+
+        return array_values(array_map(static fn(array $row): array => [
+            'sprint_id' => (int) $row['sprint_id'],
+            'sprint_name' => (string) $row['sprint_name'],
+            'board_id' => (int) $row['board_id'],
+            'board_name' => (string) $row['board_name'],
+            'count' => (int) $row['count'],
+        ], $statement->fetchAll()));
     }
 }

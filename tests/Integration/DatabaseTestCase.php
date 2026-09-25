@@ -66,6 +66,12 @@ abstract class DatabaseTestCase extends TestCase
         return $id;
     }
 
+    /** The board a project came with, which its sprints are planned on. */
+    protected function ownBoard(int $projectId): int
+    {
+        return (int) (new \CantoTrack\Model\BoardRepository($this->db))->ownOf($projectId)['id'];
+    }
+
     protected function project(string $code = 'CT', bool $archived = false): int
     {
         $projects = new ProjectRepository($this->db);

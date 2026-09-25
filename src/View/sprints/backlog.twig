@@ -1,23 +1,34 @@
 {% extends 'layout.twig' %}
 {% import 'common/macros.twig' as ui %}
 {% import _self as plan %}
-{% set search_project = {id: project.id, code: project.code} %}
+{% if project %}{% set search_project = {id: project.id, code: project.code} %}{% endif %}
 
-{% block title %}{{ 'Backlog'|t }} — {{ project.code }} — {{ app_name }}{% endblock %}
-{% block heading %}{{ project.name }}{% endblock %}
+{#
+    The backlog of a board: a project's own (its Backlog tab, with `project`)
+    or a shared one, holding several projects.
+#}
+{% block title %}{{ 'Backlog'|t }} — {{ project ? project.code : board.name }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ project ? project.name : board.name }}{% endblock %}
 {% block subheading %}
-    <p class="content__sub"><span class="project__code">{{ project.code }}</span> {{ 'Backlog & sprints'|t }}</p>
+    <p class="content__sub">
+        {% if project %}
+            <span class="project__code">{{ project.code }}</span>
+        {% else %}
+            {% for one in board_projects %}<a class="project__code" href="{{ url('/projects/' ~ one.id) }}">{{ one.code }}</a> {% endfor %}
+        {% endif %}
+        {{ 'Backlog & sprints'|t }}
+    </p>
 {% endblock %}
 
 {% block actions %}
-    <a class="button button--primary" href="{{ url('/tickets/create?project=' ~ project.id) }}">{{ 'New ticket'|t }}</a>
+    <a class="button button--primary" href="{{ url('/tickets/create' ~ (project ? '?project=' ~ project.id : '')) }}">{{ 'New ticket'|t }}</a>
 {% endblock %}
 
 {#
     One ticket in a plan: what it is, where it stands, and the one control
     that moves it between the backlog and the sprints.
 #}
-{% macro row(ticket, sprints, project) %}
+{% macro row(ticket, sprints, back) %}
     {% import 'common/macros.twig' as ui %}
     <li class="plan__ticket">
         <span class="plan__key">{{ ui.type_icon(ticket.type) }} {{ ui.ticket_key(ticket) }}</span>
@@ -31,7 +42,7 @@
         </span>
         <form class="plan__move" method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/sprint') }}">
             <input type="hidden" name="_token" value="{{ csrf_token }}">
-            <input type="hidden" name="back" value="/projects/{{ project.id }}/backlog">
+            <input type="hidden" name="back" value="{{ back }}">
             <select class="field field--inline move__select" name="sprint_id" data-autosubmit
                     aria-label="{{ 'Sprint of {key}'|t({key: ticket.project_code ~ '-' ~ ticket.number}) }}">
                 <option value="">{{ 'Backlog'|t }}</option>
@@ -45,7 +56,11 @@
 {% endmacro %}
 
 {% block content %}
-    {% include 'common/project_tabs.twig' with {project: project, active: 'backlog'} only %}
+    {% if project %}
+        {% include 'common/project_tabs.twig' with {project: project, active: 'backlog'} only %}
+    {% else %}
+        {% include 'common/board_tabs.twig' with {board: board, active: 'backlog'} only %}
+    {% endif %}
 
     {% set active = sprints|filter(s => s.state == 'active')|first %}
 
@@ -87,7 +102,7 @@
                 <p class="card__body muted">{{ 'Nothing in this sprint yet. Move tickets in from the backlog below.'|t }}</p>
             {% else %}
                 <ol class="plan__tickets">
-                    {% for ticket in items %}{{ plan.row(ticket, sprints, project) }}{% endfor %}
+                    {% for ticket in items %}{{ plan.row(ticket, sprints, backlog_url) }}{% endfor %}
                 </ol>
             {% endif %}
         </section>
@@ -104,11 +119,22 @@
             </div>
         </header>
 
+        {% if elsewhere is not empty %}
+            {# Unfinished work of these projects that another board has
+               planned: not in this backlog, and not lost either. #}
+            <p class="card__body muted">
+                {% for other in elsewhere %}
+                    {{ plural('{count} ticket is in {sprint} on {board}.', '{count} tickets are in {sprint} on {board}.', other.count, {sprint: other.sprint_name, board: other.board_name}) }}
+                    <a href="{{ url('/sprints/' ~ other.sprint_id) }}">{{ 'To the sprint'|t }}</a>
+                {% endfor %}
+            </p>
+        {% endif %}
+
         {% if tickets[0]|default([]) is empty %}
             <p class="card__body muted">{{ 'The backlog is empty.'|t }}</p>
         {% else %}
             <ol class="plan__tickets">
-                {% for ticket in tickets[0] %}{{ plan.row(ticket, sprints, project) }}{% endfor %}
+                {% for ticket in tickets[0] %}{{ plan.row(ticket, sprints, backlog_url) }}{% endfor %}
             </ol>
         {% endif %}
     </section>
@@ -116,13 +142,13 @@
     <div class="split">
         <section class="card split__main">
             <h2 class="card__title">{{ 'Plan a sprint'|t }}</h2>
-            <form class="sprint-form" method="post" action="{{ url('/projects/' ~ project.id ~ '/sprints') }}">
+            <form class="sprint-form" method="post" action="{{ url(plan_url) }}">
                 <input type="hidden" name="_token" value="{{ csrf_token }}">
                 <div class="form__row">
                     <div>
                         <label for="sprint-name">{{ 'Name'|t }}</label>
                         <input id="sprint-name" class="field" type="text" name="name" maxlength="80"
-                               placeholder="{{ project.code }} {{ 'Sprint {number}'|t({number: sprints|length + closed|length + 1}) }}">
+                               placeholder="{{ name_prefix }} {{ 'Sprint {number}'|t({number: sprints|length + closed|length + 1}) }}">
                     </div>
                     <div>
                         <label for="starts_on">{{ 'Starts'|t }}</label>

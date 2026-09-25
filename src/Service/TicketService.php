@@ -418,7 +418,7 @@ class TicketService
      * @param array{assignee_id?: mixed, epic_id?: mixed} $lane
      * @throws ValidationError
      */
-    public function move(int $id, string $status, ?int $aboveId, ?int $belowId, array $lane, ?int $actorId): void
+    public function move(int $id, string $status, ?int $aboveId, ?int $belowId, array $lane, ?int $actorId, array $columnStatusIds = []): void
     {
         $ticket = $this->tickets->find($id);
 
@@ -435,11 +435,13 @@ class TicketService
         }
 
         // Neighbours from another project are not neighbours; the card goes
-        // to the end of the column instead of somewhere meaningless.
+        // to the end of the column instead of somewhere meaningless. On a
+        // shared board they are, when they are in the same column.
         foreach ([&$aboveId, &$belowId] as &$neighbour) {
             if ($neighbour !== null) {
                 $other = $this->tickets->find($neighbour);
-                if ($other === null || (int) $other['project_id'] !== (int) $ticket['project_id'] || $neighbour === $id) {
+                $sameColumn = $other !== null && in_array((int) $other['status_id'], $columnStatusIds, true);
+                if ($other === null || $neighbour === $id || ((int) $other['project_id'] !== (int) $ticket['project_id'] && !$sameColumn)) {
                     $neighbour = null;
                 }
             }
@@ -453,7 +455,7 @@ class TicketService
         $this->changeStatus($id, $status, $actorId);
 
         $column = $this->status((int) $ticket['project_id'], $status);
-        $this->tickets->place($id, (int) $column['id'], $aboveId, $belowId);
+        $this->tickets->place($id, (int) $column['id'], $aboveId, $belowId, $columnStatusIds);
     }
 
     /**

@@ -6,7 +6,7 @@ use CantoTrack\Core\Access;
 use CantoTrack\Core\DatabaseConnection;
 use PDO;
 
-/** A project's sprints, and what is in them. */
+/** A board's sprints, and what is in them — see the 0047 migration. */
 class SprintRepository
 {
     private PDO $db;
@@ -17,11 +17,11 @@ class SprintRepository
     }
 
     /**
-     * Every sprint of a project, with what it holds now: open ones first, then
+     * Every sprint of a board, with what it holds now: open ones first, then
      * the closed, newest first. Counted in tickets, not in their subtasks —
      * those are steps of a ticket's work, and done when the ticket is.
      */
-    public function forProject(int $projectId): array
+    public function forBoard(int $boardId): array
     {
         $statement = $this->db->prepare(
             'SELECT sp.*,
@@ -32,48 +32,82 @@ class SprintRepository
              FROM sprints sp
              LEFT JOIN tickets t ON t.sprint_id = sp.id AND t.parent_id IS NULL
              LEFT JOIN statuses s ON s.id = t.status_id
-             WHERE sp.project_id = :project
+             WHERE sp.board_id = :board
              GROUP BY sp.id
              ORDER BY FIELD(sp.state, \'active\', \'planned\', \'closed\'),
                       CASE WHEN sp.state = \'closed\' THEN sp.closed_at END DESC,
                       sp.starts_on, sp.id'
+        );
+        $statement->execute(['board' => $boardId]);
+
+        return $statement->fetchAll();
+    }
+
+    /**
+     * The sprints a ticket of a project can be put in: the ones not closed
+     * on every board the project is on — its own board's first — each with
+     * the name of its board.
+     */
+    public function openForProject(int $projectId): array
+    {
+        $statement = $this->db->prepare(
+            'SELECT sp.*, b.name AS board_name, b.project_id AS board_project_id
+             FROM sprints sp
+             JOIN boards b ON b.id = sp.board_id
+             JOIN board_projects bp ON bp.board_id = b.id AND bp.project_id = :project
+             WHERE sp.state <> \'closed\'
+             ORDER BY b.project_id IS NULL, b.name, FIELD(sp.state, \'active\', \'planned\'), sp.starts_on, sp.id'
         );
         $statement->execute(['project' => $projectId]);
 
         return $statement->fetchAll();
     }
 
+    /** The sprints running on the boards a project is on, its own board's first. */
+    public function activeForProject(int $projectId): array
+    {
+        return array_values(array_filter(
+            $this->openForProject($projectId),
+            static fn(array $s): bool => $s['state'] === 'active'
+        ));
+    }
+
     public function find(int $id): ?array
     {
-        $statement = $this->db->prepare('SELECT * FROM sprints WHERE id = :id' . Access::sql('project_id'));
+        $statement = $this->db->prepare(
+            'SELECT sp.*, b.name AS board_name, b.project_id AS board_project_id
+             FROM sprints sp JOIN boards b ON b.id = sp.board_id
+             WHERE sp.id = :id' . Access::boardSql('sp.board_id')
+        );
         $statement->execute(['id' => $id]);
 
         return $statement->fetch() ?: null;
     }
 
-    public function active(int $projectId): ?array
+    /** The sprint running on a board, if one is. */
+    public function active(int $boardId): ?array
     {
-        $statement = $this->db->prepare('SELECT * FROM sprints WHERE project_id = :project AND state = \'active\' LIMIT 1');
-        $statement->execute(['project' => $projectId]);
+        $statement = $this->db->prepare('SELECT * FROM sprints WHERE board_id = :board AND state = \'active\' LIMIT 1');
+        $statement->execute(['board' => $boardId]);
 
         return $statement->fetch() ?: null;
     }
 
-    /** How many sprints the project has had, for naming the next one. */
-    public function countForProject(int $projectId): int
+    /** How many sprints the board has had, for naming the next one. */
+    public function countForBoard(int $boardId): int
     {
-        $statement = $this->db->prepare('SELECT COUNT(*) FROM sprints WHERE project_id = :project');
-        $statement->execute(['project' => $projectId]);
+        $statement = $this->db->prepare('SELECT COUNT(*) FROM sprints WHERE board_id = :board');
+        $statement->execute(['board' => $boardId]);
 
         return (int) $statement->fetchColumn();
     }
 
-    public function create(int $projectId, string $name, ?string $goal, ?string $startsOn, ?string $endsOn): int
+    public function create(int $boardId, string $name, ?string $goal, ?string $startsOn, ?string $endsOn): int
     {
         $this->db->prepare(
-            'INSERT INTO sprints (project_id, name, goal, starts_on, ends_on) VALUES (:project, :name, :goal, :starts, :ends)'
+            'INSERT INTO sprints (board_id, name, goal, starts_on, ends_on) VALUES (:board, :name, :goal, :starts, :ends)'
         )->execute([
-            'project' => $projectId,
+            'board' => $boardId,
             'name' => $name,
             'goal' => $goal,
             'starts' => $startsOn,
@@ -142,12 +176,13 @@ class SprintRepository
         $statement = $this->db->prepare(
             'SELECT DISTINCT t.id, t.story_points, NULL AS closed_at, \'todo\' AS category
              FROM ticket_events e JOIN tickets t ON t.id = e.ticket_id
-             WHERE t.project_id = :project AND t.parent_id IS NULL AND e.kind = \'sprint\' AND e.old_value = :name
+             WHERE t.project_id IN (SELECT bp.project_id FROM board_projects bp WHERE bp.board_id = :board)
+               AND t.parent_id IS NULL AND e.kind = \'sprint\' AND e.old_value = :name
                AND e.created_at >= :closed - INTERVAL 1 MINUTE
                AND (t.sprint_id IS NULL OR t.sprint_id <> :sprint)'
         );
         $statement->execute([
-            'project' => $sprint['project_id'],
+            'board' => $sprint['board_id'],
             'name' => $sprint['name'],
             'closed' => $sprint['closed_at'],
             'sprint' => $sprint['id'],
@@ -168,16 +203,16 @@ class SprintRepository
             ->execute(array_merge([$sprintId], array_map('intval', $ticketIds)));
     }
 
-    /** The closed sprints of a project, oldest first, for the velocity chart. */
-    public function closed(int $projectId, int $limit = 8): array
+    /** The closed sprints of a board, oldest first, for the velocity chart. */
+    public function closed(int $boardId, int $limit = 8): array
     {
         $statement = $this->db->prepare(
             'SELECT * FROM (
-                 SELECT * FROM sprints WHERE project_id = :project AND state = \'closed\'
+                 SELECT * FROM sprints WHERE board_id = :board AND state = \'closed\'
                  ORDER BY closed_at DESC LIMIT ' . max(1, $limit) . '
              ) recent ORDER BY closed_at'
         );
-        $statement->execute(['project' => $projectId]);
+        $statement->execute(['board' => $boardId]);
 
         return $statement->fetchAll();
     }

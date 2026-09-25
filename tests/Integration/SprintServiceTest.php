@@ -116,7 +116,7 @@ final class SprintServiceTest extends DatabaseTestCase
     /** A planned sprint holding tickets of these point sizes. */
     private function sprintWith(array $points, ?string $start = null, ?string $end = null): array
     {
-        $id = $this->sprints->create($this->project, '', '', $start ?? date('Y-m-d'), $end ?? '');
+        $id = $this->sprints->create($this->ownBoard($this->project), '', '', $start ?? date('Y-m-d'), $end ?? '');
         $ticketIds = [];
 
         foreach ($points as $size) {

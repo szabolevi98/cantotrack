@@ -1,0 +1,45 @@
+{#
+    One card on a board — a project's or a shared one. Given: `ticket`,
+    `shows` (what the cards show), `lanes_by`, `can_work`, `statuses` (the
+    columns of the card's own project, for the select that moves it without
+    a mouse) and `back`.
+#}
+{% import 'common/macros.twig' as ui %}
+    <article class="ticket-card" draggable="{{ can_work ? 'true' : 'false' }}" data-ticket-id="{{ ticket.id }}">
+        <div class="ticket-card__top">
+            <span class="ticket-card__key">{{ ui.type_icon(ticket.type) }} {{ ui.ticket_key(ticket) }}</span>
+            <span>
+                {{ ui.resolution(ticket) }}
+                {% if ticket.blocked_by > 0 and ticket.status_category != 'done' %}
+                    <span class="badge badge--red" title="{{ 'Blocked by an unfinished ticket'|t }}">{{ 'Blocked'|t }}</span>
+                {% endif %}
+                {% if 'priority' in shows %}{{ ui.priority(ticket.priority) }}{% endif %}
+            </span>
+        </div>
+
+        <a class="ticket-card__title" href="{{ url('/tickets/' ~ ticket.id) }}" draggable="false" data-panel>{{ ticket.title }}</a>
+
+        {% set tags = ('epic' in shows and ticket.epic_title and lanes_by != 'epic') or ('labels' in shows and ticket.label_names) or ('family' in shows and (ticket.parent_id or ticket.subtask_count > 0)) %}
+        {% if tags %}
+            <div class="ticket-card__tags">
+                {% if 'family' in shows %}{{ ui.family(ticket) }}{% endif %}
+                {% if 'epic' in shows and ticket.epic_title and lanes_by != 'epic' %}<span class="ticket-card__epic">{{ ticket.epic_title }}</span>{% endif %}
+                {% if 'labels' in shows %}{{ ui.labels(ticket.label_names|lines, false) }}{% endif %}
+            </div>
+        {% endif %}
+
+        <div class="ticket-card__foot">
+            {% if lanes_by != 'assignee' and 'assignee' in shows %}{{ ui.person(ticket.assignee_name, ticket.assignee_id) }}{% else %}<span></span>{% endif %}
+            <span class="ticket-card__meta">
+                {% if 'due' in shows %}{{ ui.due(ticket.due_on, ticket.status_category == 'done') }}{% endif %}
+                {% if 'points' in shows and ticket.story_points is not null %}
+                    <span class="points" title="{{ 'Story points'|t }}">{{ ticket.story_points }}</span>
+                {% endif %}
+                {% if 'logged' in shows and ticket.logged_minutes > 0 %}
+                    <span class="muted">{{ ticket.logged_minutes|duration }}</span>
+                {% endif %}
+            </span>
+        </div>
+
+        {% if can_work %}{{ ui.move(ticket, statuses, back) }}{% endif %}
+    </article>

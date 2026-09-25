@@ -29,6 +29,7 @@ require dirname(__DIR__) . '/vendor/autoload.php';
 
 use CantoTrack\Core\Config;
 use CantoTrack\Core\DatabaseConnection;
+use CantoTrack\Model\BoardRepository;
 use CantoTrack\Model\ClientRepository;
 use CantoTrack\Model\EpicRepository;
 use CantoTrack\Model\ProjectRepository;
@@ -370,8 +371,8 @@ $say('checkout', $mark, "Found it: the old shop adds shipping per item for subsc
 // ---------------------------------------------------------------------------
 // The sprints: one finished, one running
 // ---------------------------------------------------------------------------
-$sprintOne = $sprintService->create($ctId, 'CT Sprint 1', 'Tickets on a board, and time on tickets.', $sprintOneStart->format('Y-m-d'), $sprintOneStart->modify('+11 days')->format('Y-m-d'));
-$sprintTwo = $sprintService->create($ctId, 'CT Sprint 2', 'A week you can hand in, and see where it went.', $thisMonday->format('Y-m-d'), $thisMonday->modify('+11 days')->format('Y-m-d'));
+$sprintOne = $sprintService->create((int) (new BoardRepository())->ownOf($ctId)['id'], 'CT Sprint 1', 'Tickets on a board, and time on tickets.', $sprintOneStart->format('Y-m-d'), $sprintOneStart->modify('+11 days')->format('Y-m-d'));
+$sprintTwo = $sprintService->create((int) (new BoardRepository())->ownOf($ctId)['id'], 'CT Sprint 2', 'A week you can hand in, and see where it went.', $thisMonday->format('Y-m-d'), $thisMonday->modify('+11 days')->format('Y-m-d'));
 
 $sprintService->assign([$made['board'], $made['numbering'], $made['filters'], $made['worklog'], $made['contrast'], $made['timesheet']], $sprintOne, $me);
 $sprintService->start((array) $sprints->find($sprintOne));

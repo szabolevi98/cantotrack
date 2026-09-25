@@ -6,6 +6,7 @@ use CantoTrack\Core\Auth;
 use CantoTrack\Core\Controller;
 use CantoTrack\Core\I18n;
 use CantoTrack\Model\AttachmentRepository;
+use CantoTrack\Model\BoardRepository;
 use CantoTrack\Model\ClientRepository;
 use CantoTrack\Model\EpicRepository;
 use CantoTrack\Model\LabelRepository;
@@ -15,6 +16,7 @@ use CantoTrack\Model\StatusRepository;
 use CantoTrack\Model\TicketRepository;
 use CantoTrack\Model\UserRepository;
 use CantoTrack\Service\AttachmentService;
+use CantoTrack\Service\BoardLanes;
 
 /**
  * Projects: the list, the board, and the settings an administrator sets one up
@@ -63,9 +65,16 @@ class ProjectController extends Controller
         $lanesBy = in_array($_GET['lanes'] ?? '', ['epic', 'assignee'], true) ? $_GET['lanes'] : 'none';
         $narrowed = array_filter($filters) !== [];
 
-        // With a sprint running, the board is that sprint's — the work the
-        // team said it would do — unless somebody asks for everything.
-        $active = (new SprintRepository())->active($id);
+        // With a sprint running on the project's own board, the board is that
+        // sprint's — the work the team said it would do — unless somebody
+        // asks for everything. The sprints of the shared boards the project
+        // is on are theirs, and only named here.
+        $sprints = new SprintRepository();
+        $active = $sprints->active((int) (new BoardRepository())->ownOf($id)['id']);
+        $elsewhere = array_values(array_filter(
+            $sprints->activeForProject($id),
+            static fn(array $s): bool => $s['board_project_id'] === null
+        ));
         $scope = $active !== null && ($_GET['scope'] ?? '') !== 'all' ? 'sprint' : 'all';
         if ($scope === 'sprint') {
             $filters['sprint_id'] = (int) $active['id'];
@@ -82,7 +91,7 @@ class ProjectController extends Controller
             'counts' => $board['counts'],
             'statuses' => $statuses,
             'epics' => $epics,
-            'lanes' => $this->lanes($board['columns'], $lanesBy, $epics),
+            'lanes' => BoardLanes::split($board['columns'], $lanesBy, $epics),
             'lanes_by' => $lanesBy,
             'who' => $who,
             'epic' => $epic,
@@ -90,6 +99,7 @@ class ProjectController extends Controller
             'narrowed' => $narrowed,
             'active_sprint' => $active,
             'sprint_progress' => $active === null ? null : $this->sprintProgress((int) $active['id']),
+            'shared_sprints' => $elsewhere,
             'scope' => $scope,
             'people' => (new UserRepository())->active(),
             'labels' => (new LabelRepository())->all(),
@@ -109,63 +119,6 @@ class ProjectController extends Controller
             'points' => array_sum(array_map(static fn(array $t): int => (int) $t['story_points'], $tickets)),
             'done_points' => array_sum(array_map(static fn(array $t): int => (int) $t['story_points'], $done)),
         ];
-    }
-
-    /**
-     * The swimlanes: one row across the board per epic or per person, in the
-     * order the project's epics and the team's names come in, and only the
-     * ones that have a card on the board. "No epic" and "Unassigned" come
-     * last — they are where things are waiting to be given somewhere.
-     *
-     * Without lanes, the board is a single lane holding everything.
-     *
-     * @param array<int, array> $columns
-     * @return list<array{key: string, title: string, field: ?string, value: ?int, columns: array<int, array>}>
-     */
-    private function lanes(array $columns, string $by, array $epics): array
-    {
-        if ($by === 'none') {
-            return [['key' => 'all', 'title' => '', 'field' => null, 'value' => null, 'columns' => $columns]];
-        }
-
-        $field = $by === 'epic' ? 'epic_id' : 'assignee_id';
-        $names = [];
-
-        if ($by === 'epic') {
-            foreach ($epics as $epic) {
-                $names[(int) $epic['id']] = (string) $epic['title'];
-            }
-        }
-
-        $lanes = [];
-        foreach ($columns as $statusId => $tickets) {
-            foreach ($tickets as $ticket) {
-                $value = $ticket[$field] === null ? 0 : (int) $ticket[$field];
-
-                if (!isset($lanes[$value])) {
-                    $title = $value === 0
-                        ? ($by === 'epic' ? __('No epic') : __('Unassigned'))
-                        : ($by === 'epic' ? ($names[$value] ?? (string) $ticket['epic_title']) : (string) $ticket['assignee_name']);
-
-                    $lanes[$value] = [
-                        'key' => $by . '-' . $value,
-                        'title' => $title,
-                        'field' => $field,
-                        'value' => $value === 0 ? null : $value,
-                        'columns' => array_fill_keys(array_keys($columns), []),
-                    ];
-                }
-
-                $lanes[$value]['columns'][$statusId][] = $ticket;
-            }
-        }
-
-        uasort($lanes, static function (array $a, array $b): int {
-            // The ones without an epic or a person last; the rest by name.
-            return [$a['value'] === null, mb_strtolower($a['title'])] <=> [$b['value'] === null, mb_strtolower($b['title'])];
-        });
-
-        return array_values($lanes);
     }
 
     /**

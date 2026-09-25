@@ -78,9 +78,10 @@ final class CalendarExport
         }
 
         $sprints = $this->db->query(
-            "SELECT sp.id, sp.name, sp.ends_on, p.code FROM sprints sp JOIN projects p ON p.id = sp.project_id
-             WHERE sp.state <> 'closed' AND sp.ends_on IS NOT NULL AND p.is_archived = 0"
-            . \CantoTrack\Core\Access::sql('sp.project_id')
+            "SELECT sp.id, sp.name, sp.ends_on, COALESCE(p.code, b.name) AS code
+             FROM sprints sp JOIN boards b ON b.id = sp.board_id LEFT JOIN projects p ON p.id = b.project_id
+             WHERE sp.state <> 'closed' AND sp.ends_on IS NOT NULL AND (p.id IS NULL OR p.is_archived = 0)"
+            . \CantoTrack\Core\Access::boardSql('sp.board_id')
         );
 
         foreach ($sprints === false ? [] : $sprints->fetchAll() as $sprint) {

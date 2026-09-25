@@ -5,7 +5,7 @@
 {% block heading %}{{ sprint.name }}{% endblock %}
 {% block subheading %}
     <p class="content__sub">
-        <a href="{{ url('/projects/' ~ project.id) }}">{{ project.name }}</a>
+        <a href="{{ url(board_url) }}">{{ home_name }}</a>
         · {% if sprint.starts_on %}{{ sprint.starts_on|day }} — {{ sprint.ends_on|day }}{% else %}{{ 'No dates yet'|t }}{% endif %}
         {% if sprint.state == 'active' %}<span class="badge badge--blue">{{ 'Running'|t }}</span>{% endif %}
         {% if sprint.state == 'closed' %}<span class="badge badge--green">{{ 'Closed'|t }}</span>{% endif %}
@@ -13,9 +13,9 @@
 {% endblock %}
 
 {% block actions %}
-    <a class="button" href="{{ url('/projects/' ~ project.id ~ '/backlog') }}">{{ 'Backlog & sprints'|t }}</a>
+    <a class="button" href="{{ url(backlog_url) }}">{{ 'Backlog & sprints'|t }}</a>
     {% if sprint.state == 'active' %}
-        <a class="button" href="{{ url('/projects/' ~ project.id) }}">{{ 'Board'|t }}</a>
+        <a class="button" href="{{ url(board_url) }}">{{ 'Board'|t }}</a>
     {% endif %}
 {% endblock %}
 

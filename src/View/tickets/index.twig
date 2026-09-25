@@ -284,7 +284,7 @@
                 <select class="field field--inline" name="set_sprint" aria-label="{{ 'Sprint'|t }}">
                     <option value="">{{ 'Sprint…'|t }}</option>
                     <option value="backlog">{{ 'Backlog'|t }}</option>
-                    {% for sprint in sprints %}<option value="{{ sprint.id }}">{{ sprint.name }}</option>{% endfor %}
+                    {% for sprint in sprints %}<option value="{{ sprint.id }}">{{ sprint.name }}{% if sprint.board_project_id is null %} · {{ sprint.board_name }}{% endif %}</option>{% endfor %}
                 </select>
             {% endif %}
 

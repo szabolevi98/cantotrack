@@ -1,0 +1,14 @@
+{#
+    The pages of a shared board, as tabs: the board, its plan, and — for the
+    team — its settings. `active` is the one shown.
+#}
+<nav class="project-tabs" aria-label="{{ board.name }}">
+    {% for key, tab in {
+        board: {path: '', label: 'Board'},
+        backlog: {path: '/backlog', label: 'Backlog & sprints'},
+        settings: {path: '/settings', label: 'Settings'},
+    } %}
+        <a class="project-tabs__item{{ active == key ? ' is-active' : '' }}" href="{{ url('/boards/' ~ board.id ~ tab.path) }}"
+           {{ active == key ? 'aria-current="page"' : '' }}>{{ tab.label|t }}</a>
+    {% endfor %}
+</nav>

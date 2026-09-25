@@ -1,0 +1,108 @@
+{% extends 'layout.twig' %}
+{% import 'common/macros.twig' as ui %}
+
+{% block title %}{{ 'Settings'|t }} — {{ board.name }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ board.name }}{% endblock %}
+
+{% block content %}
+    {% include 'common/board_tabs.twig' with {board: board, active: 'settings'} only %}
+
+    <div class="split">
+        <section class="card split__main">
+            <h2 class="card__title">{{ 'The board'|t }}</h2>
+            <form class="card__body" method="post" action="{{ url('/boards/' ~ board.id ~ '/settings') }}">
+                <input type="hidden" name="_token" value="{{ csrf_token }}">
+                <label for="board-name">{{ 'Name'|t }}</label>
+                <input id="board-name" class="field" type="text" name="name" value="{{ board.name }}" maxlength="80" required>
+
+                <fieldset class="choice card-fields">
+                    <legend>{{ 'Projects on it'|t }}</legend>
+                    {% for project in projects %}
+                        <label class="check">
+                            <input type="checkbox" name="projects[]" value="{{ project.id }}"{{ project.id in on_board ? ' checked' : '' }}>
+                            <span class="project__code">{{ project.code }}</span> {{ project.name }}
+                        </label>
+                    {% endfor %}
+                </fieldset>
+                <p class="hint">{{ 'A project taken off the board takes its tickets out of the board’s open sprints, back to the backlog.'|t }}</p>
+
+                <label for="board-query">{{ 'Only the tickets that match (optional)'|t }}</label>
+                <input id="board-query" class="field" type="text" name="query" value="{{ board.query }}" maxlength="1000" placeholder="labels = fejlesztés">
+                <p class="hint">{{ 'In the query language of the ticket list. Empty: every ticket of the projects.'|t }} <a href="{{ url('/tickets?mode=query') }}">{{ 'How to write a query'|t }}</a></p>
+
+                <div class="form__actions">
+                    <button class="button button--primary" type="submit">{{ 'Save'|t }}</button>
+                </div>
+            </form>
+        </section>
+
+        <aside class="split__side">
+            {% if is_admin %}
+                <section class="card">
+                    <h2 class="card__title">{{ 'Delete the board'|t }}</h2>
+                    <p class="card__body">{{ 'Its sprints go with it, closed ones too. The tickets stay, back in their backlogs.'|t }}</p>
+                    <form class="card__body" method="post" action="{{ url('/boards/' ~ board.id ~ '/delete') }}"
+                          data-confirm="{{ 'Delete {name} and its sprints?'|t({name: board.name}) }}">
+                        <input type="hidden" name="_token" value="{{ csrf_token }}">
+                        <button class="button button--danger" type="submit">{{ 'Delete'|t }}</button>
+                    </form>
+                </section>
+            {% endif %}
+        </aside>
+    </div>
+
+    {#
+        The columns. Without columns of its own the board has one per name its
+        projects' columns have; with them, each status goes where it was put,
+        or to the column of its name, or by its kind — so nothing is left off.
+    #}
+    <section class="card">
+        <h2 class="card__title">{{ 'Columns'|t }}</h2>
+        <form class="card__body" method="post" action="{{ url('/boards/' ~ board.id ~ '/columns') }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+
+            <p class="hint">
+                {% if own_columns is empty %}
+                    {{ 'The board takes its projects’ columns as they are: one per name, “In progress” in two projects being one column. Change the names below to give it columns of its own.'|t }}
+                {% else %}
+                    {{ 'The board has columns of its own. A status not put anywhere goes to the column of its name, or else by its kind: waiting to the first, finished to the last.'|t }}
+                {% endif %}
+            </p>
+
+            <label for="column-names">{{ 'Columns, one per line, in order'|t }}</label>
+            <textarea id="column-names" class="field" name="names" rows="{{ max(4, columns|length + 1) }}">{{ column_names }}</textarea>
+
+            {% if statuses_of is not empty %}
+                <table class="table table--compact">
+                    <thead><tr><th>{{ 'Project'|t }}</th><th>{{ 'Status'|t }}</th><th>{{ 'Now in'|t }}</th><th>{{ 'Put in'|t }}</th></tr></thead>
+                    <tbody>
+                    {% for project in board_projects %}
+                        {% for status in statuses_of[project.id]|default([]) %}
+                            <tr>
+                                <td><span class="project__code">{{ project.code }}</span></td>
+                                <td>{{ ui.status(status.name, status.colour) }}</td>
+                                <td>{{ lands_in[status.id] is defined ? lands_in[status.id]|t : '—' }}</td>
+                                <td>
+                                    <select class="field field--inline" name="status_column[{{ status.id }}]" aria-label="{{ 'Column of {status} in {code}'|t({status: status.name, code: project.code}) }}">
+                                        <option value="">{{ 'By its name'|t }}</option>
+                                        {% for column in columns %}
+                                            <option value="{{ column.name }}"{{ by_hand[status.id]|default('') == column.name ? ' selected' : '' }}>{{ column.name|t }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    {% endfor %}
+                    </tbody>
+                </table>
+            {% endif %}
+
+            <div class="form__actions">
+                <button class="button button--primary" type="submit">{{ 'Save columns'|t }}</button>
+                {% if own_columns is not empty %}
+                    <button class="button" type="submit" name="automatic" value="1">{{ 'Take the projects’ columns again'|t }}</button>
+                {% endif %}
+            </div>
+        </form>
+    </section>
+{% endblock %}

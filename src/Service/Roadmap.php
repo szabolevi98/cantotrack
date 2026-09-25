@@ -3,6 +3,7 @@
 namespace CantoTrack\Service;
 
 use CantoTrack\Core\DatabaseConnection;
+use CantoTrack\Model\BoardRepository;
 use CantoTrack\Model\ReleaseRepository;
 use CantoTrack\Model\SprintRepository;
 use DateTimeImmutable;
@@ -130,6 +131,7 @@ final class Roadmap
     {
         $releases = new ReleaseRepository($this->db);
         $sprints = new SprintRepository($this->db);
+        $boards = new BoardRepository($this->db);
         $lanes = [];
 
         foreach ($projects as $project) {
@@ -158,8 +160,15 @@ final class Roadmap
                 }
             }
 
+            // The sprints of the project's own board, and of the shared boards
+            // it is on: its work is planned in both.
             $stretches = [];
-            foreach ($sprints->forProject($id) as $sprint) {
+            $planned = $sprints->forBoard((int) $boards->ownOf($id)['id']);
+            foreach ($boards->sharedWith($id) as $board) {
+                $planned = array_merge($planned, $sprints->forBoard((int) $board['id']));
+            }
+
+            foreach ($planned as $sprint) {
                 $placed = self::place($sprint['starts_on'] ?? null, $sprint['ends_on'] ?? null, $from, $to);
 
                 if ($placed !== null) {

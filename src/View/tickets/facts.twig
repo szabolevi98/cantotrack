@@ -44,7 +44,7 @@
                 <select class="field field--inline move__select" name="sprint_id" data-autosubmit aria-label="{{ 'Sprint'|t }}">
                     <option value="">{{ 'Backlog'|t }}</option>
                     {% for sprint in sprints %}
-                        <option value="{{ sprint.id }}"{{ ticket.sprint_id == sprint.id ? ' selected' : '' }}>{{ sprint.name }}</option>
+                        <option value="{{ sprint.id }}"{{ ticket.sprint_id == sprint.id ? ' selected' : '' }}>{{ sprint.name }}{% if sprint.board_project_id is null %} · {{ sprint.board_name }}{% endif %}</option>
                     {% endfor %}
                 </select>
                 <button class="button button--small autosubmit__button" type="submit">{{ 'Move'|t }}</button>

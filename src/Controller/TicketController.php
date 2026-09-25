@@ -74,10 +74,7 @@ class TicketController extends Controller
             'statuses' => $filters['project_id'] ? (new StatusRepository())->forProject($filters['project_id']) : [],
             'labels' => (new LabelRepository())->all(),
             'types' => TicketRepository::TYPES,
-            'sprints' => $filters['project_id'] ? array_values(array_filter(
-                (new SprintRepository())->forProject($filters['project_id']),
-                static fn(array $s): bool => $s['state'] !== 'closed'
-            )) : [],
+            'sprints' => $filters['project_id'] ? (new SprintRepository())->openForProject($filters['project_id']) : [],
             'saved' => $this->savedFilter(),
             'query_text' => $query,
             'query_error' => $queryError,
@@ -233,7 +230,7 @@ class TicketController extends Controller
             'resolution' => array_keys(TicketRepository::RESOLUTIONS),
             'assignee', 'reporter', 'watcher' => array_merge(['me', 'currentUser()'], array_map(static fn(array $u): string => (string) $u['name'], (new UserRepository())->active())),
             'epic' => $column('SELECT DISTINCT title FROM epics WHERE is_done = 0' . $visible . ' ORDER BY title'),
-            'sprint' => array_merge(['openSprints()', 'closedSprints()', 'futureSprints()'], $column('SELECT name FROM sprints WHERE state <> \'closed\'' . $visible . ' ORDER BY name')),
+            'sprint' => array_merge(['openSprints()', 'closedSprints()', 'futureSprints()'], $column('SELECT DISTINCT name FROM sprints WHERE state <> \'closed\'' . \CantoTrack\Core\Access::boardSql('sprints.board_id') . ' ORDER BY name')),
             'release', 'fixversion', 'version' => array_merge(['unreleased()', 'released()'], $column('SELECT name FROM releases WHERE released_at IS NULL' . $visible . ' ORDER BY name')),
             'label', 'labels' => $column('SELECT name FROM labels ORDER BY name'),
             'created', 'updated', 'resolved', 'due', 'duedate' => ['startOfDay()', 'startOfWeek()', 'endOfWeek()', 'startOfMonth()', 'endOfMonth()', '-7d', '-1m'],
@@ -592,10 +589,7 @@ class TicketController extends Controller
             'ticket' => $ticket,
             'remaining' => TicketRepository::remaining($ticket),
             'labels' => (new LabelRepository())->forTicket($id),
-            'sprints' => array_values(array_filter(
-                (new SprintRepository())->forProject($projectId),
-                static fn(array $s): bool => $s['state'] !== 'closed'
-            )),
+            'sprints' => (new SprintRepository())->openForProject($projectId),
             'people' => (new UserRepository())->active(),
             'epics' => (new EpicRepository())->openForProject($projectId),
             'releases' => (new ReleaseRepository())->unreleased($projectId),
@@ -719,7 +713,7 @@ class TicketController extends Controller
     {
         Auth::requireMember();
 
-        $this->ticketOr404($id);
+        $ticket = $this->ticketOr404($id);
 
         $lane = [];
         $field = $this->input('lane_field');
@@ -728,19 +722,36 @@ class TicketController extends Controller
         }
 
         try {
+            // Dropped on a shared board: into one of its columns, which is
+            // one of the ticket's own project's statuses.
+            $status = $this->input('status');
+            $column = [];
+            $boardId = $this->idInput('board');
+            if ($boardId !== null) {
+                $board = (new \CantoTrack\Model\BoardRepository())->find($boardId);
+                if ($board === null) {
+                    throw new ValidationError(__('There is no such board.'));
+                }
+
+                $drop = (new \CantoTrack\Service\BoardService())->dropInto($board, $this->input('column'), $ticket);
+                $status = (string) $drop['status']['id'];
+                $column = $drop['column'];
+            }
+
             (new TicketService())->move(
                 $id,
-                $this->input('status'),
+                $status,
                 $this->idInput('above'),
                 $this->idInput('below'),
                 $lane,
-                Auth::id()
+                Auth::id(),
+                $column
             );
         } catch (ValidationError $e) {
             $this->json(['ok' => false, 'error' => $e->getMessage()], 422);
         }
 
-        $this->json(['ok' => true]);
+        $this->json(['ok' => true, 'status' => (int) ((new TicketRepository())->find($id)['status_id'] ?? 0)]);
     }
 
     public function delete(int $id): void

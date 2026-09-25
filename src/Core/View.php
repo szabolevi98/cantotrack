@@ -103,6 +103,8 @@ class View
         // sidebar is drawn — the login page and the error page do not ask.
         $twig->addFunction(new TwigFunction('saved_filters', static fn(): array =>
             Auth::check() ? (new \CantoTrack\Model\SavedFilterRepository())->visibleTo((int) Auth::id()) : []));
+        $twig->addFunction(new TwigFunction('shared_boards', static fn(): array =>
+            Auth::check() ? (new \CantoTrack\Model\BoardRepository())->shared() : []));
         $twig->addFunction(new TwigFunction('running_timer', static fn(): ?array =>
             Auth::check() ? (new \CantoTrack\Service\TimerService())->running((int) Auth::id()) : null));
         $twig->addFunction(new TwigFunction('unread_notifications', static fn(): int =>

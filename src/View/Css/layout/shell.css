@@ -98,6 +98,25 @@
     text-transform: uppercase;
 }
 
+/* Copyright, the year and the repository, under the last item of the menu. */
+.sidebar__footer {
+    margin: 12px 10px 0;
+    padding-top: 14px;
+    border-top: 1px solid rgba(var(--ct-sidebar-text-rgb), 0.15);
+    color: rgba(var(--ct-sidebar-text-rgb), 0.55);
+    font-size: 0.75rem;
+}
+
+.sidebar__footer a {
+    color: rgba(var(--ct-sidebar-text-rgb), 0.8);
+    text-decoration: none;
+}
+
+.sidebar__footer a:hover {
+    color: var(--ct-sidebar-text-active);
+    text-decoration: underline;
+}
+
 .sidebar__link {
     padding: 9px 12px;
     border-radius: var(--ct-radius-sm);

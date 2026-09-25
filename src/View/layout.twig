@@ -114,6 +114,8 @@
                href="{{ url('/settings/audit') }}"><i class="bi bi-shield-lock" aria-hidden="true"></i><span>{{ 'Audit log'|t }}</span></a>
         {% endif %}
     </nav>
+    {# At the foot of the menu: pushed to the bottom while the menu is short, after the last item once it scrolls. #}
+    <p class="sidebar__footer">Copyright &copy; {{ 'now'|date('Y') }} <a href="https://github.com/szabolevi98/cantotrack" target="_blank" rel="noopener">szabolevi98</a></p>
     </div>
 
     {# The running clock, wherever one is: what it runs on, for how long, and

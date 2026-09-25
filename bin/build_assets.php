@@ -1,9 +1,10 @@
 <?php
 
 /**
- * Builds the two files the browser loads: web/assets/css/app.css from the
- * layered sources under src/View/Css, and web/assets/js/app.js from the ones
- * under src/View/Js. Concatenation and nothing else — no Sass, no PostCSS, no
+ * Builds the files the browser loads: web/assets/css/app.css from the layered
+ * sources under src/View/Css, web/assets/js/app.js from the ones under
+ * src/View/Js, and web/assets/js/sidebar.js, the one script that has to run
+ * before the first paint and so cannot wait in the deferred bundle. Concatenation and nothing else — no Sass, no PostCSS, no
  * bundler. This is the whole build.
  *
  * The order matters (a later stylesheet relies on the custom properties an
@@ -68,6 +69,13 @@ $bundles = [
             'suggest.js',
             'palette.js',
             'dashboard.js',
+        ],
+    ],
+    'web/assets/js/sidebar.js' => [
+        'source' => 'src/View/Js',
+        'comment' => ['/*', ' *', ' */'],
+        'files' => [
+            'sidebar-scroll.js',
         ],
     ],
 ];

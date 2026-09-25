@@ -135,6 +135,8 @@
     {% endif %}
 
 </aside>
+{# Right after the sidebar and not deferred: the menu's scroll is set before the first paint, so it does not jump. #}
+<script src="{{ asset('js/sidebar.js') }}"></script>
 
 <div class="main">
     <header class="topbar">

@@ -38,7 +38,6 @@
             </form>
         {% endfor %}
     </div>
-    {% if recaptcha_key|default(null) %}
-        <p class="auth__note">{{ 'This page is protected by reCAPTCHA; Google’s privacy policy and terms apply.'|t }}</p>
-    {% endif %}
+    {# reCAPTCHA's own badge stays visible in the corner, so it needs no sentence here. #}
+    <p class="auth__note">Copyright &copy; {{ 'now'|date('Y') }} <a href="https://github.com/szabolevi98/cantotrack" target="_blank" rel="noopener">szabolevi98</a></p>
 {% endblock %}

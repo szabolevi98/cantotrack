@@ -38,7 +38,7 @@ class ErrorPage
                 header('Content-Type: application/json; charset=utf-8');
             }
 
-            echo json_encode(['error' => ['status' => $status, 'message' => $message] + ($details === [] ? [] : ['details' => $details])], JSON_UNESCAPED_UNICODE);
+            echo json_encode(['error' => ['status' => $status, 'message' => $message] + ($details === [] ? [] : ['details' => $details])], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
             return;
         }

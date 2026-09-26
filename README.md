@@ -82,6 +82,8 @@ deploy with `git pull`.
 
 ![Backlog and sprints](docs/backlog.png)
 
+![A shared board: three projects in one sprint, in columns of the board's own](docs/boards.png)
+
 ![A closed sprint: what it committed to, and its burndown](docs/sprint.png)
 
 ![The roadmap of a project: its epics across the months, with its sprints and releases](docs/roadmap.png)
@@ -158,6 +160,8 @@ deploy with `git pull`.
 ![A ticket: its history and comments, the links, and the facts beside them — each changed where it is](docs/ticket.png)
 
 ![A ticket opened beside the board, changed without leaving it](docs/panel.png)
+
+![The bell: the newest notifications, each one click from what it is about](docs/notifications.png)
 
 ### A dashboard of one's own
 

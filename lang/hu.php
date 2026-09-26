@@ -1928,4 +1928,7 @@ Az E-mail oldalról küldted.',
     'Contents' => 'Tartalom',
     'Send the token in the Authorization header. Everything is under {base}.' => 'A tokent az Authorization fejlécben küldd. Minden a {base} alatt érhető el.',
     'Every endpoint is in the API documentation.' => 'Az összes végpont az API-dokumentációban található.',
+    'An Idempotency-Key is 1 to 100 visible characters, without spaces — a UUID, say.' => 'Az Idempotency-Key 1–100 látható karakter, szóköz nélkül — például egy UUID.',
+    'That Idempotency-Key was used for a different request. Use a new key for a new request.' => 'Ezt az Idempotency-Key-t egy másik kéréshez használták már. Új kéréshez új kulcs kell.',
+    'The first request with that Idempotency-Key is still being worked on. Ask again in a moment.' => 'Az első kérés ezzel az Idempotency-Key-jel még folyamatban van. Kérdezz újra egy pillanat múlva.',
 ];

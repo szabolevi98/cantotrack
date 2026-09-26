@@ -149,12 +149,13 @@ function upload(string $url, string $token, array $files, string $cookieJar, boo
 /**
  * One API request: JSON in, JSON out, the token as a bearer token.
  *
+ * @param list<string> $extra more headers
  * @return array{status: int, headers: string, body: string, json: mixed}
  */
-function api(string $url, string $apiToken, string $method = 'GET', ?array $body = null): array
+function api(string $url, string $apiToken, string $method = 'GET', ?array $body = null, array $extra = []): array
 {
     $handle = curl_init($url);
-    $headers = ['Accept: application/json'];
+    $headers = array_merge(['Accept: application/json'], $extra);
 
     if ($apiToken !== '') {
         $headers[] = 'Authorization: Bearer ' . $apiToken;
@@ -1325,6 +1326,21 @@ if ($email === null || $password === null) {
     $apiLog = api($baseUrl . '/api/v1/tickets/' . $apiKey . '/worklogs', $apiToken, 'POST', ['time' => '45m', 'note' => 'Through the API']);
     $apiLogId = (int) ($apiLog['json']['data']['id'] ?? 0);
     check('logs time', $apiLog['status'] === 201 && ($apiLog['json']['data']['minutes'] ?? 0) === 45);
+
+    // The same request sent twice with one Idempotency-Key is done once.
+    $onceKey = ['Idempotency-Key: smoke-' . bin2hex(random_bytes(8))];
+    $once = api($baseUrl . '/api/v1/tickets/' . $apiKey . '/worklogs', $apiToken, 'POST', ['time' => '15m', 'note' => 'Sent twice'], $onceKey);
+    $twice = api($baseUrl . '/api/v1/tickets/' . $apiKey . '/worklogs', $apiToken, 'POST', ['time' => '15m', 'note' => 'Sent twice'], $onceKey);
+    check(
+        'a request sent twice with one Idempotency-Key is done once, and answered the same',
+        $once['status'] === 201 && $twice['status'] === 201 && stripos($twice['headers'], 'Idempotent-Replayed: true') !== false
+        && ($once['json']['data']['id'] ?? 0) === ($twice['json']['data']['id'] ?? -1)
+    );
+    check(
+        'and the key for another request is refused',
+        api($baseUrl . '/api/v1/tickets/' . $apiKey . '/worklogs', $apiToken, 'POST', ['time' => '20m'], $onceKey)['status'] === 422
+    );
+    api($baseUrl . '/api/v1/worklogs/' . (int) ($once['json']['data']['id'] ?? 0), $apiToken, 'DELETE');
 
     $week = api($baseUrl . '/api/v1/worklogs', $apiToken);
     check('lists one\'s own hours', $week['status'] === 200 && in_array($apiLogId, array_column($week['json']['data'] ?? [], 'id'), true));

@@ -112,9 +112,9 @@ the account has chosen on its profile; a program goes by the status:
 | `401` | no token, or one that does not work |
 | `403` | not yours to do: a guest changing work, somebody else's hours |
 | `404` | not there — or not somewhere you can see |
-| `409` | somebody else saved it first; read it again (see `version`) |
+| `409` | somebody else saved it first; read it again (see `version`) — or the same request is still being worked on (see below) |
 | `413` | a file bigger than the server takes |
-| `422` | the request is understood but does not make sense: no title, a day in the future, a move the workflow does not allow |
+| `422` | the request is understood but does not make sense: no title, a day in the future, a move the workflow does not allow, an `Idempotency-Key` used for another request |
 | `429` | too many tries; wait for `Retry-After` seconds |
 | `500` | a fault on our side, written to the server's log |
 
@@ -126,6 +126,31 @@ server's offset (`2026-09-22T14:05:11+02:00`) — or, in a few older fields,
 `1:30`, `1h30`; estimates also take days and weeks (`2d`, `1w 2d`), a day being
 the installation's working day. A bare number is minutes. They come back as
 whole minutes, in fields that end in `_minutes`.
+
+### Sending a change twice
+
+A request whose answer never arrived — the train went into a tunnel — may or
+may not have been done. Sending it again is safe when it carries an
+`Idempotency-Key` header: any string of up to 100 visible characters, new for
+each change the client means to make. A UUID is the usual choice.
+
+```
+curl -X POST -H "Authorization: Bearer ct_…" -H "Content-Type: application/json" \
+     -H "Idempotency-Key: 5f0c2b1e-8d7a-4c1f-9a51-0e6b2f3c4d5e" \
+     -d '{"time": "45m"}' https://tracker.example/api/v1/tickets/CT-14/worklogs
+```
+
+The same key with the same request, from the same account, within a day, is
+answered with the first answer again — the same status, the same body, the
+same `Location` — and an `Idempotent-Replayed: true` header, and nothing is
+done a second time. While the first is still being worked on, the second is
+`409` with `Retry-After: 1`. The same key with a *different* request — another
+body, another address — is `422`: that is a bug in the client, not a resend.
+
+Only a change that succeeded keeps its key. One that was refused did nothing,
+so its key is let go, and the request can be corrected and sent again under
+it. The header works on every `POST`, `PATCH` and `DELETE`, and is ignored on
+a `GET`, which is safe to repeat anyway.
 
 **Guests** — accounts that read and comment on the projects they were added to
 — may read, comment and upload files. Everything that changes the work

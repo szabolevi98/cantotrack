@@ -418,7 +418,10 @@ curl -X POST -H "Authorization: Bearer ct_…" -H "Content-Type: application/jso
 ```
 
 A `PATCH` may carry the `version` it read; if somebody else saved the ticket in
-between, it answers `409` instead of overwriting their change. Failures are
+between, it answers `409` instead of overwriting their change. A change sent
+with an `Idempotency-Key` header is done once however many times it arrives —
+a resend over a bad connection gets the first answer again, with
+`Idempotent-Replayed: true`. Failures are
 always JSON — `{"error": {"status": 422, "message": "A ticket needs a title."}}`
 — with `401` for a missing or wrong token, `403` for something that is not
 yours, `404` for something that is not there (or not visible to you), and `429`

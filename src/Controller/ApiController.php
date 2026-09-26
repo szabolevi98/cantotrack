@@ -2,12 +2,8 @@
 
 namespace CantoTrack\Controller;
 
-use CantoTrack\Core\Access;
 use CantoTrack\Core\Auth;
-use CantoTrack\Core\ClientIp;
-use CantoTrack\Core\Controller;
 use CantoTrack\Core\HttpError;
-use CantoTrack\Core\LoginThrottle;
 use CantoTrack\Model\ApiTokenRepository;
 use CantoTrack\Model\CommentRepository;
 use CantoTrack\Model\ProjectRepository;
@@ -22,27 +18,13 @@ use CantoTrack\Service\TimerService;
 use CantoTrack\Service\WorklogService;
 
 /**
- * The JSON API, version 1: tickets, their comments and hours, for scripts
- * and other programs.
- *
- * Every request carries a personal access token as a bearer token and acts
- * as the person it belongs to, with exactly their rights — the API is another
- * way in to the same rules, never a way around them: it calls the same
- * services the forms do. Failures come back as
- * {"error": {"status": …, "message": …}}.
+ * The JSON API, version 1: who is asking, the projects, the tickets, their
+ * comments and hours, and the clock — for scripts and other programs. What
+ * every endpoint shares (the token, the body, the Idempotency-Key) is in
+ * ApiEndpoint.
  */
-class ApiController extends Controller
+class ApiController extends ApiEndpoint
 {
-    private const MAX_PAGE = 100;
-
-    /** The token this request came with — for signing out with it. */
-    private string $token = '';
-
-    public function __construct()
-    {
-        $this->authenticate();
-    }
-
     // -----------------------------------------------------------------------
     // Who, and what
     // -----------------------------------------------------------------------
@@ -58,8 +40,7 @@ class ApiController extends Controller
         (new ApiTokenRepository())->revokeToken($this->token);
         \CantoTrack\Service\AuditLog::record('signout', 'user', (int) Auth::id(), (string) (Auth::user()['email'] ?? ''), 'API');
 
-        http_response_code(204);
-        exit;
+        $this->noContent();
     }
 
     public function users(): never
@@ -302,8 +283,7 @@ class ApiController extends Controller
 
         (new WorklogService())->remove($worklog);
 
-        http_response_code(204);
-        exit;
+        $this->noContent();
     }
 
     // -----------------------------------------------------------------------
@@ -354,125 +334,7 @@ class ApiController extends Controller
         $this->member();
         (new TimerService())->discard((int) Auth::id());
 
-        http_response_code(204);
-        exit;
-    }
-
-    // -----------------------------------------------------------------------
-    // The request
-    // -----------------------------------------------------------------------
-
-    /**
-     * The token from the Authorization header, checked, and the person it
-     * belongs to acted as for the rest of the request.
-     *
-     * Wrong tokens count against the connection like wrong passwords do, and
-     * a connection with too many is answered 429 for a while. A right token
-     * is never held up by that: a CI server that shares its address with a
-     * script still using a revoked token keeps working. (Guessing one is not
-     * what the limit is for — 160 random bits are not guessed — but a client
-     * stuck retrying a dead token should not get an answer every time.)
-     */
-    private function authenticate(): void
-    {
-        $header = (string) ($_SERVER['HTTP_AUTHORIZATION'] ?? $_SERVER['REDIRECT_HTTP_AUTHORIZATION'] ?? '');
-
-        if (preg_match('/^Bearer\s+(\S+)$/i', trim($header), $m) !== 1) {
-            header('WWW-Authenticate: Bearer realm="CantoTrack"');
-            throw new HttpError(401, __('Send a personal access token: "Authorization: Bearer ct_…". Make one on your profile.'));
-        }
-
-        $user = (new ApiTokenRepository())->userFor($m[1]);
-
-        if ($user === null) {
-            $ip = ClientIp::get();
-            $throttle = new LoginThrottle();
-            $key = 'api-token@' . $ip;
-
-            if ($throttle->isBlocked($key, $ip)) {
-                header('Retry-After: ' . LoginThrottle::WINDOW_MINUTES * 60);
-                throw new HttpError(429, __('Too many wrong tokens from here. Try again in {minutes} minutes.', ['minutes' => LoginThrottle::WINDOW_MINUTES]));
-            }
-
-            $throttle->recordFailure($key, $ip);
-            header('WWW-Authenticate: Bearer realm="CantoTrack", error="invalid_token"');
-            throw new HttpError(401, __('That token is not valid: unknown, expired, or its account is deactivated.'));
-        }
-
-        $this->token = $m[1];
-        Auth::actAs($user);
-    }
-
-    /**
-     * What the request sent: a JSON object, or a form for the clients that
-     * send one.
-     *
-     * @return array<string, mixed>
-     */
-    private function body(): array
-    {
-        if (!str_contains(strtolower((string) ($_SERVER['CONTENT_TYPE'] ?? '')), 'json')) {
-            return $_POST;
-        }
-
-        $raw = (string) file_get_contents('php://input');
-
-        if (trim($raw) === '') {
-            return [];
-        }
-
-        $data = json_decode($raw, true);
-
-        if (!is_array($data) || array_is_list($data) && $data !== []) {
-            throw new HttpError(400, __('The body has to be a JSON object.'));
-        }
-
-        return $data;
-    }
-
-    /** Guests read and comment; the rest of the API is for the team. */
-    private function member(): void
-    {
-        if (Access::isGuest()) {
-            $this->forbidden(__('Guests can read and comment, but not change the work.'));
-        }
-    }
-
-    private function date(string $given, string $default): string
-    {
-        if ($given === '') {
-            return $default;
-        }
-
-        $date = \DateTimeImmutable::createFromFormat('!Y-m-d', $given);
-
-        if ($date === false || $date->format('Y-m-d') !== $given) {
-            throw new HttpError(422, __('Dates are written 2026-09-22.'));
-        }
-
-        return $given;
-    }
-
-    private function projectOr404(string $code): array
-    {
-        $project = (new ProjectRepository())->findByCode(strtoupper(trim($code)));
-
-        if ($project === null) {
-            $this->notFound(__('There is no project {code}.', ['code' => $code]));
-        }
-
-        return $project;
-    }
-
-    private function ticketOr404(string $key): array
-    {
-        $ticket = (new TicketRepository())->findByKey($key);
-
-        if ($ticket === null) {
-            $this->notFound(__('There is no ticket {key}.', ['key' => $key]));
-        }
-
-        return $ticket;
+        $this->noContent();
     }
 
     // -----------------------------------------------------------------------
@@ -500,13 +362,6 @@ class ApiController extends Controller
             'created_at' => $comment['created_at'],
             'edited_at' => $comment['edited_at'] ?? null,
         ];
-    }
-
-    private function keyOf(int $ticketId): ?string
-    {
-        $ticket = (new TicketRepository())->find($ticketId);
-
-        return $ticket === null ? null : $ticket['project_code'] . '-' . $ticket['number'];
     }
 
     /**

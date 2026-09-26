@@ -19,4 +19,8 @@ $sent = (new CantoTrack\Service\Digest())->sendDue(new DateTimeImmutable('today'
 // year, any after a year.
 $cleared = (new CantoTrack\Model\NotificationRepository())->prune();
 
+// The API's Idempotency-Keys are kept for a day; a key is forgotten as it is
+// used again anyway, and this takes the rest.
+(new CantoTrack\Model\IdempotencyRepository())->prune();
+
 printf('%d digest%s sent, %d old notifications cleared.%s', $sent, $sent === 1 ? '' : 's', $cleared, PHP_EOL);

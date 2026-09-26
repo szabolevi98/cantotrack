@@ -128,6 +128,40 @@ class Format
         return date('j M Y', $time);
     }
 
+    /**
+     * How long ago, the way people say it: "just now", "5 minutes ago",
+     * "3 hours ago", "yesterday", and a day beyond that.
+     */
+    public static function ago(string $moment, ?int $now = null): string
+    {
+        $time = strtotime($moment);
+
+        if ($time === false) {
+            return $moment;
+        }
+
+        $now ??= time();
+        $seconds = max(0, $now - $time);
+
+        if ($seconds < 60) {
+            return I18n::translate('just now');
+        }
+
+        if ($seconds < 3600) {
+            return I18n::plural('{count} minute ago', '{count} minutes ago', intdiv($seconds, 60));
+        }
+
+        if (date('Y-m-d', $time) === date('Y-m-d', $now)) {
+            return I18n::plural('{count} hour ago', '{count} hours ago', intdiv($seconds, 3600));
+        }
+
+        if (date('Y-m-d', $time) === date('Y-m-d', $now - 86400)) {
+            return I18n::translate('yesterday, {time}', ['time' => date('H:i', $time)]);
+        }
+
+        return self::day($moment);
+    }
+
     /** "SL" — the two letters an avatar circle carries when there is no picture. */
     public static function initials(string $name): string
     {

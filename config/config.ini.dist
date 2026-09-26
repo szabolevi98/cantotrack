@@ -55,6 +55,12 @@ encryption = tls
 from = "cantotrack@example.com"
 from_name = "CantoTrack"
 
+[notifications]
+; A notification by email waits this many minutes for whatever else happens
+; to the same ticket, and goes with it in one message. 0: at once (still
+; through the outbox, so within the minute).
+batch_minutes = 2
+
 [uploads]
 ; The largest file that can be attached, in megabytes. PHP's own limit
 ; (upload_max_filesize, set in web/.htaccess) has to be at least this.

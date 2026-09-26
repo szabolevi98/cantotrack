@@ -9,7 +9,6 @@ use CantoTrack\Core\Markdown;
 use CantoTrack\Core\ValidationError;
 use CantoTrack\Model\EpicRepository;
 use CantoTrack\Model\NotificationRepository;
-use CantoTrack\Model\ProjectRepository;
 use CantoTrack\Model\UserRepository;
 use PDO;
 
@@ -180,7 +179,6 @@ class EpicService
         }
 
         unset($told[(int) $actorId]);
-        $project = (new ProjectRepository($this->db))->find((int) $epic['project_id']);
 
         foreach ($told as $userId => $reason) {
             try {
@@ -208,14 +206,7 @@ class EpicService
                 ]);
 
                 if ($way === 'email') {
-                    (new Notifier($this->db))->email(
-                        $notificationId,
-                        $userId,
-                        '“' . $epic['title'] . '”',
-                        (string) $epic['title'],
-                        '/epics/' . $epic['id'],
-                        (string) ($project['code'] ?? '')
-                    );
+                    (new Notifier($this->db))->mailLater($notificationId);
                 }
             } catch (\Throwable $e) {
                 // As with a ticket's: a notification that cannot be written

@@ -167,14 +167,27 @@
         {% endif %}
 
         {# What happened to the tickets somebody follows: a bell, with the
-           number not yet read on it. #}
+           number not yet read on it, and the newest few under it. The script
+           fills the menu when it is opened and asks every minute what is new
+           (see notifications.js); without it the menu still leads to the page. #}
         {% set unread = unread_notifications() %}
-        <a class="topbar__icon topbar__bell{{ current_path starts with '/notifications' ? ' is-active' : '' }}" href="{{ url('/notifications') }}"
-           title="{{ 'Notifications'|t }}"
-           aria-label="{{ unread > 0 ? 'Notifications'|t ~ ' — ' ~ plural('{count} not read', '{count} not read', unread) : 'Notifications'|t }}">
-            <i class="bi bi-bell" aria-hidden="true"></i>
-            {% if unread > 0 %}<span class="topbar__badge" aria-hidden="true">{{ unread > 99 ? '99+' : unread }}</span>{% endif %}
-        </a>
+        <details class="bell-menu" data-menu data-notifications
+                 data-menu-url="{{ url('/notifications/menu') }}" data-poll-url="{{ url('/notifications/poll') }}"
+                 data-after="{{ latest_notification_id() }}"
+                 data-label="{{ 'Notifications'|t }}" data-label-unread="{{ 'Notifications — {count} not read'|t }}"
+                 data-many="{{ '{count} new notifications'|t }}">
+            <summary class="topbar__icon topbar__bell{{ current_path starts with '/notifications' ? ' is-active' : '' }}"
+                     title="{{ 'Notifications'|t }}"
+                     aria-label="{{ unread > 0 ? 'Notifications — {count} not read'|t({count: unread}) : 'Notifications'|t }}">
+                <i class="bi bi-bell" aria-hidden="true"></i>
+                <span class="topbar__badge" aria-hidden="true" data-notifications-badge{{ unread > 0 ? '' : ' hidden' }}>{{ unread > 99 ? '99+' : unread }}</span>
+            </summary>
+            <div class="menu bell-menu__panel" data-notifications-panel>
+                <div data-notifications-list>
+                    <a class="menu__item" href="{{ url('/notifications') }}"><i class="bi bi-bell" aria-hidden="true"></i>{{ 'All notifications'|t }}</a>
+                </div>
+            </div>
+        </details>
 
         {# Light or dark in one click. Which one the page is in right now is
            filled in by the script, since with "the system's" chosen only the

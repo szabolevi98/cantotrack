@@ -1,0 +1,41 @@
+{#
+    One notification in words — on the notifications page, in the bell's
+    menu and in the note that pops up when one arrives.
+#}
+
+{# The icon of its kind: given, mentioned, moved, commented, changed. #}
+{% macro icon(n) -%}
+    {%- set kind = n.told_kind -%}
+    {%- set icon = kind == 'assigned' ? 'person-check' : (kind == 'mentioned' ? 'at' : (kind == 'status' ? 'arrow-left-right' : (kind == 'commented' ? 'chat-left-text' : 'pencil'))) -%}
+    <i class="notification__icon notification__icon--{{ kind }} bi bi-{{ icon }}" aria-hidden="true"></i>
+{%- endmacro %}
+
+{# What it is about: the ticket's key, or the project's code and "Epic". #}
+{% macro about(n) -%}
+    {% if n.epic_id -%}
+        <span class="ticket-key">{{ n.project_code }}</span> <span class="badge badge--violet">{{ 'Epic'|t }}</span>
+    {%- else -%}
+        <span class="ticket-key">{{ n.project_code }}-{{ n.ticket_number }}</span>
+    {%- endif %}
+{%- endmacro %}
+
+{# What happened, with what was said when it was a comment. #}
+{% macro what(n, snippet = 140) -%}
+    {% import 'common/macros.twig' as ui %}
+    {% if n.epic_id and n.kind == 'done' -%}
+        {{ n.new_value ? '{who} marked it done'|t({who: n.user_name ?: 'Somebody'|t}) : '{who} opened it again'|t({who: n.user_name ?: 'Somebody'|t}) }}
+    {%- elseif n.reason == 'mentioned' -%}
+        {{ '{who} mentioned you'|t({who: n.user_name}) }}: <span class="muted">{{ n.new_value|slice(0, snippet) }}</span>
+    {%- elseif n.reason == 'assigned' -%}
+        {{ '{who} gave it to you'|t({who: n.user_name ?: 'Somebody'|t}) }}
+    {%- elseif n.kind == 'commented' -%}
+        {{ '{who} commented'|t({who: n.user_name}) }}: <span class="muted">{{ n.new_value|slice(0, snippet) }}</span>
+    {%- else -%}
+        {{ ui.event_line(n) }}
+    {%- endif %}
+{%- endmacro %}
+
+{# The name of the ticket or epic. #}
+{% macro title(n) -%}
+    {{ n.epic_id ? n.epic_title : n.ticket_title }}
+{%- endmacro %}

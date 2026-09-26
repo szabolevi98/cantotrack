@@ -306,6 +306,7 @@ class TicketController extends Controller
 
         $this->render('tickets/show.twig', $this->factsContext($ticket) + [
             'watching' => $notifications->isWatching($id, (int) Auth::id()),
+            'muted' => $notifications->isMuted($id, (int) Auth::id()),
             'favourite' => (new TicketRepository())->isFavourite($id, (int) Auth::id()),
             'watchers' => $notifications->watcherCount($id),
             'attachments' => (new AttachmentRepository())->forTicket($id),

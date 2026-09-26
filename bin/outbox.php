@@ -6,10 +6,13 @@
  *
  *   * * * * * www-data php /var/www/cantotrack/bin/outbox.php
  *
- * Also clears sent messages older than a month out of it.
+ * Before that it writes the notification emails that have waited long
+ * enough — a ticket's changes of the last few minutes in one message (see
+ * Notifier::sendDue). Also clears sent messages older than a month out of it.
  */
 
 use CantoTrack\Core\Config;
+use CantoTrack\Service\Notifier;
 use CantoTrack\Service\Outbox;
 
 if (PHP_SAPI !== 'cli') {
@@ -29,11 +32,15 @@ foreach ($argv as $argument) {
 Config::load($configPath);
 date_default_timezone_set((string) Config::get('app.timezone', 'Europe/Budapest'));
 
+// The notification emails whose few minutes of waiting are over go into
+// the outbox first, so they are sent in this same run.
+$written = (new Notifier())->sendDue();
+
 $outbox = new Outbox();
 $sent = $outbox->sendDue();
 $pruned = $outbox->prune();
 
 if (in_array('-v', $argv, true)) {
     $counts = $outbox->counts();
-    printf('%d sent, %d waiting, %d failed, %d old ones cleared.%s', $sent, $counts['waiting'], $counts['failed'], $pruned, PHP_EOL);
+    printf('%d notification emails written, %d sent, %d waiting, %d failed, %d old ones cleared.%s', $written, $sent, $counts['waiting'], $counts['failed'], $pruned, PHP_EOL);
 }

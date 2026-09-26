@@ -61,6 +61,16 @@ class Session
             'samesite' => 'Lax',
         ]);
 
+        // A page asking in the background — the bell, every minute — is not
+        // somebody using the tracker: it reads the session and leaves it as
+        // it was, so a tab left open does not keep its person signed in for
+        // ever, and a message waiting to be shown is not taken by it.
+        if (($_SERVER['HTTP_X_CT_BACKGROUND'] ?? '') === '1') {
+            session_start(['read_and_close' => true]);
+
+            return;
+        }
+
         session_start();
 
         self::keepAlive($lifetime);

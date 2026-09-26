@@ -69,6 +69,7 @@ $bundles = [
             'suggest.js',
             'palette.js',
             'dashboard.js',
+            'notifications.js',
         ],
     ],
     'web/assets/js/sidebar.js' => [

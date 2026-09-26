@@ -129,7 +129,17 @@ deploy with `git pull`.
   ticket — which anybody who creates, comments on or is given a ticket does —
   and never about a ticket in a project they cannot see. Each person chooses,
   for each kind of thing, both ways, in the application only, or not at all, and
-  can ask for a digest of their own query on working-day mornings.
+  can ask for a digest of their own query on working-day mornings. The bell
+  opens on the newest few and asks every minute what is new: the count follows
+  on it and in the tab's title, a new one pops up in the corner, and — for
+  somebody who switches them on — the browser's own notifications say so in a
+  tab left in the background. An email waits a couple of minutes, so a
+  ticket's changes and comments of those minutes arrive as one message, and
+  what was read in the meantime is left out. The notifications page narrows
+  to the unread ones, a kind or a project, folds one ticket's run of them
+  together, and marks each read or unread; a ticket can be muted, by its
+  reporter and assignee too, and a mention or being given it still gets
+  through.
 - **A query language** for the ticket list, the API and the search box —
   `project = BIKE AND assignee = me AND category != done ORDER BY priority DESC`,
   `sprint IN openSprints() AND labels IS EMPTY`, `due < startOfDay()` — with

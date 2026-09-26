@@ -138,30 +138,87 @@ class Notifier
             ]);
 
             if ($way === 'email') {
-                $key = $ticket['project_code'] . '-' . $ticket['number'];
-                $this->email($notificationId, $userId, $key, (string) $ticket['title'], '/tickets/' . $ticketId, $key);
+                $this->mailLater($notificationId);
             }
         }
     }
 
     /**
-     * The same notification by email, to anybody who has not turned that off
-     * — written in their own language, not in the language of whoever made
-     * the change. About a ticket or an epic: `$key` is how the text names it,
-     * `$tag` what goes in brackets before the subject, `$path` where it is.
+     * The same notification by email, a little later: it waits a couple of
+     * minutes for whatever else happens to the same ticket, and goes with it
+     * in one message (see sendDue, and the 0048 migration).
      */
-    public function email(int $notificationId, int $userId, string $key, string $title, string $path, string $tag): void
+    public function mailLater(int $notificationId): void
+    {
+        $this->notifications->wantMail($notificationId, max(0, (int) Config::get('notifications.batch_minutes', 2)));
+    }
+
+    /**
+     * Sends the notification emails whose time has come: everything one
+     * person has waiting about one ticket or epic, in one message. Run every
+     * minute by bin/outbox.php. Returns how many messages went. `$ahead`
+     * pretends that many minutes have passed, for the tests.
+     */
+    public function sendDue(int $ahead = 0): int
+    {
+        $sent = 0;
+
+        foreach ($this->notifications->mailDue($ahead) as $due) {
+            $lead = max($due['ids']);
+
+            // Taken first, so a second run at the same moment leaves it.
+            if (!$this->notifications->claimForMail($due['ids'], $lead)) {
+                continue;
+            }
+
+            try {
+                $sent += $this->mail($due['user_id'], $due['ids'], $lead) ? 1 : 0;
+            } catch (\Throwable $e) {
+                Logger::error('A notification email could not be written: ' . $e->getMessage(), ['user' => $due['user_id']]);
+            }
+        }
+
+        return $sent;
+    }
+
+    /**
+     * One message about one ticket or epic, to one person — in their own
+     * language, not in the language of whoever made the changes. What they
+     * have read in the application in the meantime is left out: they saw it.
+     *
+     * @param list<int> $ids
+     */
+    private function mail(int $userId, array $ids, int $lead): bool
     {
         $person = $this->users->find($userId);
 
-        if ($person === null || !Mailer::isConfigured()) {
-            return;
+        if ($person === null || !(int) ($person['is_active'] ?? 1) || !Mailer::isConfigured()) {
+            return false;
         }
 
-        $notification = $this->notifications->forUser($userId, 1)[0] ?? null;
-        if ($notification === null || (int) $notification['id'] !== $notificationId) {
-            return;
+        $told = array_values(array_filter($this->notifications->several($ids), static fn(array $n): bool => $n['read_at'] === null));
+        if ($told === []) {
+            return false;
         }
+
+        // Still theirs to see: a project somebody was taken off since is not
+        // written to them about.
+        $visible = Access::forUser($person);
+        if ($visible !== null && !in_array((int) $told[0]['project_id'], $visible, true)) {
+            return false;
+        }
+
+        $first = $told[0];
+        $epic = $first['epic_id'] !== null;
+        $key = $epic ? '“' . $first['epic_title'] . '”' : $first['project_code'] . '-' . $first['ticket_number'];
+        $title = (string) ($epic ? $first['epic_title'] : $first['ticket_title']);
+        $path = $epic ? '/epics/' . $first['epic_id'] : '/tickets/' . $first['ticket_id'];
+        $tag = $epic ? (string) $first['project_code'] : $key;
+
+        // Why they get it, in the strongest words that are true: mentioned,
+        // given it, or following it.
+        $reasons = array_column($told, 'reason');
+        $reason = in_array('mentioned', $reasons, true) ? 'mentioned' : (in_array('assigned', $reasons, true) ? 'assigned' : 'watching');
 
         $previous = I18n::locale();
         I18n::setLocale((string) ($person['locale'] ?: Config::get('app.locale', 'en')));
@@ -169,16 +226,18 @@ class Notifier
         try {
             $base = rtrim((string) Config::get('app.base_url'), '/');
             $text = View::twig()->render('emails/notification.txt.twig', [
-                'notification' => $notification,
+                'notifications' => $told,
+                'reason' => $reason,
                 'title' => $title,
                 'key' => $key,
                 'person' => $person,
                 'link' => $base . $path,
-                'profile' => $base . '/profile',
+                'profile' => $base . '/profile#notifications',
             ]);
 
-            // Marked emailed by the outbox once it has actually gone.
-            Mailer::send((string) $person['email'], (string) $person['name'], '[' . $tag . '] ' . $title, $text, 'notification', $notificationId);
+            // Marked emailed by the outbox once it has actually gone — the
+            // lead and every other one the message carries.
+            return Mailer::send((string) $person['email'], (string) $person['name'], '[' . $tag . '] ' . $title, $text, 'notification', $lead);
         } finally {
             I18n::setLocale($previous);
         }

@@ -61,4 +61,16 @@ final class FormatTest extends TestCase
         self::assertSame('M', Format::initials('Madonna'));
         self::assertSame('?', Format::initials('   '));
     }
+
+    public function testHowLongAgoIsSaidTheWayPeopleSayIt(): void
+    {
+        $now = (int) strtotime('2026-09-26 15:00:00');
+
+        self::assertSame('just now', Format::ago('2026-09-26 14:59:30', $now));
+        self::assertSame('1 minute ago', Format::ago('2026-09-26 14:59:00', $now));
+        self::assertSame('25 minutes ago', Format::ago('2026-09-26 14:35:00', $now));
+        self::assertSame('3 hours ago', Format::ago('2026-09-26 11:40:00', $now));
+        self::assertSame('yesterday, 18:05', Format::ago('2026-09-25 18:05:00', $now));
+        self::assertSame(Format::day('2026-09-20 09:00:00'), Format::ago('2026-09-20 09:00:00', $now));
+    }
 }

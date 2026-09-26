@@ -78,8 +78,12 @@ $router->post('/password/reset/{token}', static fn($token) => (new PasswordReset
 $router->get('/', static fn() => (new DashboardController())->index());
 
 $router->get('/notifications', static fn() => (new NotificationController())->index());
+$router->get('/notifications/menu', static fn() => (new NotificationController())->menu());
+$router->get('/notifications/poll', static fn() => (new NotificationController())->poll());
 $router->post('/notifications/read', static fn() => (new NotificationController())->readAll());
 $router->get('/notifications/{id}', static fn($id) => (new NotificationController())->open((int) $id));
+$router->post('/notifications/{id}/read', static fn($id) => (new NotificationController())->read((int) $id));
+$router->post('/notifications/{id}/unread', static fn($id) => (new NotificationController())->unread((int) $id));
 $router->post('/tickets/{id}/subtasks', static fn($id) => (new TicketController())->addSubtask((int) $id));
 $router->post('/tickets/{id}/favourite', static fn($id) => (new TicketController())->favourite((int) $id));
 $router->post('/tickets/{id}/watch', static fn($id) => (new NotificationController())->toggleWatch((int) $id));

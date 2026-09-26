@@ -1,0 +1,9 @@
+{# The note that pops up in the corner when a notification arrives. #}
+{% import 'notifications/_line.twig' as line %}
+<a class="toast__link" href="{{ url('/notifications/' ~ n.id) }}">
+    {{ line.icon(n) }}
+    <span class="toast__body">
+        <span class="toast__what">{{ line.about(n) }} {{ line.what(n, 100) }}</span>
+        <span class="toast__title">{{ line.title(n) }}</span>
+    </span>
+</a>

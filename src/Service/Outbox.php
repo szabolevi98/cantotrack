@@ -177,8 +177,9 @@ final class Outbox
         $this->db->prepare("UPDATE outbox SET state = 'sent', sent_at = NOW(), attempts = attempts + 1, last_error = NULL WHERE id = :id")
             ->execute(['id' => $message['id']]);
 
+        // The notification it was sent for, and every other one it carried.
         if ($message['notification_id'] !== null) {
-            $this->db->prepare('UPDATE notifications SET emailed_at = NOW() WHERE id = :id')->execute(['id' => $message['notification_id']]);
+            (new \CantoTrack\Model\NotificationRepository($this->db))->markEmailed((int) $message['notification_id']);
         }
     }
 }

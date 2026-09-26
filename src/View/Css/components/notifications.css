@@ -109,3 +109,283 @@
     font-size: 0.88rem;
     text-align: center;
 }
+
+/* Each notification's kind, as an icon in its own colour. */
+.notification__icon {
+    display: inline-flex;
+    flex: none;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    border-radius: 999px;
+    background: var(--ct-badge-slate-bg);
+    color: var(--ct-badge-slate-text);
+    font-size: 0.9rem;
+}
+
+.notification__icon--assigned {
+    background: var(--ct-success-soft);
+    color: var(--ct-success);
+}
+
+.notification__icon--mentioned {
+    background: var(--ct-violet-soft);
+    color: var(--ct-violet);
+}
+
+.notification__icon--status {
+    background: var(--ct-primary-soft);
+    color: var(--ct-primary);
+}
+
+.notification__icon--commented {
+    background: var(--ct-warning-soft);
+    color: var(--ct-warning);
+}
+
+/* The page: the icon, what happened, and on the right when and the one button. */
+.notification {
+    align-items: flex-start;
+}
+
+.notification__main {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 4px;
+    min-width: 0;
+}
+
+.notification__side {
+    display: flex;
+    flex: none;
+    align-items: center;
+    gap: 8px;
+}
+
+.notification__side form {
+    margin: 0;
+}
+
+/* The others about the same ticket, folded under the newest. */
+.notification__more summary {
+    color: var(--ct-muted);
+    font-size: 0.82rem;
+    cursor: pointer;
+}
+
+.notification__rest {
+    margin: 6px 0 0;
+    padding: 0 0 0 14px;
+    border-left: 2px solid var(--ct-border);
+    list-style: none;
+    font-size: 0.86rem;
+}
+
+.notification__rest li {
+    display: flex;
+    gap: 8px;
+    justify-content: space-between;
+    padding: 3px 0;
+}
+
+.notification__rest li.is-unread a {
+    font-weight: 600;
+}
+
+.notification__rest a {
+    min-width: 0;
+    color: var(--ct-text);
+    overflow-wrap: anywhere;
+}
+
+.notification__rest time {
+    flex: none;
+    font-size: 0.76rem;
+}
+
+/*
+ * The bell's menu: a <details>, so it opens without a script; the script
+ * draws what is in it when it opens.
+ */
+.bell-menu {
+    position: relative;
+}
+
+.bell-menu > summary {
+    list-style: none;
+}
+
+.bell-menu > summary::-webkit-details-marker {
+    display: none;
+}
+
+.bell-menu[open] > summary {
+    border-color: var(--ct-primary-border);
+    color: var(--ct-primary);
+}
+
+.bell-menu__panel {
+    width: min(380px, calc(100vw - 24px));
+    max-height: min(520px, calc(100vh - 90px));
+    padding: 0;
+    overflow-y: auto;
+    z-index: 40;
+}
+
+.bell-menu__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 12px 14px 10px;
+    border-bottom: 1px solid var(--ct-border);
+}
+
+.bell-menu__head form {
+    margin: 0;
+}
+
+.bell-menu__head .link-button {
+    font-size: 0.8rem;
+}
+
+.bell-menu__empty {
+    margin: 0;
+    padding: 18px 14px;
+    font-size: 0.88rem;
+}
+
+.bell-menu__list {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.bell-item {
+    border-bottom: 1px solid var(--ct-border);
+}
+
+.bell-item--unread {
+    box-shadow: inset 3px 0 0 var(--ct-primary);
+    background: var(--ct-primary-soft);
+}
+
+.bell-item__link {
+    display: flex;
+    gap: 10px;
+    padding: 10px 14px;
+    color: var(--ct-text);
+}
+
+.bell-item__link:hover {
+    background: var(--ct-primary-soft);
+    text-decoration: none;
+}
+
+.bell-item__body {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+    min-width: 0;
+}
+
+.bell-item__what {
+    font-size: 0.86rem;
+    overflow-wrap: anywhere;
+}
+
+.bell-item__title {
+    overflow: hidden;
+    color: var(--ct-muted);
+    font-size: 0.8rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.bell-item__when {
+    color: var(--ct-muted);
+    font-size: 0.74rem;
+}
+
+.bell-menu__foot {
+    padding: 6px;
+}
+
+.topbar__badge[hidden] {
+    display: none;
+}
+
+/* A new one arriving: a note in the corner for a few seconds. */
+.toasts {
+    position: fixed;
+    right: 16px;
+    bottom: 16px;
+    z-index: 90;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    width: min(360px, calc(100vw - 32px));
+}
+
+.toast {
+    position: relative;
+    border: 1px solid var(--ct-border);
+    border-radius: var(--ct-radius-sm);
+    background: var(--ct-surface);
+    box-shadow: var(--ct-shadow-lg);
+    animation: toast-in 0.2s ease-out;
+}
+
+.toast__link {
+    display: flex;
+    gap: 10px;
+    padding: 12px 36px 12px 12px;
+    color: var(--ct-text);
+}
+
+.toast__link:hover {
+    text-decoration: none;
+}
+
+.toast__body {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+}
+
+.toast__what {
+    font-size: 0.86rem;
+    overflow-wrap: anywhere;
+}
+
+.toast__title {
+    color: var(--ct-muted);
+    font-size: 0.8rem;
+}
+
+.toast__close {
+    position: absolute;
+    top: 6px;
+    right: 6px;
+    padding: 4px;
+    border: 0;
+    background: none;
+    color: var(--ct-muted);
+    cursor: pointer;
+}
+
+@keyframes toast-in {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .toast {
+        animation: none;
+    }
+}

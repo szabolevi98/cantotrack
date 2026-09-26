@@ -55,9 +55,11 @@
     </form>
     <form method="post" action="{{ url('/tickets/' ~ ticket.id ~ '/watch') }}">
         <input type="hidden" name="_token" value="{{ csrf_token }}">
+        {# Its reporter and its assignee follow it without asking; for them
+           "not following" is muting it. #}
         <button class="button{{ watching ? ' is-on' : '' }}" type="submit" aria-pressed="{{ watching ? 'true' : 'false' }}"
-                title="{{ plural('{count} person follows this', '{count} people follow this', watchers) }}">
-            {{ watching ? 'Following'|t : 'Follow'|t }}{% if watchers > 0 %} · {{ watchers }}{% endif %}
+                title="{{ plural('{count} person follows this', '{count} people follow this', watchers) }}{{ muted ? ' — ' ~ 'muted by you'|t : '' }}">
+            {% if muted %}<i class="bi bi-bell-slash" aria-hidden="true"></i> {{ 'Muted'|t }}{% else %}{{ watching ? 'Following'|t : 'Follow'|t }}{% endif %}{% if watchers > 0 %} · {{ watchers }}{% endif %}
         </button>
     </form>
     {% if can_work %}

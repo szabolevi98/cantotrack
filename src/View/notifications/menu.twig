@@ -1,0 +1,38 @@
+{#
+    The bell's menu: the newest few, unread ones marked, each one click from
+    what it is about — drawn when the bell is opened, so it is never stale.
+#}
+{% import 'notifications/_line.twig' as line %}
+<div class="bell-menu__head">
+    <strong>{{ 'Notifications'|t }}</strong>
+    {% if unread > 0 %}
+        <form method="post" action="{{ url('/notifications/read') }}" data-notifications-read-all>
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <button class="link-button link-button--text" type="submit"><i class="bi bi-check2-all" aria-hidden="true"></i> {{ 'Mark everything read'|t }}</button>
+        </form>
+    {% endif %}
+</div>
+
+{% if notifications is empty %}
+    <p class="bell-menu__empty muted">{{ 'Nothing yet. You hear about the tickets you report, are given, comment on, follow or are mentioned in.'|t }}</p>
+{% else %}
+    <ol class="bell-menu__list">
+        {% for n in notifications %}
+            <li class="bell-item{{ n.read_at ? '' : ' bell-item--unread' }}">
+                <a class="bell-item__link" href="{{ url('/notifications/' ~ n.id) }}">
+                    {{ line.icon(n) }}
+                    <span class="bell-item__body">
+                        <span class="bell-item__what">{{ line.about(n) }} {{ line.what(n, 80) }}</span>
+                        <span class="bell-item__title">{{ line.title(n) }}</span>
+                        <time class="bell-item__when" datetime="{{ n.created_at }}">{{ n.created_at|ago }}</time>
+                    </span>
+                </a>
+            </li>
+        {% endfor %}
+    </ol>
+{% endif %}
+
+<div class="bell-menu__foot">
+    <a class="menu__item" href="{{ url('/notifications') }}"><i class="bi bi-bell" aria-hidden="true"></i>{{ 'All notifications'|t }}</a>
+    <a class="menu__item" href="{{ url('/profile#notifications') }}"><i class="bi bi-sliders" aria-hidden="true"></i>{{ 'What reaches me, and how'|t }}</a>
+</div>

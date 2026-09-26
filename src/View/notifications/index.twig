@@ -1,5 +1,6 @@
 {% extends 'layout.twig' %}
 {% import 'common/macros.twig' as ui %}
+{% import 'notifications/_line.twig' as line %}
 
 {% block title %}{{ 'Notifications'|t }} — {{ app_name }}{% endblock %}
 {% block heading %}{{ 'Notifications'|t }}{% endblock %}
@@ -11,55 +12,121 @@
     {% if unread > 0 %}
         <form method="post" action="{{ url('/notifications/read') }}">
             <input type="hidden" name="_token" value="{{ csrf_token }}">
-            <button class="button" type="submit">{{ 'Mark everything read'|t }}</button>
+            <button class="button" type="submit"><i class="bi bi-check2-all" aria-hidden="true"></i> {{ 'Mark everything read'|t }}</button>
         </form>
     {% endif %}
-    <a class="button" href="{{ url('/profile') }}">{{ 'Email settings'|t }}</a>
+    {# Notifications from the browser itself, while this tab is in the
+       background — asked for here, and only when somebody wants them. #}
+    <button class="button" type="button" data-desktop-notify hidden
+            data-on="{{ 'Desktop notifications: on'|t }}" data-off="{{ 'Desktop notifications: off'|t }}"
+            data-blocked="{{ 'The browser blocks notifications from this site. Allow them in its settings first.'|t }}">
+        <i class="bi bi-display" aria-hidden="true"></i> <span>{{ 'Desktop notifications: off'|t }}</span>
+    </button>
+    <a class="button" href="{{ url('/profile#notifications') }}"><i class="bi bi-sliders" aria-hidden="true"></i> {{ 'What reaches me, and how'|t }}</a>
 {% endblock %}
 
 {% block content %}
+    {# Narrowed like the lists: the unread ones, one kind, one project. #}
+    <form class="filters card" method="get" action="{{ url('/notifications') }}">
+        <nav class="segmented" aria-label="{{ 'Show'|t }}">
+            <a class="segmented__item{{ not filters.unread ? ' is-active' : '' }}" href="{{ url('/notifications?' ~ {kind: filters.kind, project: filters.project_id}|filter(v => v)|url_encode) }}">{{ 'Everything'|t }}</a>
+            <a class="segmented__item{{ filters.unread ? ' is-active' : '' }}" href="{{ url('/notifications?' ~ {unread: 1, kind: filters.kind, project: filters.project_id}|filter(v => v)|url_encode) }}">{{ 'Not read'|t }}</a>
+        </nav>
+        {% if filters.unread %}<input type="hidden" name="unread" value="1">{% endif %}
+
+        <select class="field field--inline" name="kind" data-autosubmit aria-label="{{ 'Kind'|t }}">
+            <option value="">{{ 'Every kind'|t }}</option>
+            {% for kind, label in {
+                assigned: 'Given to me', mentioned: 'Mentions', status: 'Moved on the board',
+                commented: 'Comments', changes: 'Other changes'
+            } %}
+                <option value="{{ kind }}"{{ filters.kind == kind ? ' selected' : '' }}>{{ label|t }}</option>
+            {% endfor %}
+        </select>
+
+        {% if projects|length > 1 %}
+            <select class="field field--inline" name="project" data-autosubmit aria-label="{{ 'Project'|t }}">
+                <option value="">{{ 'Every project'|t }}</option>
+                {% for id, code in projects %}
+                    <option value="{{ id }}"{{ filters.project_id == id ? ' selected' : '' }}>{{ code }}</option>
+                {% endfor %}
+            </select>
+        {% endif %}
+
+        <button class="button autosubmit__button" type="submit">{{ 'Filter'|t }}</button>
+        {% if narrowed %}<a class="button" href="{{ url('/notifications') }}">{{ 'Clear'|t }}</a>{% endif %}
+    </form>
+
     <section class="card card--flush">
-        {% if notifications is empty %}
+        {% if groups is empty %}
             <p class="card__empty">
-                {{ 'Nothing yet. You hear about the tickets you report, are given, comment on, follow or are mentioned in.'|t }}
+                {% if narrowed %}
+                    {{ 'Nothing like that.'|t }}
+                {% else %}
+                    {{ 'Nothing yet. You hear about the tickets you report, are given, comment on, follow or are mentioned in.'|t }}
+                {% endif %}
             </p>
         {% else %}
             <ol class="notifications">
-                {% for n in notifications %}
-                    <li class="notification{{ n.read_at ? '' : ' notification--unread' }}">
-                        <a class="notification__link" href="{{ url('/notifications/' ~ n.id) }}">
-                            <span class="notification__what">
-                                {% if n.epic_id %}
-                                    <span class="ticket-key">{{ n.project_code }}</span> <span class="badge badge--violet">{{ 'Epic'|t }}</span>
-                                {% else %}
-                                    <span class="ticket-key">{{ n.project_code }}-{{ n.ticket_number }}</span>
-                                {% endif %}
-                                {% if n.epic_id and n.kind == 'done' %}
-                                    {{ n.new_value ? '{who} marked it done'|t({who: n.user_name ?: 'Somebody'|t}) : '{who} opened it again'|t({who: n.user_name ?: 'Somebody'|t}) }}
-                                {% elseif n.reason == 'mentioned' %}
-                                    {{ '{who} mentioned you'|t({who: n.user_name}) }}:
-                                    <span class="muted">{{ n.new_value|slice(0, 140) }}</span>
-                                {% elseif n.reason == 'assigned' %}
-                                    {{ '{who} gave it to you'|t({who: n.user_name ?: 'Somebody'|t}) }}
-                                {% elseif n.kind == 'commented' %}
-                                    {{ '{who} commented'|t({who: n.user_name}) }}:
-                                    <span class="muted">{{ n.new_value|slice(0, 140) }}</span>
-                                {% else %}
-                                    {{ ui.event_line(n) }}
-                                {% endif %}
-                            </span>
-                            <span class="notification__title">{{ n.epic_id ? n.epic_title : n.ticket_title }}</span>
-                        </a>
-                        <time class="notification__when muted" datetime="{{ n.created_at }}">{{ n.created_at|day }} {{ n.created_at|date('H:i') }}</time>
+                {% for group in groups %}
+                    {% set n = group.first %}
+                    <li class="notification{{ group.unread > 0 ? ' notification--unread' : '' }}">
+                        {{ line.icon(n) }}
+                        <div class="notification__main">
+                            <a class="notification__link" href="{{ url('/notifications/' ~ n.id) }}">
+                                <span class="notification__what">{{ line.about(n) }} {{ line.what(n) }}</span>
+                                <span class="notification__title">{{ line.title(n) }}</span>
+                            </a>
+
+                            {% if group.rest is not empty %}
+                                {# The others about the same thing, right before it. #}
+                                <details class="notification__more">
+                                    <summary>{{ plural('and {count} more about it', 'and {count} more about it', group.rest|length) }}</summary>
+                                    <ol class="notification__rest">
+                                        {% for other in group.rest %}
+                                            <li class="{{ other.read_at ? '' : 'is-unread' }}">
+                                                <a href="{{ url('/notifications/' ~ other.id) }}">{{ line.what(other) }}</a>
+                                                <time class="muted" datetime="{{ other.created_at }}">{{ other.created_at|ago }}</time>
+                                            </li>
+                                        {% endfor %}
+                                    </ol>
+                                </details>
+                            {% endif %}
+                        </div>
+
+                        <div class="notification__side">
+                            <time class="notification__when muted" datetime="{{ n.created_at }}" title="{{ n.created_at|day }} {{ n.created_at|date('H:i') }}">{{ n.created_at|ago }}</time>
+                            {% if group.unread > 0 %}
+                                <form method="post" action="{{ url(group.rest is empty ? '/notifications/' ~ n.id ~ '/read' : '/notifications/read') }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                    <input type="hidden" name="back" value="{{ current_path }}{{ current_query ? '?' ~ current_query : '' }}">
+                                    {% if group.rest is not empty %}
+                                        <input type="hidden" name="{{ n.epic_id ? 'epic' : 'ticket' }}" value="{{ n.epic_id ?: n.ticket_id }}">
+                                    {% endif %}
+                                    <button class="link-button" type="submit" title="{{ 'Mark read'|t }}" aria-label="{{ 'Mark read'|t }}"><i class="bi bi-check2" aria-hidden="true"></i></button>
+                                </form>
+                            {% else %}
+                                <form method="post" action="{{ url('/notifications/' ~ n.id ~ '/unread') }}">
+                                    <input type="hidden" name="_token" value="{{ csrf_token }}">
+                                    <input type="hidden" name="back" value="{{ current_path }}{{ current_query ? '?' ~ current_query : '' }}">
+                                    <button class="link-button" type="submit" title="{{ 'Mark unread'|t }}" aria-label="{{ 'Mark unread'|t }}"><i class="bi bi-envelope-open" aria-hidden="true"></i></button>
+                                </form>
+                            {% endif %}
+                        </div>
                     </li>
                 {% endfor %}
             </ol>
         {% endif %}
     </section>
 
-    {% if notifications|length == 50 %}
+    {% if more or page > 1 %}
         <nav class="pager">
-            <a class="button button--small" href="{{ url('/notifications?page=' ~ (page + 1)) }}">{{ 'Older'|t }} →</a>
+            {% if page > 1 %}
+                <a class="button button--small" href="{{ url('/notifications?' ~ (query ? query ~ '&' : '') ~ 'page=' ~ (page - 1)) }}">← {{ 'Newer'|t }}</a>
+            {% endif %}
+            {% if more %}
+                <a class="button button--small" href="{{ url('/notifications?' ~ (query ? query ~ '&' : '') ~ 'page=' ~ (page + 1)) }}">{{ 'Older'|t }} →</a>
+            {% endif %}
         </nav>
     {% endif %}
 {% endblock %}

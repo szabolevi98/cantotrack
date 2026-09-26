@@ -100,8 +100,8 @@ final class Digest
                 static fn(array $t): bool => $t['status_category'] !== 'done' && $t['due_on'] !== null && $t['due_on'] <= $sunday
             ));
 
-            $unread = $this->db->prepare('SELECT COUNT(*) FROM notifications WHERE user_id = :user AND read_at IS NULL');
-            $unread->execute(['user' => $user['id']]);
+            // The same number as their bell: only what they may still see.
+            $unread = (new \CantoTrack\Model\NotificationRepository($this->db))->unreadCount((int) $user['id']);
 
             $base = rtrim((string) Config::get('app.base_url'), '/');
             $text = View::twig()->render('emails/digest.txt.twig', [
@@ -112,7 +112,7 @@ final class Digest
                 'total' => $total,
                 'due' => $due,
                 'today' => $today->format('Y-m-d'),
-                'unread' => (int) $unread->fetchColumn(),
+                'unread' => $unread,
                 'base' => $base,
                 'list' => $base . '/tickets?' . http_build_query(['query' => $query]),
             ]);

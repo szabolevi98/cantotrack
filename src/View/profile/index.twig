@@ -134,6 +134,7 @@
     {% set ways = notify_ways|default({}) %}
     <section class="card card--narrow" id="notifications">
         <h2 class="card__title">{{ 'What you hear about'|t }}</h2>
+        <p class="hint">{{ 'An email waits a couple of minutes, and what else happens to the same ticket in the meantime goes in it too. What you have read here by then is left out. A ticket you do not want to hear about can be muted on its page.'|t }}</p>
         <form method="post" action="{{ url('/profile/notifications') }}">
             <input type="hidden" name="_token" value="{{ csrf_token }}">
             <table class="table table--compact notify-table">

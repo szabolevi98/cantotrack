@@ -1,5 +1,9 @@
 {% autoescape false %}{% import 'common/macros.twig' as ui %}
+{#- Everything one person had waiting about one ticket or epic, in one
+    message: a line each, what was said under a comment, and the link. -#}
+{%- for notification in notifications -%}
 {%- set event = notification|merge({user_name: notification.user_name}) -%}
+{%- if notifications|length > 1 %}{{ notification.created_at|date('H:i') }}  {% endif -%}
 {%- if notification.reason == 'mentioned' -%}
 {{ '{who} mentioned you on {key}:'|t({who: notification.user_name, key: key}) }}
 {%- elseif notification.reason == 'assigned' -%}
@@ -11,15 +15,22 @@
 {%- else -%}
 {{ ui.event_line(event)|striptags|trim }} ({{ key }})
 {%- endif %}
-
-{{ title }}
 {% if notification.kind == 'commented' %}
 
 {{ notification.new_value }}
-{% endif %}
 
+{% endif %}
+{% endfor %}
+
+{{ title }}
 {{ link }}
 
 --
-{{ 'You get this because you follow {key}. Turn email off on your profile: {url}'|t({key: key, url: profile}) }}
+{% if reason == 'mentioned' -%}
+{{ 'You get this because you were mentioned on {key}. Choose what reaches you by email on your profile: {url}'|t({key: key, url: profile}) }}
+{%- elseif reason == 'assigned' -%}
+{{ 'You get this because {key} is yours. Choose what reaches you by email on your profile: {url}'|t({key: key, url: profile}) }}
+{%- else -%}
+{{ 'You get this because you follow {key}. Choose what reaches you by email on your profile: {url}'|t({key: key, url: profile}) }}
+{%- endif %}
 {% endautoescape %}

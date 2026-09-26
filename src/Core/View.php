@@ -81,6 +81,7 @@ class View
         $twig->addFilter(new TwigFilter('duration', static fn(?int $minutes): string => Format::duration((int) $minutes)));
         $twig->addFilter(new TwigFilter('hours', static fn(?int $minutes): string => Format::hours((int) $minutes)));
         $twig->addFilter(new TwigFilter('day', static fn(?string $date): string => Format::day((string) $date)));
+        $twig->addFilter(new TwigFilter('ago', static fn(?string $moment): string => Format::ago((string) $moment)));
         $twig->addFilter(new TwigFilter('initials', static fn(?string $name): string => Format::initials((string) $name)));
 
         $twig->addFunction(new TwigFunction('url', static fn(string $path = ''): string =>
@@ -109,6 +110,10 @@ class View
             Auth::check() ? (new \CantoTrack\Service\TimerService())->running((int) Auth::id()) : null));
         $twig->addFunction(new TwigFunction('unread_notifications', static fn(): int =>
             Auth::check() ? (new \CantoTrack\Model\NotificationRepository())->unreadCount((int) Auth::id()) : 0));
+        // The newest one there is as the page is drawn: the bell asks, every
+        // minute, for what came after it.
+        $twig->addFunction(new TwigFunction('latest_notification_id', static fn(): int =>
+            Auth::check() ? (new \CantoTrack\Model\NotificationRepository())->latestId((int) Auth::id()) : 0));
         $twig->addFunction(new TwigFunction('work_types', [\CantoTrack\Model\WorkTypeRepository::class, 'active']));
         $twig->addFunction(new TwigFunction('avatar_url', [\CantoTrack\Service\Avatars::class, 'url']));
         // Email the mail server would not take, for the administrators' sidebar.

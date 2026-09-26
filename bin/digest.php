@@ -15,4 +15,8 @@ date_default_timezone_set((string) CantoTrack\Core\Config::get('app.timezone', '
 
 $sent = (new CantoTrack\Service\Digest())->sendDue(new DateTimeImmutable('today'));
 
-printf('%d digest%s sent.%s', $sent, $sent === 1 ? '' : 's', PHP_EOL);
+// And, once a morning, the old notifications cleared: read ones after half a
+// year, any after a year.
+$cleared = (new CantoTrack\Model\NotificationRepository())->prune();
+
+printf('%d digest%s sent, %d old notifications cleared.%s', $sent, $sent === 1 ? '' : 's', $cleared, PHP_EOL);

@@ -91,6 +91,7 @@ final class EpicConversationTest extends DatabaseTestCase
         self::assertSame((string) $this->epic, (string) $told[0]['epic_id']);
         self::assertSame('Checkout', $told[0]['epic_title']);
         self::assertTrue($this->epics->isWatching($this->epic, $this->anna));
+        (new \CantoTrack\Service\Notifier($this->db))->sendDue(10);
         self::assertCount(1, Mailer::$sent);
         self::assertStringContainsString('[CT] Checkout', (string) Mailer::$sent[0]->getSubject());
     }

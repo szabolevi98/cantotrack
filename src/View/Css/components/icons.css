@@ -29,6 +29,14 @@
 .bi-speedometer2::before { content: "\f580"; }
 .bi-kanban::before { content: "\f44d"; }
 .bi-layout-three-columns::before { content: "\f465"; }
+.bi-person-check::before { content: "\f4d6"; }
+.bi-at::before { content: "\f152"; }
+.bi-arrow-left-right::before { content: "\f12b"; }
+.bi-chat-left-text::before { content: "\f252"; }
+.bi-bell-slash::before { content: "\f631"; }
+.bi-check2-all::before { content: "\f26f"; }
+.bi-envelope-open::before { content: "\f32e"; }
+.bi-display::before { content: "\f302"; }
 .bi-card-checklist::before { content: "\f224"; }
 .bi-calendar-week::before { content: "\f1f3"; }
 .bi-bar-chart-line::before { content: "\f17c"; }

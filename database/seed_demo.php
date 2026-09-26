@@ -87,6 +87,10 @@ $demoEmails = [
 ];
 
 if ($reset) {
+    // The shared boards it made, with their sprints: a board is nobody's
+    // project, so deleting the projects would leave them there, empty.
+    $database->exec("DELETE FROM boards WHERE project_id IS NULL AND name IN ('Studio Scrum Board', 'Client bugs')");
+
     foreach ($codes as $code) {
         $existing = $projects->findByCode($code);
 

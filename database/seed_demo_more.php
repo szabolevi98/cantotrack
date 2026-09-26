@@ -33,6 +33,7 @@
  * @var DateTimeImmutable $thisMonday
  * @var DateTimeImmutable $today
  * @var int $me
+ * @var int $webId
  * @var int $anna
  * @var int $mark
  * @var int $julia
@@ -1374,6 +1375,64 @@ foreach ([[$serverUpdates, ['frequency' => 'monthly', 'month_day' => 1, 'assigne
         $templateRepository->createRecurring($templateService->cleanRecurring($template, $rule, $repeatToday), $who['tamas']);
     }
 }
+
+// ---------------------------------------------------------------------------
+// Two shared boards. The studio plans its own three projects — the coffee
+// site, the servers and support — in one sprint, on a board with columns of
+// its own the way a Jira board has them. And one board gathers every
+// client's bugs, narrowed by a query, without sprints.
+// ---------------------------------------------------------------------------
+$boardService = new CantoTrack\Service\BoardService();
+$boardRepository = new BoardRepository();
+$statusRepository = new CantoTrack\Model\StatusRepository();
+$studioProjects = [$webId, $projectOf['OPS'], $projectOf['HELP']];
+$studioBoard = $boardService->create('Studio Scrum Board', $studioProjects, '');
+
+// "To do", "In progress" and "Done" find their columns by name, the Backlog
+// by its kind; only Review has to be put in its column by hand.
+$inReview = [];
+foreach ($studioProjects as $projectId) {
+    foreach ($statusRepository->forProject($projectId) as $status) {
+        if ($status['name'] === 'Review') {
+            $inReview[(int) $status['id']] = 'IN REVIEW';
+        }
+    }
+}
+$boardService->saveColumns((array) $boardRepository->find($studioBoard), "TO DO\nIN PROGRESS\nIN REVIEW\nDONE", $inReview);
+
+// The sprint running since Monday: the unfinished work of all three
+// projects, four of each at most, and two of them finished since. The next
+// one is planned already.
+$studioTickets = [];
+foreach ($studioProjects as $projectId) {
+    $open = $database->prepare(
+        "SELECT t.id FROM tickets t JOIN statuses s ON s.id = t.status_id
+         WHERE t.project_id = :project AND t.parent_id IS NULL AND t.sprint_id IS NULL AND s.category <> 'done'
+           AND t.title NOT LIKE 'Weekly check-in%'
+         ORDER BY s.category = 'in_progress' DESC, t.`rank`, t.id LIMIT 6"
+    );
+    $open->execute(['project' => $projectId]);
+    $studioTickets[$projectId] = array_values(array_map('intval', $open->fetchAll(PDO::FETCH_COLUMN)));
+}
+
+$studioNow = $sprintService->create($studioBoard, 'Studio Sprint 1', 'The coffee shop’s checkout, and the servers ready for its launch.', $ymd($thisMonday), $ymd($thisMonday->modify('+11 days')));
+$studioNext = $sprintService->create($studioBoard, 'Studio Sprint 2', '', $ymd($thisMonday->modify('+14 days')), $ymd($thisMonday->modify('+25 days')));
+$inSprint = [];
+$later = [];
+foreach ($studioTickets as $ids) {
+    $inSprint = array_merge($inSprint, array_slice($ids, 0, 4));
+    $later = array_merge($later, array_slice($ids, 4, 2));
+}
+$sprintService->assign($inSprint, $studioNow, $me);
+$sprintService->assign($later, $studioNext, $me);
+$sprintService->start((array) $sprints->find($studioNow));
+$database->prepare('UPDATE sprints SET started_at = :at WHERE id = :id')->execute(['at' => $ymd($thisMonday) . ' 09:00:00', 'id' => $studioNow]);
+
+foreach (array_slice($inSprint, 0, 2) as $finishedNow) {
+    $ticketService->changeStatus($finishedNow, 'done', $me, null, true);
+}
+
+$boardService->create('Client bugs', [$webId, $projectOf['BIKE'], $projectOf['CLINIC'], $projectOf['WINE']], 'type = bug');
 
 $moreSummary = [
     'projects' => count($catalogue),

@@ -72,7 +72,7 @@ register_shutdown_function(static function (): void {
  */
 set_exception_handler(static function (\Throwable $e): void {
     if ($e instanceof HttpError) {
-        ErrorPage::render($e->status, $e->getMessage());
+        ErrorPage::render($e->status, $e->getMessage(), $e->details);
 
         return;
     }

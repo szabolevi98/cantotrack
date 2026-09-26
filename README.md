@@ -372,7 +372,9 @@ thing that survives to a live server.
 
 Every request carries a personal access token, made under **Profile → Access
 tokens**, as a bearer token. It acts as the person it belongs to, with their
-rights and nothing more, through the same services the forms use.
+rights and nothing more, through the same services the forms use. An app can
+sign in with the email address and password instead, and gets a token of its
+own back — see [Signing in from an app](#signing-in-from-an-app).
 
 ```
 curl -H "Authorization: Bearer ct_…" https://tracker.example/api/v1/me
@@ -380,6 +382,8 @@ curl -H "Authorization: Bearer ct_…" https://tracker.example/api/v1/me
 
 | Method | Path | |
 |---|---|---|
+| `POST` | `/api/v1/auth/login` | sign in from an app; no token needed (below) |
+| `POST` | `/api/v1/auth/logout` | revoke the token the request carries |
 | `GET` | `/api/v1/me` | who the token belongs to |
 | `GET` | `/api/v1/users` | the active people |
 | `GET` | `/api/v1/projects` | the projects you can see (`?archived=1` for all) |
@@ -393,6 +397,10 @@ curl -H "Authorization: Bearer ct_…" https://tracker.example/api/v1/me
 | `POST` | `/api/v1/tickets/{key}/worklogs` | `{"time": "1h 30m", "date": "2026-09-22", "note": "…", "remaining": "2h", "billable": true}` |
 | `GET` | `/api/v1/worklogs` | hours in a range: `?from=2026-09-01&to=2026-09-30&user=3` (your own by default) |
 | `DELETE` | `/api/v1/worklogs/{id}` | remove an entry of yours |
+| `GET` | `/api/v1/timer` | your running clock — the same one the web shows — or `null` |
+| `POST` | `/api/v1/tickets/{key}/timer` | start it on a ticket; one running elsewhere is logged first |
+| `POST` | `/api/v1/timer/stop` | `{"note": "…"}` — stop it and log the time (under a minute logs nothing) |
+| `DELETE` | `/api/v1/timer` | stop it without logging |
 
 A new ticket:
 
@@ -409,6 +417,25 @@ always JSON — `{"error": {"status": 422, "message": "A ticket needs a title."}
 — with `401` for a missing or wrong token, `403` for something that is not
 yours, `404` for something that is not there (or not visible to you), and `429`
 after too many wrong tokens.
+
+### Signing in from an app
+
+```
+curl -X POST -H "Content-Type: application/json"      -d '{"email": "anna@example.com", "password": "…", "device": "Pixel 8"}'      https://tracker.example/api/v1/auth/login
+```
+
+answers `201` with `{"data": {"token": "ct_…", "user": {…}}}`. The token is a
+personal access token like the others, named after the device, listed on the
+profile with an **App** badge and revocable there. Unlike a token made by hand
+it ends with the person's sessions: a new password, a reset one or **Sign out
+everywhere else** signs the app out too.
+
+With two-step sign-in on, the password alone gets `403` with
+`"details": {"two_factor_required": true}`; the app asks for the code and sends
+the same request again with `"code": "123 456"` (or a recovery code). A wrong
+password or code is `401`, and both count towards the login form's limit —
+five for an address and thirty for a connection in fifteen minutes, then `429`.
+There is no reCAPTCHA on this path, as no app could answer one.
 
 ## Webhooks
 

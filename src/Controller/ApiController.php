@@ -18,6 +18,7 @@ use CantoTrack\Model\WorklogRepository;
 use CantoTrack\Service\CommentService;
 use CantoTrack\Service\Presenter;
 use CantoTrack\Service\TicketService;
+use CantoTrack\Service\TimerService;
 use CantoTrack\Service\WorklogService;
 
 /**
@@ -34,6 +35,9 @@ class ApiController extends Controller
 {
     private const MAX_PAGE = 100;
 
+    /** The token this request came with — for signing out with it. */
+    private string $token = '';
+
     public function __construct()
     {
         $this->authenticate();
@@ -46,6 +50,16 @@ class ApiController extends Controller
     public function me(): never
     {
         $this->json(['data' => Presenter::person((array) Auth::user(), true)]);
+    }
+
+    /** Signs this token out: the app's own "sign out". */
+    public function signOut(): never
+    {
+        (new ApiTokenRepository())->revokeToken($this->token);
+        \CantoTrack\Service\AuditLog::record('signout', 'user', (int) Auth::id(), (string) (Auth::user()['email'] ?? ''), 'API');
+
+        http_response_code(204);
+        exit;
     }
 
     public function users(): never
@@ -260,6 +274,58 @@ class ApiController extends Controller
     }
 
     // -----------------------------------------------------------------------
+    // The clock
+    // -----------------------------------------------------------------------
+
+    /** The clock that runs for you, or null — the same one the web shows. */
+    public function timer(): never
+    {
+        $this->member();
+
+        $this->json(['data' => $this->timerData((new TimerService())->running((int) Auth::id()))]);
+    }
+
+    /**
+     * Starts the clock on a ticket. One that was running on another ticket
+     * is stopped and logged first, and "logged" says what that came to.
+     */
+    public function startTimer(string $key): never
+    {
+        $this->member();
+        $ticket = $this->ticketOr404($key);
+        $timers = new TimerService();
+        $logged = $timers->start((int) Auth::id(), (int) $ticket['id']);
+
+        $this->json([
+            'data' => $this->timerData($timers->running((int) Auth::id())),
+            'logged' => $logged === null ? null : ['minutes' => $logged['minutes'], 'ticket' => $this->keyOf($logged['ticket_id'])],
+        ], 201);
+    }
+
+    /**
+     * {"note": "…"} — stops the clock and logs it. Under a minute nothing is
+     * logged, and "data" is null.
+     */
+    public function stopTimer(): never
+    {
+        $this->member();
+        $input = $this->body();
+        $logged = (new TimerService())->stop((int) Auth::id(), isset($input['note']) ? (string) $input['note'] : null);
+
+        $this->json(['data' => $logged === null ? null : ['minutes' => $logged['minutes'], 'ticket' => $this->keyOf($logged['ticket_id'])]]);
+    }
+
+    /** Stops the clock without logging anything. */
+    public function discardTimer(): never
+    {
+        $this->member();
+        (new TimerService())->discard((int) Auth::id());
+
+        http_response_code(204);
+        exit;
+    }
+
+    // -----------------------------------------------------------------------
     // The request
     // -----------------------------------------------------------------------
 
@@ -300,6 +366,7 @@ class ApiController extends Controller
             throw new HttpError(401, __('That token is not valid: unknown, expired, or its account is deactivated.'));
         }
 
+        $this->token = $m[1];
         Auth::actAs($user);
     }
 
@@ -399,6 +466,33 @@ class ApiController extends Controller
             'body' => $comment['body'],
             'created_at' => $comment['created_at'],
             'edited_at' => $comment['edited_at'] ?? null,
+        ];
+    }
+
+    private function keyOf(int $ticketId): ?string
+    {
+        $ticket = (new TicketRepository())->find($ticketId);
+
+        return $ticket === null ? null : $ticket['project_code'] . '-' . $ticket['number'];
+    }
+
+    /**
+     * "seconds" is how long it has run by the server's clock, so that an app
+     * counts on from there rather than from a phone clock that may be off.
+     */
+    private function timerData(?array $timer): ?array
+    {
+        if ($timer === null) {
+            return null;
+        }
+
+        $started = new \DateTimeImmutable((string) $timer['started_at']);
+
+        return [
+            'ticket' => $timer['project_code'] . '-' . $timer['ticket_number'],
+            'title' => $timer['ticket_title'],
+            'started_at' => $started->format(DATE_ATOM),
+            'seconds' => max(0, time() - $started->getTimestamp()),
         ];
     }
 

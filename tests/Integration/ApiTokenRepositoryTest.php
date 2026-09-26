@@ -44,4 +44,36 @@ final class ApiTokenRepositoryTest extends DatabaseTestCase
 
         self::assertNull($tokens->userFor('ct_nonsense'));
     }
+
+    public function testEndingTheSessionsSignsTheAppsOutAndLeavesTheScripts(): void
+    {
+        $me = $this->person();
+        $somebody = $this->person('Béla Nagy');
+        $tokens = new ApiTokenRepository($this->db);
+
+        $script = $tokens->create($me, 'Deploy script');
+        $phone = $tokens->create($me, 'App — Pixel 8', null, true);
+        $theirPhone = $tokens->create($somebody, 'App — iPhone', null, true);
+
+        self::assertSame([1, 0], array_map(static fn(array $t): int => (int) $t['from_sign_in'], $tokens->forUser($me)));
+
+        (new UserRepository($this->db))->endSessions($me);
+
+        self::assertNull($tokens->userFor($phone), 'The phone stayed signed in after the sessions ended.');
+        self::assertNotNull($tokens->userFor($script), 'A script token was revoked with the sessions.');
+        self::assertNotNull($tokens->userFor($theirPhone), 'Somebody else’s phone was signed out.');
+    }
+
+    public function testAnAppSignsOutWithItsOwnToken(): void
+    {
+        $me = $this->person();
+        $tokens = new ApiTokenRepository($this->db);
+        $phone = $tokens->create($me, 'App', null, true);
+        $tablet = $tokens->create($me, 'App', null, true);
+
+        self::assertTrue($tokens->revokeToken($phone));
+        self::assertFalse($tokens->revokeToken($phone));
+        self::assertNull($tokens->userFor($phone));
+        self::assertNotNull($tokens->userFor($tablet));
+    }
 }

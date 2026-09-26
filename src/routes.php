@@ -10,6 +10,7 @@
  * @var \CantoTrack\Core\Router $router
  */
 
+use CantoTrack\Controller\ApiAuthController;
 use CantoTrack\Controller\ApiController;
 use CantoTrack\Controller\ApiTokenController;
 use CantoTrack\Controller\AttachmentController;
@@ -353,6 +354,8 @@ $router->post('/settings/webhooks/{id}/deliveries/{delivery}', static fn($id, $d
 // ---------------------------------------------------------------------------
 // The API, version 1 — JSON, with a personal access token as a bearer token
 // ---------------------------------------------------------------------------
+$router->post('/api/v1/auth/login', static fn() => (new ApiAuthController())->login());
+$router->post('/api/v1/auth/logout', static fn() => (new ApiController())->signOut());
 $router->get('/api/v1/me', static fn() => (new ApiController())->me());
 $router->get('/api/v1/users', static fn() => (new ApiController())->users());
 $router->get('/api/v1/projects', static fn() => (new ApiController())->projects());
@@ -366,6 +369,10 @@ $router->post('/api/v1/tickets/{key}/comments', static fn($key) => (new ApiContr
 $router->post('/api/v1/tickets/{key}/worklogs', static fn($key) => (new ApiController())->logWork((string) $key));
 $router->get('/api/v1/worklogs', static fn() => (new ApiController())->worklogs());
 $router->delete('/api/v1/worklogs/{id}', static fn($id) => (new ApiController())->deleteWorklog((int) $id));
+$router->get('/api/v1/timer', static fn() => (new ApiController())->timer());
+$router->post('/api/v1/tickets/{key}/timer', static fn($key) => (new ApiController())->startTimer((string) $key));
+$router->post('/api/v1/timer/stop', static fn() => (new ApiController())->stopTimer());
+$router->delete('/api/v1/timer', static fn() => (new ApiController())->discardTimer());
 
 // ---------------------------------------------------------------------------
 // News from other services, each signed with its own secret

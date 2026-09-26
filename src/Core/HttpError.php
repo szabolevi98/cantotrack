@@ -13,7 +13,11 @@ namespace CantoTrack\Core;
  */
 class HttpError extends \RuntimeException
 {
-    public function __construct(public readonly int $status, string $message)
+    /**
+     * @param array<string, mixed> $details said beside the message in the
+     *     API's answer, for a client to act on (two_factor_required)
+     */
+    public function __construct(public readonly int $status, string $message, public readonly array $details = [])
     {
         parent::__construct($message, $status);
     }

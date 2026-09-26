@@ -25,16 +25,20 @@ class ApiTokenRepository
         $this->db = $db ?? DatabaseConnection::get();
     }
 
-    /** Makes a token and returns it — the only time it can be read. */
-    public function create(int $userId, string $name, ?string $expiresOn = null): string
+    /**
+     * Makes a token and returns it — the only time it can be read. One made by
+     * signing in from an app ends with the person's sessions; see endSignIns().
+     */
+    public function create(int $userId, string $name, ?string $expiresOn = null, bool $fromSignIn = false): string
     {
         $token = self::PREFIX . bin2hex(random_bytes(20));
 
         $this->db->prepare(
-            'INSERT INTO api_tokens (user_id, name, token_hash, prefix, expires_on) VALUES (:user, :name, :hash, :prefix, :expires)'
+            'INSERT INTO api_tokens (user_id, name, from_sign_in, token_hash, prefix, expires_on) VALUES (:user, :name, :sign_in, :hash, :prefix, :expires)'
         )->execute([
             'user' => $userId,
             'name' => mb_substr(trim($name), 0, 80),
+            'sign_in' => $fromSignIn ? 1 : 0,
             'hash' => hash('sha256', $token),
             'prefix' => substr($token, 0, 10),
             'expires' => $expiresOn ?: null,
@@ -47,7 +51,7 @@ class ApiTokenRepository
     public function forUser(int $userId): array
     {
         $statement = $this->db->prepare(
-            'SELECT id, name, prefix, last_used_at, expires_on, created_at FROM api_tokens WHERE user_id = :user ORDER BY id DESC'
+            'SELECT id, name, from_sign_in, prefix, last_used_at, expires_on, created_at FROM api_tokens WHERE user_id = :user ORDER BY id DESC'
         );
         $statement->execute(['user' => $userId]);
 
@@ -61,6 +65,28 @@ class ApiTokenRepository
         $statement->execute(['id' => $id, 'user' => $userId]);
 
         return $statement->rowCount() > 0;
+    }
+
+    /** Revokes the token itself — an app signing out. False when there was none. */
+    public function revokeToken(string $token): bool
+    {
+        $statement = $this->db->prepare('DELETE FROM api_tokens WHERE token_hash = :hash');
+        $statement->execute(['hash' => hash('sha256', $token)]);
+
+        return $statement->rowCount() > 0;
+    }
+
+    /**
+     * Signs a person's apps out: every token they got by signing in goes,
+     * the ones they made for scripts stay. Called wherever their browser
+     * sessions end.
+     */
+    public function endSignIns(int $userId): int
+    {
+        $statement = $this->db->prepare('DELETE FROM api_tokens WHERE user_id = :user AND from_sign_in = 1');
+        $statement->execute(['user' => $userId]);
+
+        return $statement->rowCount();
     }
 
     /**

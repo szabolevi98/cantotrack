@@ -28,7 +28,7 @@
                 {% for token in tokens %}
                     {% set expired = token.expires_on and token.expires_on < 'now'|date('Y-m-d') %}
                     <tr>
-                        <td>{{ token.name }}{% if expired %} <span class="badge badge--muted">{{ 'Expired'|t }}</span>{% endif %}</td>
+                        <td>{{ token.name }}{% if token.from_sign_in %} <span class="badge badge--blue" title="{{ 'Signed in from an app. A new password or signing out everywhere else signs it out too.'|t }}">{{ 'App'|t }}</span>{% endif %}{% if expired %} <span class="badge badge--muted">{{ 'Expired'|t }}</span>{% endif %}</td>
                         <td><code>{{ token.prefix }}…</code></td>
                         <td>{{ token.created_at|day }}</td>
                         <td>{{ token.last_used_at ? token.last_used_at|day : 'Never'|t }}</td>

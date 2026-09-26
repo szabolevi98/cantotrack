@@ -24,7 +24,8 @@ class ErrorPage
         500 => 'Something went wrong',
     ];
 
-    public static function render(int $status, string $message): void
+    /** @param array<string, mixed> $details only for the API: see HttpError */
+    public static function render(int $status, string $message, array $details = []): void
     {
         if (!headers_sent()) {
             http_response_code($status);
@@ -37,7 +38,7 @@ class ErrorPage
                 header('Content-Type: application/json; charset=utf-8');
             }
 
-            echo json_encode(['error' => ['status' => $status, 'message' => $message]], JSON_UNESCAPED_UNICODE);
+            echo json_encode(['error' => ['status' => $status, 'message' => $message] + ($details === [] ? [] : ['details' => $details])], JSON_UNESCAPED_UNICODE);
 
             return;
         }

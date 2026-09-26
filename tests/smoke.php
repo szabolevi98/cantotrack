@@ -1326,6 +1326,25 @@ if ($email === null || $password === null) {
     check('and deletes an entry', api($baseUrl . '/api/v1/worklogs/' . $apiLogId, $apiToken, 'DELETE')['status'] === 204);
     check('answers an unknown ticket with a JSON 404', ($missingTicket = api($baseUrl . '/api/v1/tickets/' . $code . '-99999', $apiToken))['status'] === 404 && isset($missingTicket['json']['error']));
 
+    // The clock, the same one the web runs.
+    $started = api($baseUrl . '/api/v1/tickets/' . $apiKey . '/timer', $apiToken, 'POST', []);
+    check('starts the clock on a ticket', $started['status'] === 201 && ($started['json']['data']['ticket'] ?? '') === $apiKey);
+    $running = api($baseUrl . '/api/v1/timer', $apiToken);
+    check('and says it runs, from the server\'s clock', $running['status'] === 200 && is_int($running['json']['data']['seconds'] ?? null));
+    check('and stops it without logging', api($baseUrl . '/api/v1/timer', $apiToken, 'DELETE')['status'] === 204 && api($baseUrl . '/api/v1/timer', $apiToken)['json'] === ['data' => null]);
+    check('and says so when no clock runs', api($baseUrl . '/api/v1/timer/stop', $apiToken, 'POST', [])['status'] === 422);
+
+    // An app signs in with the password rather than a token made by hand.
+    check('an app is refused a wrong password, in JSON', api($baseUrl . '/api/v1/auth/login', '', 'POST', ['email' => $email, 'password' => 'not the password'])['status'] === 401);
+    $signedIn = api($baseUrl . '/api/v1/auth/login', '', 'POST', ['email' => $email, 'password' => $password, 'device' => 'Smoke phone']);
+    $appToken = (string) ($signedIn['json']['data']['token'] ?? '');
+    check('and signs in with the right one, getting a token of its own', $signedIn['status'] === 201 && preg_match('/^ct_[0-9a-f]{40}$/', $appToken) === 1);
+    check('which the profile lists as an app', str_contains(request($baseUrl . '/profile/tokens', [], $jar)['body'], 'Smoke phone'));
+    check('and which acts as its owner', (api($baseUrl . '/api/v1/me', $appToken)['json']['data']['email'] ?? '') === $email);
+    check('an app signs out with its token', api($baseUrl . '/api/v1/auth/logout', $appToken, 'POST')['status'] === 204);
+    check('and the token is dead after it', in_array(api($baseUrl . '/api/v1/me', $appToken)['status'], [401, 429], true));
+    check('while the one made by hand still works', api($baseUrl . '/api/v1/me', $apiToken)['status'] === 200);
+
     preg_match('#/profile/tokens/(\d+)/delete#', request($baseUrl . '/profile/tokens', [], $jar)['body'], $m);
     request($baseUrl . '/profile/tokens/' . ($m[1] ?? 0) . '/delete', ['_token' => $token], $jar);
     check('and a revoked token is refused from then on', in_array(api($baseUrl . '/api/v1/me', $apiToken)['status'], [401, 429], true));

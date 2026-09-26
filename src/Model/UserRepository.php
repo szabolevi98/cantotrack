@@ -247,10 +247,14 @@ class UserRepository
         $statement->execute(['hash' => Password::hash($password), 'id' => $id]);
     }
 
-    /** Every session of theirs signed in until now is over — see the 0049 migration. */
+    /**
+     * Every session of theirs signed in until now is over — see the 0049
+     * migration — and so is every app they signed in to (0050).
+     */
     public function endSessions(int $id): void
     {
         $this->db->prepare('UPDATE users SET sessions_valid_from = NOW() WHERE id = :id')->execute(['id' => $id]);
+        (new ApiTokenRepository($this->db))->endSignIns($id);
     }
 
     /**

@@ -247,6 +247,12 @@ class UserRepository
         $statement->execute(['hash' => Password::hash($password), 'id' => $id]);
     }
 
+    /** Every session of theirs signed in until now is over — see the 0049 migration. */
+    public function endSessions(int $id): void
+    {
+        $this->db->prepare('UPDATE users SET sessions_valid_from = NOW() WHERE id = :id')->execute(['id' => $id]);
+    }
+
     /**
      * Stores the same password under a stronger hash. Not a change of password,
      * so the date it was last changed stays what it was.

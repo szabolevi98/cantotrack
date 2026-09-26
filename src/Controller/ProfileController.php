@@ -196,7 +196,24 @@ class ProfileController extends Controller
         (new UserRepository())->setPassword((int) $me['id'], $new);
         \CantoTrack\Service\AuditLog::record('password_changed', 'user', (int) $me['id'], (string) $me['email']);
 
-        $this->flash(__('Your password is changed.'));
+        // A new password is often because of a browser somewhere else: every
+        // other session is over, this one stays.
+        Auth::endOtherSessions();
+
+        $this->flash(__('Your password is changed. You are signed out everywhere else.'));
+        $this->redirect('/profile');
+    }
+
+    /** Signed out of every other browser: a laptop left somewhere, a shared computer. */
+    public function endSessions(): void
+    {
+        Auth::require();
+
+        $me = (array) Auth::user();
+        Auth::endOtherSessions();
+        \CantoTrack\Service\AuditLog::record('signed_out_elsewhere', 'user', (int) $me['id'], (string) $me['email']);
+
+        $this->flash(__('You are signed out everywhere else. This browser stays signed in.'));
         $this->redirect('/profile');
     }
 }

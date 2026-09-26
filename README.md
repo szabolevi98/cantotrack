@@ -272,6 +272,9 @@ deploy with `git pull`.
   one (every text on its background at least 4.5:1).
 - **Two-step sign-in** with an authenticator app (TOTP) and single-use recovery
   codes; profile pictures; passwords reset by email with a link that works once.
+  A browser stays signed in for a year from its last click; a new password, a
+  reset one, or "Sign out everywhere else" on the profile ends every other
+  session.
 - **Three roles** — administrator, member, guest — and nobody ever deleted:
   people are deactivated, because tickets and hours point at them. A member can
   **lead a project**: run its columns, members and fields without being an

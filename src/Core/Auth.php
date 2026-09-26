@@ -18,6 +18,9 @@ class Auth
 {
     private const KEY = '_user_id';
 
+    /** When this session was signed in: one from before a "sign out everywhere" is over. */
+    private const SIGNED_IN_AT = '_signed_in_at';
+
     private static ?array $user = null;
 
     /**
@@ -55,6 +58,7 @@ class Auth
     {
         Session::regenerate();
         Session::put(self::KEY, (int) $user['id']);
+        Session::put(self::SIGNED_IN_AT, time());
         self::$user = $user;
         Access::reset();
 
@@ -76,6 +80,23 @@ class Auth
         if ($user !== null && !empty($user['locale'])) {
             I18n::setLocale((string) $user['locale']);
         }
+    }
+
+    /**
+     * Every other session of the signed-in person's is over; this one stays.
+     * After changing their password, or from the profile's button.
+     */
+    public static function endOtherSessions(): void
+    {
+        $user = self::user();
+
+        if ($user === null) {
+            return;
+        }
+
+        (new UserRepository())->endSessions((int) $user['id']);
+        Session::put(self::SIGNED_IN_AT, time());
+        self::refresh();
     }
 
     public static function logout(): void
@@ -111,8 +132,11 @@ class Auth
         $user = (new UserRepository())->find((int) $id);
 
         // A user who was deactivated while signed in is signed out on their next
-        // click rather than at the next login.
-        if ($user === null || (int) $user['is_active'] !== 1) {
+        // click rather than at the next login — and so is a session signed in
+        // before they signed out everywhere (see the 0049 migration).
+        $validFrom = $user === null || empty($user['sessions_valid_from']) ? 0 : (int) strtotime((string) $user['sessions_valid_from']);
+
+        if ($user === null || (int) $user['is_active'] !== 1 || (int) Session::get(self::SIGNED_IN_AT, 0) < $validFrom) {
             Session::forget(self::KEY);
 
             return null;

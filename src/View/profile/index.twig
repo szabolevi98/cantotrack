@@ -107,6 +107,18 @@
         </form>
     </section>
 
+    {# Signed in for a year from the last click: this is the way out for a
+       laptop left somewhere, or a computer somebody else uses too. #}
+    <section class="card card--narrow">
+        <h2 class="card__title">{{ 'Where you are signed in'|t }}</h2>
+        <p class="card__body">{{ 'You stay signed in for a year from the last time you used CantoTrack in a browser. Changing your password signs you out everywhere else; so does this button, without a new password.'|t }}</p>
+        <form class="card__body" method="post" action="{{ url('/profile/sessions/end') }}"
+              data-confirm="{{ 'Sign out of every other browser?'|t }}">
+            <input type="hidden" name="_token" value="{{ csrf_token }}">
+            <button class="button" type="submit"><i class="bi bi-box-arrow-right" aria-hidden="true"></i> {{ 'Sign out everywhere else'|t }}</button>
+        </form>
+    </section>
+
     <section class="card card--narrow">
         <h2 class="card__title">{{ 'Your calendar'|t }}</h2>
         <p class="card__body">{{ 'Paste the private address of your calendar in iCal format, and the week’s calendar offers your meetings as entries — one click from logged. Google Calendar: Settings → your calendar → “Secret address in iCal format”. Outlook: Settings → Calendar → Shared calendars → Publish a calendar → ICS.'|t }}</p>

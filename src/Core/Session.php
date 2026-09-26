@@ -21,7 +21,7 @@ class Session
             return;
         }
 
-        $lifetime = Config::int('session.lifetime', 28800);
+        $lifetime = Config::int('session.lifetime', 31536000);
 
         /*
          * The session files live in the application's own var/sessions, with

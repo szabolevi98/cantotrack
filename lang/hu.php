@@ -717,7 +717,7 @@ return [
     'Your new token' => 'Az új tokened',
     'Your open tickets' => 'A nyitott jegyeid',
     'Your password' => 'A jelszavad',
-    'Your password is changed.' => 'Megváltozott a jelszavad.',
+    'Your password is changed. You are signed out everywhere else.' => 'Megváltozott a jelszavad. Minden más helyen kijelentkeztél.',
     'Your password is changed. Sign in with the new one.' => 'Megváltozott a jelszavad. Jelentkezz be az újjal.',
     'Your password, to make new recovery codes' => 'A jelszavad, az új helyreállító kódok létrehozásához',
     'Your picture' => 'A képed',
@@ -1884,6 +1884,14 @@ Az E-mail oldalról küldted.',
 
     // Notifications: the bell's menu, what pops up, the page's filters, muting.
     'All notifications' => 'Összes értesítés',
+
+    // Signed in for a year, and the way out of it.
+    'Sign out everywhere else' => 'Kijelentkezés mindenhol máshol',
+    'Sign out of every other browser?' => 'Kijelentkezel minden más böngészőből?',
+    'Where you are signed in' => 'Ahol be vagy jelentkezve',
+    'You are signed out everywhere else. This browser stays signed in.' => 'Minden más helyen kijelentkeztél. Ebben a böngészőben bejelentkezve maradsz.',
+    'You stay signed in for a year from the last time you used CantoTrack in a browser. Changing your password signs you out everywhere else; so does this button, without a new password.' => 'Egy böngészőben az utolsó használattól számítva egy évig bejelentkezve maradsz. A jelszócsere minden más helyen kiléptet, és ez a gomb is, új jelszó nélkül.',
+    'signed out everywhere else' => 'mindenhol máshol kijelentkezett',
     'An email waits a couple of minutes, and what else happens to the same ticket in the meantime goes in it too. What you have read here by then is left out. A ticket you do not want to hear about can be muted on its page.' => 'Az e-mail pár percet vár, és ami közben ugyanazzal a jeggyel történik, az is belekerül. Amit addig itt már elolvastál, az kimarad belőle. Ha egy jegyről nem kérsz értesítést, a jegy oldalán elnémíthatod.',
     'Desktop notifications: off' => 'Asztali értesítések: ki',
     'Desktop notifications: on' => 'Asztali értesítések: be',

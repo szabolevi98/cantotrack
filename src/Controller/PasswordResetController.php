@@ -115,6 +115,9 @@ class PasswordResetController extends Controller
         }
 
         $users->setPassword((int) $user['id'], $new);
+        // A password reset from the email may be because somebody else has
+        // it: every browser signed in with the old one is signed out.
+        $users->endSessions((int) $user['id']);
         DatabaseConnection::get()->prepare('UPDATE password_resets SET used_at = NOW() WHERE id = :id')
             ->execute(['id' => $reset['id']]);
         (new LoginThrottle())->clear((string) $user['email']);

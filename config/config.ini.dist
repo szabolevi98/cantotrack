@@ -26,9 +26,11 @@ timezone = "Europe/Budapest"
 
 [session]
 name = cantotrack_session
-; Lifetime in seconds. Eight hours: a tracker is open all day, and a session
-; that expires over lunch loses a half-written ticket.
-lifetime = 28800
+; Lifetime in seconds, from the last click. A year: signing in again every
+; morning is a chore nobody thanks a tracker for. A lost laptop is taken care
+; of by "Sign out everywhere else" on the profile, and by a new password.
+; Browsers keep a cookie 400 days at most.
+lifetime = 31536000
 
 [work]
 ; The hours a full working day is taken to be. The timesheet compares what was

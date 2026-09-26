@@ -388,7 +388,11 @@ curl -H "Authorization: Bearer ct_…" https://tracker.example/api/v1/me
 The whole reference — every parameter, field and answer, with examples — is
 [docs/API.md](docs/API.md), and inside the application under **API
 documentation** in the account menu, with the examples written against the
-installation's own address. In short:
+installation's own address. For programs the same is an **OpenAPI 3.1**
+document at `/api/v1/openapi.json`, for Postman, Insomnia or a client
+generator; it is built by `php bin/openapi.php` into
+[docs/openapi.json](docs/openapi.json), and a test fails when a route is missing
+from it. In short:
 
 | Method | Path | |
 |---|---|---|

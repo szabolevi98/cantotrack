@@ -1975,4 +1975,5 @@ Az E-mail oldalról küldted.',
     'Only an administrator can delete a ticket.' => 'Jegyet csak adminisztrátor törölhet.',
     'Send the file as multipart/form-data, in a field called "file" — or "files[]" for several.' => 'A fájlt multipart/form-data formában küldd, egy "file" nevű mezőben — vagy többet "files[]"-ben.',
     '{key}’s project is not on that sprint’s board.' => 'A(z) {key} projektje nincs rajta annak a sprintnek a tábláján.',
+    'For Postman, Insomnia or a client generator' => 'Postmanhez, Insomniához vagy kliensgenerátorhoz',
 ];

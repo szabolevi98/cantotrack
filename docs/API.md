@@ -13,6 +13,12 @@ Everything is under one address:
 https://tracker.example/api/v1
 ```
 
+The same, for programs, is an OpenAPI 3.1 document at
+[`/api/v1/openapi.json`](https://tracker.example/api/v1/openapi.json) — no token
+needed, with the installation's own address in it. Postman and Insomnia import
+it as a collection ready to send, with every endpoint, parameter and shape;
+a client generator makes a typed client from it.
+
 ## Signing in
 
 Every request but the app sign-in carries a token as a bearer token:

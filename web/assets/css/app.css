@@ -4033,6 +4033,7 @@ a.family:hover {
 .bi-briefcase::before { content: "\f1cc"; }
 .bi-journal-code::before { content: "\f43f"; }
 .bi-robot::before { content: "\f6b1"; }
+.bi-code-slash::before { content: "\f2c6"; }
 
 /*
  * The bar along the top of the content: the light/dark switch, the keyboard

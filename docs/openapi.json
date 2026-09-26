@@ -1,0 +1,3704 @@
+{
+    "openapi": "3.1.0",
+    "info": {
+        "title": "CantoTrack API",
+        "version": "1",
+        "summary": "Tickets, their comments, files and hours, the clock, and how the work is planned.",
+        "description": "Every request acts as one account, with exactly its rights, through the same rules as the web. The whole description, for people, is docs/API.md — and inside the application under API documentation.",
+        "license": {
+            "name": "AGPL-3.0-only",
+            "identifier": "AGPL-3.0-only"
+        }
+    },
+    "servers": [
+        {
+            "url": "https://tracker.example/api/v1"
+        }
+    ],
+    "security": [
+        {
+            "token": []
+        }
+    ],
+    "tags": [
+        {
+            "name": "Signing in"
+        },
+        {
+            "name": "People"
+        },
+        {
+            "name": "Projects"
+        },
+        {
+            "name": "Tickets"
+        },
+        {
+            "name": "Comments"
+        },
+        {
+            "name": "Links"
+        },
+        {
+            "name": "Attachments"
+        },
+        {
+            "name": "Hours"
+        },
+        {
+            "name": "The clock"
+        },
+        {
+            "name": "Planning"
+        },
+        {
+            "name": "Notifications"
+        }
+    ],
+    "paths": {
+        "/attachments/{id}": {
+            "get": {
+                "tags": [
+                    "Attachments"
+                ],
+                "operationId": "download",
+                "summary": "The file itself",
+                "description": "As a download, with its own type.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/id"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The file.",
+                        "content": {
+                            "application/octet-stream": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "binary"
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Attachments"
+                ],
+                "operationId": "deleteAttachment",
+                "summary": "Remove a file",
+                "description": "One you attached — anybody's, as an administrator.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/id"
+                    },
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Done; nothing to show for it."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/auth/login": {
+            "post": {
+                "tags": [
+                    "Signing in"
+                ],
+                "operationId": "login",
+                "summary": "Sign an app in",
+                "description": "With two-step sign-in on, the password alone is 403 with details.two_factor_required; send the same request again with code. Wrong passwords and codes count towards the sign-in form's limit.",
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "email": {
+                                        "type": "string",
+                                        "format": "email"
+                                    },
+                                    "password": {
+                                        "type": "string"
+                                    },
+                                    "code": {
+                                        "type": "string",
+                                        "description": "The two-step code, or a recovery code."
+                                    },
+                                    "device": {
+                                        "type": "string",
+                                        "description": "What the token is named after on the profile."
+                                    }
+                                },
+                                "required": [
+                                    "email",
+                                    "password"
+                                ]
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Signed in: a token made for this device.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "object",
+                                            "properties": {
+                                                "token": {
+                                                    "type": "string"
+                                                },
+                                                "user": {
+                                                    "$ref": "#/components/schemas/Me"
+                                                }
+                                            },
+                                            "required": [
+                                                "token",
+                                                "user"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "429": {
+                        "$ref": "#/components/responses/TooManyRequests"
+                    }
+                },
+                "security": []
+            }
+        },
+        "/auth/logout": {
+            "post": {
+                "tags": [
+                    "Signing in"
+                ],
+                "operationId": "logout",
+                "summary": "Revoke the token the request carries",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Done; nothing to show for it."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    }
+                }
+            }
+        },
+        "/boards": {
+            "get": {
+                "tags": [
+                    "Planning"
+                ],
+                "operationId": "boards",
+                "summary": "Every board you can see",
+                "description": "The projects' own first, then the shared ones.",
+                "responses": {
+                    "200": {
+                        "description": "The boards.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Board"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    }
+                }
+            }
+        },
+        "/boards/{id}": {
+            "get": {
+                "tags": [
+                    "Planning"
+                ],
+                "operationId": "board",
+                "summary": "One board",
+                "description": "Its columns and its sprints, the running one first.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/id"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The board.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/BoardDetail"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/comments/{id}": {
+            "patch": {
+                "tags": [
+                    "Comments"
+                ],
+                "operationId": "updateComment",
+                "summary": "Correct a comment of yours",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/id"
+                    },
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CommentInput"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The comment, edited_at set.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Comment"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/Unprocessable"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Comments"
+                ],
+                "operationId": "deleteComment",
+                "summary": "Take a comment back",
+                "description": "Yours — anybody's, as an administrator.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/id"
+                    },
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Done; nothing to show for it."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/links/{id}": {
+            "delete": {
+                "tags": [
+                    "Links"
+                ],
+                "operationId": "deleteLink",
+                "summary": "Take a link away",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/id"
+                    },
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Done; nothing to show for it."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/me": {
+            "get": {
+                "tags": [
+                    "People"
+                ],
+                "operationId": "me",
+                "summary": "Who the token acts as",
+                "responses": {
+                    "200": {
+                        "description": "The account.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Me"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    }
+                }
+            }
+        },
+        "/notifications": {
+            "get": {
+                "tags": [
+                    "Notifications"
+                ],
+                "operationId": "notifications",
+                "summary": "The bell",
+                "description": "Newest first.",
+                "parameters": [
+                    {
+                        "name": "unread",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "1"
+                            ]
+                        },
+                        "description": "Only the unread ones."
+                    },
+                    {
+                        "$ref": "#/components/parameters/page"
+                    },
+                    {
+                        "$ref": "#/components/parameters/per_page"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Notification"
+                                            }
+                                        },
+                                        "meta": {
+                                            "allOf": [
+                                                {
+                                                    "$ref": "#/components/schemas/PageMeta"
+                                                },
+                                                {
+                                                    "type": "object",
+                                                    "properties": {
+                                                        "unread": {
+                                                            "type": "integer",
+                                                            "description": "How many are unread in all."
+                                                        }
+                                                    },
+                                                    "required": [
+                                                        "unread"
+                                                    ]
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    }
+                }
+            }
+        },
+        "/notifications/read": {
+            "post": {
+                "tags": [
+                    "Notifications"
+                ],
+                "operationId": "readAllNotifications",
+                "summary": "Mark them all read",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Done; nothing to show for it."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    }
+                }
+            }
+        },
+        "/notifications/{id}/read": {
+            "post": {
+                "tags": [
+                    "Notifications"
+                ],
+                "operationId": "readNotification",
+                "summary": "Mark one read",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/id"
+                    },
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Done; nothing to show for it."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/openapi.json": {
+            "get": {
+                "tags": [
+                    "Signing in"
+                ],
+                "operationId": "openapi",
+                "summary": "This description",
+                "description": "No token needed.",
+                "responses": {
+                    "200": {
+                        "description": "The OpenAPI document, with this installation's address.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object"
+                                }
+                            }
+                        }
+                    }
+                },
+                "security": []
+            }
+        },
+        "/projects": {
+            "get": {
+                "tags": [
+                    "Projects"
+                ],
+                "operationId": "projects",
+                "summary": "The projects you can see",
+                "parameters": [
+                    {
+                        "name": "archived",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "1"
+                            ]
+                        },
+                        "description": "The archived ones too."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "By code.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Project"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    }
+                }
+            }
+        },
+        "/projects/{code}": {
+            "get": {
+                "tags": [
+                    "Projects"
+                ],
+                "operationId": "project",
+                "summary": "One project, with its columns",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/code"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The project.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/ProjectDetail"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/projects/{code}/epics": {
+            "get": {
+                "tags": [
+                    "Planning"
+                ],
+                "operationId": "epics",
+                "summary": "A project's epics",
+                "description": "The open ones first.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/code"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The epics.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Epic"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/projects/{code}/releases": {
+            "get": {
+                "tags": [
+                    "Planning"
+                ],
+                "operationId": "releases",
+                "summary": "A project's releases",
+                "description": "The ones still coming, soonest first, then the ones that went out.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/code"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The releases.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Release"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/sprints/{id}": {
+            "get": {
+                "tags": [
+                    "Planning"
+                ],
+                "operationId": "sprint",
+                "summary": "One sprint",
+                "description": "Its tickets are GET /tickets?sprint={id}.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/id"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The sprint.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/SprintDetail"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/tickets": {
+            "get": {
+                "tags": [
+                    "Tickets"
+                ],
+                "operationId": "tickets",
+                "summary": "A page of tickets",
+                "description": "The unfinished ones first, then by priority, the newest first within one — unless query says ORDER BY. The filters add up.",
+                "parameters": [
+                    {
+                        "name": "project",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "A project's code."
+                    },
+                    {
+                        "name": "status",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "A column's id, or a category: todo, in_progress, done."
+                    },
+                    {
+                        "name": "open",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "1"
+                            ]
+                        },
+                        "description": "Only the ones not done."
+                    },
+                    {
+                        "name": "assignee",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "me, none, or a person's id."
+                    },
+                    {
+                        "name": "type",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "task",
+                                "bug",
+                                "story"
+                            ]
+                        },
+                        "description": "One type."
+                    },
+                    {
+                        "name": "label",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "One label, exactly."
+                    },
+                    {
+                        "name": "q",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "Words in the title, the text or the comments; or a key."
+                    },
+                    {
+                        "name": "query",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "The ticket list's query language: project = CT AND assignee = me ORDER BY priority DESC."
+                    },
+                    {
+                        "name": "sprint",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "A sprint's id, or none for the backlog."
+                    },
+                    {
+                        "name": "epic",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "An epic's id."
+                    },
+                    {
+                        "name": "release",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "A release's id."
+                    },
+                    {
+                        "name": "parent",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string"
+                        },
+                        "description": "A ticket's key: its subtasks."
+                    },
+                    {
+                        "name": "top_level",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "1"
+                            ]
+                        },
+                        "description": "Only tickets, not subtasks."
+                    },
+                    {
+                        "name": "due",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "enum": [
+                                "overdue",
+                                "week"
+                            ]
+                        },
+                        "description": "Late, or due in the next seven days; unfinished only."
+                    },
+                    {
+                        "$ref": "#/components/parameters/page"
+                    },
+                    {
+                        "$ref": "#/components/parameters/per_page"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "A page.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Ticket"
+                                            }
+                                        },
+                                        "meta": {
+                                            "$ref": "#/components/schemas/PageMeta"
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/Unprocessable"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Tickets"
+                ],
+                "operationId": "createTicket",
+                "summary": "A new ticket",
+                "description": "project and title are needed.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TicketInput"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Made; its address is in Location.",
+                        "headers": {
+                            "Location": {
+                                "schema": {
+                                    "type": "string",
+                                    "format": "uri"
+                                }
+                            }
+                        },
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/TicketDetail"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/Unprocessable"
+                    }
+                }
+            }
+        },
+        "/tickets/{key}": {
+            "get": {
+                "tags": [
+                    "Tickets"
+                ],
+                "operationId": "ticket",
+                "summary": "One ticket",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/key"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The ticket.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/TicketDetail"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "patch": {
+                "tags": [
+                    "Tickets"
+                ],
+                "operationId": "updateTicket",
+                "summary": "Change the fields sent, and no others",
+                "description": "Its column, its sprint too. With version, conditional.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/key"
+                    },
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/TicketInput"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The ticket as it is now.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/TicketDetail"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "409": {
+                        "$ref": "#/components/responses/Conflict"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/Unprocessable"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Tickets"
+                ],
+                "operationId": "deleteTicket",
+                "summary": "Delete a ticket",
+                "description": "Administrators only; one with hours or subtasks is 422.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/key"
+                    },
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Done; nothing to show for it."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/Unprocessable"
+                    }
+                }
+            }
+        },
+        "/tickets/{key}/attachments": {
+            "get": {
+                "tags": [
+                    "Attachments"
+                ],
+                "operationId": "attachments",
+                "summary": "A ticket's files",
+                "description": "Oldest first.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/key"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The files.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Attachment"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Attachments"
+                ],
+                "operationId": "upload",
+                "summary": "Attach files",
+                "description": "Checked by what they are, not by their name. Guests may too.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/key"
+                    },
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "multipart/form-data": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "file": {
+                                        "type": "string",
+                                        "description": "One file.",
+                                        "format": "binary"
+                                    },
+                                    "files[]": {
+                                        "type": "array",
+                                        "items": {
+                                            "type": "string",
+                                            "format": "binary"
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The ones that got in, and why the others did not.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Attachment"
+                                            }
+                                        },
+                                        "errors": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "string",
+                                                "description": "Why a file did not get in."
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "errors"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "413": {
+                        "$ref": "#/components/responses/TooLarge"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/Unprocessable"
+                    }
+                }
+            }
+        },
+        "/tickets/{key}/comments": {
+            "get": {
+                "tags": [
+                    "Comments"
+                ],
+                "operationId": "comments",
+                "summary": "A ticket's comments",
+                "description": "Oldest first.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/key"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The comments.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Comment"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Comments"
+                ],
+                "operationId": "addComment",
+                "summary": "Comment on a ticket",
+                "description": "Guests may too.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/key"
+                    },
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/CommentInput"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The comment.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Comment"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/Unprocessable"
+                    }
+                }
+            }
+        },
+        "/tickets/{key}/links": {
+            "get": {
+                "tags": [
+                    "Links"
+                ],
+                "operationId": "links",
+                "summary": "A ticket's links",
+                "description": "Each read from this ticket's end.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/key"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The links.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Link"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Links"
+                ],
+                "operationId": "addLink",
+                "summary": "Link two tickets",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/key"
+                    },
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/LinkInput"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The link, as seen from this ticket.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Link"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/Unprocessable"
+                    }
+                }
+            }
+        },
+        "/tickets/{key}/timer": {
+            "post": {
+                "tags": [
+                    "The clock"
+                ],
+                "operationId": "startTimer",
+                "summary": "Start it on a ticket",
+                "description": "One running elsewhere is stopped and logged first.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/key"
+                    },
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Running.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "oneOf": [
+                                                {
+                                                    "$ref": "#/components/schemas/Timer"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        },
+                                        "logged": {
+                                            "oneOf": [
+                                                {
+                                                    "$ref": "#/components/schemas/Logged"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "logged"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/Unprocessable"
+                    }
+                }
+            }
+        },
+        "/tickets/{key}/watch": {
+            "post": {
+                "tags": [
+                    "Tickets"
+                ],
+                "operationId": "watch",
+                "summary": "Follow a ticket",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/key"
+                    },
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Done; nothing to show for it."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Tickets"
+                ],
+                "operationId": "unwatch",
+                "summary": "Stop following it",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/key"
+                    },
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Done; nothing to show for it."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/tickets/{key}/worklogs": {
+            "get": {
+                "tags": [
+                    "Hours"
+                ],
+                "operationId": "ticketWorklogs",
+                "summary": "A ticket's hours",
+                "description": "Everybody's, the newest day first.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/key"
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The entries.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Worklog"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "post": {
+                "tags": [
+                    "Hours"
+                ],
+                "operationId": "logWork",
+                "summary": "Log time on a ticket",
+                "description": "Only time is needed. A closed, handed-in or approved day is 422.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/key"
+                    },
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WorklogInput"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "The entry.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Worklog"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/Unprocessable"
+                    }
+                }
+            }
+        },
+        "/timer": {
+            "get": {
+                "tags": [
+                    "The clock"
+                ],
+                "operationId": "timer",
+                "summary": "Your running clock",
+                "description": "The same one the web shows.",
+                "responses": {
+                    "200": {
+                        "description": "The clock, or null.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "oneOf": [
+                                                {
+                                                    "$ref": "#/components/schemas/Timer"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "The clock"
+                ],
+                "operationId": "discardTimer",
+                "summary": "Stop it without logging",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Done; nothing to show for it."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    }
+                }
+            }
+        },
+        "/timer/stop": {
+            "post": {
+                "tags": [
+                    "The clock"
+                ],
+                "operationId": "stopTimer",
+                "summary": "Stop it and log the time",
+                "description": "Under a minute nothing is logged, and data is null. No clock running is 422.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "note": {
+                                        "type": "string"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "What was logged.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "oneOf": [
+                                                {
+                                                    "$ref": "#/components/schemas/Logged"
+                                                },
+                                                {
+                                                    "type": "null"
+                                                }
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/Unprocessable"
+                    }
+                }
+            }
+        },
+        "/users": {
+            "get": {
+                "tags": [
+                    "People"
+                ],
+                "operationId": "users",
+                "summary": "The active people",
+                "description": "Who work can be given to; service accounts are not among them.",
+                "responses": {
+                    "200": {
+                        "description": "By name.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Person"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    }
+                }
+            }
+        },
+        "/work-types": {
+            "get": {
+                "tags": [
+                    "Planning"
+                ],
+                "operationId": "workTypes",
+                "summary": "What hours can be logged as",
+                "responses": {
+                    "200": {
+                        "description": "By name.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/WorkType"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    }
+                }
+            }
+        },
+        "/worklogs": {
+            "get": {
+                "tags": [
+                    "Hours"
+                ],
+                "operationId": "worklogs",
+                "summary": "Hours in a range",
+                "description": "Your own unless user says whose. At most a year.",
+                "parameters": [
+                    {
+                        "name": "from",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "examples": [
+                                "2026-09-22"
+                            ]
+                        },
+                        "description": "This week's Monday when not given."
+                    },
+                    {
+                        "name": "to",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "examples": [
+                                "2026-09-22"
+                            ]
+                        },
+                        "description": "Today when not given."
+                    },
+                    {
+                        "name": "user",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "A person's id."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "Oldest first.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Worklog"
+                                            }
+                                        },
+                                        "meta": {
+                                            "type": "object",
+                                            "properties": {
+                                                "from": {
+                                                    "type": "string",
+                                                    "format": "date",
+                                                    "examples": [
+                                                        "2026-09-22"
+                                                    ]
+                                                },
+                                                "to": {
+                                                    "type": "string",
+                                                    "format": "date",
+                                                    "examples": [
+                                                        "2026-09-22"
+                                                    ]
+                                                },
+                                                "user_id": {
+                                                    "type": "integer"
+                                                }
+                                            },
+                                            "required": [
+                                                "from",
+                                                "to",
+                                                "user_id"
+                                            ]
+                                        }
+                                    },
+                                    "required": [
+                                        "data",
+                                        "meta"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/Unprocessable"
+                    }
+                }
+            }
+        },
+        "/worklogs/{id}": {
+            "patch": {
+                "tags": [
+                    "Hours"
+                ],
+                "operationId": "updateWorklog",
+                "summary": "Change an entry",
+                "description": "Yours — anybody's, as an administrator. Only the fields sent change; billed hours are 422.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/id"
+                    },
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/WorklogInput"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The entry.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Worklog"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/Unprocessable"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Hours"
+                ],
+                "operationId": "deleteWorklog",
+                "summary": "Remove an entry",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/id"
+                    },
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Done; nothing to show for it."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/Unprocessable"
+                    }
+                }
+            }
+        }
+    },
+    "components": {
+        "securitySchemes": {
+            "token": {
+                "type": "http",
+                "scheme": "bearer",
+                "bearerFormat": "ct_ and 40 hex characters",
+                "description": "A personal access token (Profile → Access tokens), a service account's, or one from POST /auth/login."
+            }
+        },
+        "parameters": {
+            "key": {
+                "name": "key",
+                "in": "path",
+                "required": true,
+                "schema": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z][A-Za-z0-9]{1,9}-[0-9]+$",
+                    "examples": [
+                        "CT-14"
+                    ]
+                },
+                "description": "A ticket's key."
+            },
+            "id": {
+                "name": "id",
+                "in": "path",
+                "required": true,
+                "schema": {
+                    "type": "integer"
+                }
+            },
+            "code": {
+                "name": "code",
+                "in": "path",
+                "required": true,
+                "schema": {
+                    "type": "string",
+                    "examples": [
+                        "CT"
+                    ]
+                },
+                "description": "A project's code."
+            },
+            "page": {
+                "name": "page",
+                "in": "query",
+                "required": false,
+                "schema": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "default": 1
+                }
+            },
+            "per_page": {
+                "name": "per_page",
+                "in": "query",
+                "required": false,
+                "schema": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 100,
+                    "default": 50
+                }
+            },
+            "IdempotencyKey": {
+                "name": "Idempotency-Key",
+                "in": "header",
+                "required": false,
+                "schema": {
+                    "type": "string",
+                    "pattern": "^[\\x21-\\x7E]{1,100}$"
+                },
+                "description": "Makes a resend safe: the same key with the same request, from the same account within a day, gets the first answer again (with Idempotent-Replayed: true) and is not done again. 409 while the first is still being worked on; 422 for the same key with another request."
+            }
+        },
+        "responses": {
+            "BadRequest": {
+                "description": "The body is not a JSON object, or a header is malformed.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        }
+                    }
+                }
+            },
+            "Unauthorized": {
+                "description": "No token, or one that is unknown, expired, revoked, or whose account is switched off.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        }
+                    }
+                }
+            },
+            "Forbidden": {
+                "description": "Not yours to do: a guest changing the work, somebody else's hours.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        }
+                    }
+                }
+            },
+            "NotFound": {
+                "description": "Not there — or not somewhere you can see.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        }
+                    }
+                }
+            },
+            "Conflict": {
+                "description": "Somebody else saved it first (see version) — or the same request is still being worked on.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        }
+                    }
+                }
+            },
+            "TooLarge": {
+                "description": "More than the server takes in one go.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        }
+                    }
+                }
+            },
+            "Unprocessable": {
+                "description": "Understood, but it does not make sense: no title, a day to come, a move the workflow does not allow.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        }
+                    }
+                }
+            },
+            "TooManyRequests": {
+                "description": "Too many tries; wait for Retry-After seconds.",
+                "content": {
+                    "application/json": {
+                        "schema": {
+                            "$ref": "#/components/schemas/Error"
+                        }
+                    }
+                }
+            }
+        },
+        "schemas": {
+            "Error": {
+                "type": "object",
+                "properties": {
+                    "error": {
+                        "type": "object",
+                        "properties": {
+                            "status": {
+                                "type": "integer",
+                                "description": "The HTTP status again."
+                            },
+                            "message": {
+                                "type": "string",
+                                "description": "A sentence for a person, in the language of the account."
+                            },
+                            "details": {
+                                "description": "For a client to act on — two_factor_required, say.",
+                                "type": "object",
+                                "properties": {}
+                            }
+                        },
+                        "required": [
+                            "status",
+                            "message"
+                        ]
+                    }
+                },
+                "required": [
+                    "error"
+                ]
+            },
+            "PageMeta": {
+                "type": "object",
+                "properties": {
+                    "page": {
+                        "type": "integer"
+                    },
+                    "per_page": {
+                        "type": "integer"
+                    },
+                    "total": {
+                        "type": "integer"
+                    },
+                    "pages": {
+                        "type": "integer"
+                    }
+                },
+                "required": [
+                    "page",
+                    "per_page",
+                    "total",
+                    "pages"
+                ]
+            },
+            "PersonRef": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name"
+                ]
+            },
+            "Person": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "handle": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "What an @mention says."
+                    }
+                },
+                "required": [
+                    "id",
+                    "name"
+                ]
+            },
+            "Me": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/Person"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "email": {
+                                "type": "string",
+                                "format": "email"
+                            },
+                            "role": {
+                                "type": "string",
+                                "enum": [
+                                    "admin",
+                                    "member",
+                                    "guest"
+                                ]
+                            },
+                            "service": {
+                                "type": "boolean",
+                                "description": "A service account: a program's, not a person's."
+                            }
+                        },
+                        "required": [
+                            "email",
+                            "role"
+                        ]
+                    }
+                ]
+            },
+            "Status": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "category": {
+                        "type": "string",
+                        "description": "What the column is: open work not started, work under way, or finished.",
+                        "enum": [
+                            "todo",
+                            "in_progress",
+                            "done"
+                        ]
+                    }
+                },
+                "required": [
+                    "name",
+                    "category"
+                ]
+            },
+            "Project": {
+                "type": "object",
+                "properties": {
+                    "code": {
+                        "type": "string",
+                        "examples": [
+                            "CT"
+                        ]
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "archived": {
+                        "type": "boolean"
+                    },
+                    "tickets": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "How many tickets it has, in the list."
+                    },
+                    "url": {
+                        "type": "string",
+                        "format": "uri"
+                    }
+                },
+                "required": [
+                    "code",
+                    "name",
+                    "archived",
+                    "url"
+                ]
+            },
+            "ProjectDetail": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/Project"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "statuses": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/Status"
+                                }
+                            }
+                        },
+                        "required": [
+                            "statuses"
+                        ]
+                    }
+                ]
+            },
+            "Ticket": {
+                "type": "object",
+                "properties": {
+                    "key": {
+                        "type": "string",
+                        "examples": [
+                            "CT-14"
+                        ]
+                    },
+                    "id": {
+                        "type": "integer"
+                    },
+                    "project": {
+                        "type": "string",
+                        "description": "The project's code."
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "task",
+                            "bug",
+                            "story"
+                        ]
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "$ref": "#/components/schemas/Status"
+                    },
+                    "resolution": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Why a finished ticket is finished.",
+                        "enum": [
+                            "done",
+                            "wont_do",
+                            "duplicate",
+                            "cannot_reproduce",
+                            null
+                        ]
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": [
+                            "low",
+                            "normal",
+                            "high",
+                            "urgent"
+                        ]
+                    },
+                    "assignee": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/PersonRef"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "labels": {
+                        "type": "array",
+                        "items": {
+                            "type": "string"
+                        }
+                    },
+                    "sprint": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The sprint's name."
+                    },
+                    "epic": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "title": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "title"
+                        ]
+                    },
+                    "parent": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The key of the ticket this is a subtask of."
+                    },
+                    "release": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "The release's name."
+                    },
+                    "subtasks": {
+                        "type": "object",
+                        "properties": {
+                            "count": {
+                                "type": "integer"
+                            },
+                            "done": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "count",
+                            "done"
+                        ]
+                    },
+                    "story_points": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "estimate_minutes": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "logged_minutes": {
+                        "type": "integer"
+                    },
+                    "remaining_minutes": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "due_on": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date",
+                        "examples": [
+                            "2026-09-22"
+                        ]
+                    },
+                    "version": {
+                        "type": "integer",
+                        "description": "Send it back with a PATCH to make the change conditional."
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "updated_at": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string",
+                        "format": "uri"
+                    }
+                },
+                "required": [
+                    "key",
+                    "id",
+                    "project",
+                    "type",
+                    "title",
+                    "status",
+                    "priority",
+                    "labels",
+                    "version",
+                    "url"
+                ]
+            },
+            "TicketDetail": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/Ticket"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "description": {
+                                "type": "string",
+                                "description": "Markdown, as it was written."
+                            },
+                            "reporter": {
+                                "oneOf": [
+                                    {
+                                        "$ref": "#/components/schemas/PersonRef"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ]
+                            },
+                            "fields": {
+                                "type": "object",
+                                "description": "The project's own fields, by name; null where empty.",
+                                "additionalProperties": true
+                            }
+                        },
+                        "required": [
+                            "description",
+                            "fields"
+                        ]
+                    }
+                ]
+            },
+            "TicketInput": {
+                "type": "object",
+                "properties": {
+                    "project": {
+                        "type": "string",
+                        "description": "A project's code. Needed for a new ticket; ignored in a PATCH."
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": "string",
+                        "description": "Markdown."
+                    },
+                    "type": {
+                        "type": "string",
+                        "enum": [
+                            "task",
+                            "bug",
+                            "story"
+                        ]
+                    },
+                    "priority": {
+                        "type": "string",
+                        "enum": [
+                            "low",
+                            "normal",
+                            "high",
+                            "urgent"
+                        ]
+                    },
+                    "status": {
+                        "type": "string",
+                        "description": "A column by its id or its name. In a PATCH, a move the workflow has to allow."
+                    },
+                    "resolution": {
+                        "type": "string",
+                        "description": "With a done status, or for a ticket that is done already."
+                    },
+                    "assignee_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "null takes it off whoever has it. Not a service account."
+                    },
+                    "labels": {
+                        "oneOf": [
+                            {
+                                "type": "array",
+                                "items": {
+                                    "type": "string"
+                                }
+                            },
+                            {
+                                "type": "string",
+                                "description": "Several, with commas."
+                            }
+                        ]
+                    },
+                    "estimate": {
+                        "type": "string",
+                        "description": "A duration: \"4h\", \"1d 2h\"."
+                    },
+                    "estimate_minutes": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "due_on": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date",
+                        "examples": [
+                            "2026-09-22"
+                        ]
+                    },
+                    "story_points": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "epic_id": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ]
+                    },
+                    "parent": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "A ticket's key: makes this its subtask."
+                    },
+                    "release": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "A release's name or id, one not out yet."
+                    },
+                    "sprint": {
+                        "type": [
+                            "integer",
+                            "null"
+                        ],
+                        "description": "PATCH only: a sprint's id, or null for the backlog."
+                    },
+                    "fields": {
+                        "type": "object",
+                        "additionalProperties": true,
+                        "description": "The project's own fields, by name."
+                    },
+                    "version": {
+                        "type": "integer",
+                        "description": "PATCH only: the version read. Somebody else's save in between is 409."
+                    }
+                }
+            },
+            "Comment": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "author": {
+                        "$ref": "#/components/schemas/PersonRef"
+                    },
+                    "body": {
+                        "type": "string",
+                        "description": "Markdown."
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "edited_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "author",
+                    "body",
+                    "created_at"
+                ]
+            },
+            "CommentInput": {
+                "type": "object",
+                "properties": {
+                    "body": {
+                        "type": "string",
+                        "description": "Markdown; @handle mentions, CT-12 links."
+                    }
+                },
+                "required": [
+                    "body"
+                ]
+            },
+            "Link": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "description": "Read from the ticket asked about.",
+                        "enum": [
+                            "blocks",
+                            "blocked_by",
+                            "relates",
+                            "duplicates",
+                            "duplicated_by"
+                        ]
+                    },
+                    "ticket": {
+                        "type": "string",
+                        "description": "The other ticket's key."
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "status": {
+                        "type": "object",
+                        "properties": {
+                            "name": {
+                                "type": "string"
+                            },
+                            "category": {
+                                "type": "string",
+                                "description": "What the column is: open work not started, work under way, or finished.",
+                                "enum": [
+                                    "todo",
+                                    "in_progress",
+                                    "done"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "name",
+                            "category"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "kind",
+                    "ticket",
+                    "title",
+                    "status"
+                ]
+            },
+            "LinkInput": {
+                "type": "object",
+                "properties": {
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "blocks",
+                            "blocked_by",
+                            "relates",
+                            "duplicates",
+                            "duplicated_by"
+                        ]
+                    },
+                    "ticket": {
+                        "type": "string",
+                        "description": "The other ticket's key."
+                    }
+                },
+                "required": [
+                    "kind",
+                    "ticket"
+                ]
+            },
+            "Attachment": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "type": {
+                        "type": "string",
+                        "description": "Its media type, as found by its content."
+                    },
+                    "size": {
+                        "type": "integer",
+                        "description": "Bytes."
+                    },
+                    "image": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "width": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ]
+                            },
+                            "height": {
+                                "type": [
+                                    "integer",
+                                    "null"
+                                ]
+                            }
+                        }
+                    },
+                    "author": {
+                        "type": "object",
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "name": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "id"
+                        ]
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string",
+                        "description": "Where the file itself is: GET /attachments/{id}.",
+                        "format": "uri"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "type",
+                    "size",
+                    "url"
+                ]
+            },
+            "Worklog": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "ticket": {
+                        "type": "string",
+                        "description": "The ticket's key."
+                    },
+                    "user": {
+                        "$ref": "#/components/schemas/PersonRef"
+                    },
+                    "date": {
+                        "type": "string",
+                        "format": "date",
+                        "examples": [
+                            "2026-09-22"
+                        ]
+                    },
+                    "start": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "09:30",
+                        "examples": [
+                            "09:30"
+                        ]
+                    },
+                    "minutes": {
+                        "type": "integer"
+                    },
+                    "work_type": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "note": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "billable": {
+                        "type": "boolean"
+                    },
+                    "created_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "rounded": {
+                        "type": "boolean",
+                        "description": "Only after logging or changing: the time was rounded up to the smallest slice."
+                    }
+                },
+                "required": [
+                    "id",
+                    "ticket",
+                    "user",
+                    "date",
+                    "minutes",
+                    "billable"
+                ]
+            },
+            "WorklogInput": {
+                "type": "object",
+                "properties": {
+                    "time": {
+                        "type": "string",
+                        "description": "A duration: \"1h 30m\", \"90m\", \"1:30\". Needed for a new entry."
+                    },
+                    "date": {
+                        "type": "string",
+                        "description": "Today when not given; never a day to come.",
+                        "format": "date",
+                        "examples": [
+                            "2026-09-22"
+                        ]
+                    },
+                    "start": {
+                        "type": "string",
+                        "description": "When it started: \"09:30\"."
+                    },
+                    "note": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "remaining": {
+                        "type": "string",
+                        "description": "New entries only: what is left on the ticket now."
+                    },
+                    "billable": {
+                        "type": "boolean"
+                    },
+                    "work_type": {
+                        "type": "string",
+                        "description": "A work type's name or id."
+                    }
+                }
+            },
+            "Timer": {
+                "type": "object",
+                "properties": {
+                    "ticket": {
+                        "type": "string"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "started_at": {
+                        "type": "string",
+                        "format": "date-time"
+                    },
+                    "seconds": {
+                        "type": "integer",
+                        "description": "How long it has run, by the server's clock."
+                    }
+                },
+                "required": [
+                    "ticket",
+                    "title",
+                    "started_at",
+                    "seconds"
+                ]
+            },
+            "Logged": {
+                "type": "object",
+                "properties": {
+                    "minutes": {
+                        "type": "integer"
+                    },
+                    "ticket": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "minutes"
+                ]
+            },
+            "Board": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "shared": {
+                        "type": "boolean",
+                        "description": "A board of several projects, not one project's own."
+                    },
+                    "projects": {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "description": "A project's code."
+                        }
+                    },
+                    "query": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "What it narrows its projects' tickets to, in the query language."
+                    },
+                    "url": {
+                        "type": "string",
+                        "format": "uri"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "shared",
+                    "projects",
+                    "url"
+                ]
+            },
+            "BoardDetail": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/Board"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "columns": {
+                                "type": "array",
+                                "items": {
+                                    "type": "object",
+                                    "properties": {
+                                        "name": {
+                                            "type": "string"
+                                        },
+                                        "done": {
+                                            "type": "boolean"
+                                        },
+                                        "status_ids": {
+                                            "type": "array",
+                                            "items": {
+                                                "type": "integer"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "name",
+                                        "done",
+                                        "status_ids"
+                                    ]
+                                }
+                            },
+                            "sprints": {
+                                "type": "array",
+                                "items": {
+                                    "$ref": "#/components/schemas/Sprint"
+                                }
+                            }
+                        },
+                        "required": [
+                            "columns",
+                            "sprints"
+                        ]
+                    }
+                ]
+            },
+            "Sprint": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "goal": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "state": {
+                        "type": "string",
+                        "enum": [
+                            "planned",
+                            "active",
+                            "closed"
+                        ]
+                    },
+                    "starts_on": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date",
+                        "examples": [
+                            "2026-09-22"
+                        ]
+                    },
+                    "ends_on": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date",
+                        "examples": [
+                            "2026-09-22"
+                        ]
+                    },
+                    "tickets": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "count": {
+                                "type": "integer"
+                            },
+                            "done": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "count",
+                            "done"
+                        ]
+                    },
+                    "points": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "total": {
+                                "type": "integer"
+                            },
+                            "done": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "total",
+                            "done"
+                        ]
+                    },
+                    "url": {
+                        "type": "string",
+                        "format": "uri"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "state",
+                    "url"
+                ]
+            },
+            "SprintDetail": {
+                "allOf": [
+                    {
+                        "$ref": "#/components/schemas/Sprint"
+                    },
+                    {
+                        "type": "object",
+                        "properties": {
+                            "board": {
+                                "type": "object",
+                                "properties": {
+                                    "id": {
+                                        "type": "integer"
+                                    },
+                                    "name": {
+                                        "type": "string"
+                                    }
+                                },
+                                "required": [
+                                    "id",
+                                    "name"
+                                ]
+                            }
+                        },
+                        "required": [
+                            "board"
+                        ]
+                    }
+                ]
+            },
+            "Epic": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "title": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "done": {
+                        "type": "boolean"
+                    },
+                    "starts_on": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date",
+                        "examples": [
+                            "2026-09-22"
+                        ]
+                    },
+                    "ends_on": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date",
+                        "examples": [
+                            "2026-09-22"
+                        ]
+                    },
+                    "tickets": {
+                        "type": "object",
+                        "properties": {
+                            "count": {
+                                "type": "integer"
+                            },
+                            "done": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "count",
+                            "done"
+                        ]
+                    },
+                    "url": {
+                        "type": "string",
+                        "format": "uri"
+                    }
+                },
+                "required": [
+                    "id",
+                    "title",
+                    "done",
+                    "tickets",
+                    "url"
+                ]
+            },
+            "Release": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    },
+                    "description": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "starts_on": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date",
+                        "examples": [
+                            "2026-09-22"
+                        ]
+                    },
+                    "release_on": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "format": "date",
+                        "examples": [
+                            "2026-09-22"
+                        ]
+                    },
+                    "released": {
+                        "type": "boolean"
+                    },
+                    "released_at": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    },
+                    "tickets": {
+                        "type": "object",
+                        "properties": {
+                            "count": {
+                                "type": "integer"
+                            },
+                            "done": {
+                                "type": "integer"
+                            }
+                        },
+                        "required": [
+                            "count",
+                            "done"
+                        ]
+                    },
+                    "url": {
+                        "type": "string",
+                        "format": "uri"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name",
+                    "released",
+                    "tickets",
+                    "url"
+                ]
+            },
+            "WorkType": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "name": {
+                        "type": "string"
+                    }
+                },
+                "required": [
+                    "id",
+                    "name"
+                ]
+            },
+            "Notification": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "assigned",
+                            "mentioned",
+                            "status",
+                            "commented",
+                            "changes"
+                        ]
+                    },
+                    "reason": {
+                        "type": "string",
+                        "description": "Why it reached you.",
+                        "enum": [
+                            "assigned",
+                            "mentioned",
+                            "watching"
+                        ]
+                    },
+                    "read": {
+                        "type": "boolean"
+                    },
+                    "text": {
+                        "type": "string",
+                        "description": "The bell's sentence, in the account's language."
+                    },
+                    "actor": {
+                        "oneOf": [
+                            {
+                                "$ref": "#/components/schemas/PersonRef"
+                            },
+                            {
+                                "type": "null"
+                            }
+                        ]
+                    },
+                    "ticket": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "key": {
+                                "type": "string"
+                            },
+                            "title": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "key",
+                            "title"
+                        ]
+                    },
+                    "epic": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "id": {
+                                "type": "integer"
+                            },
+                            "title": {
+                                "type": "string"
+                            }
+                        },
+                        "required": [
+                            "id",
+                            "title"
+                        ]
+                    },
+                    "project": {
+                        "type": "string"
+                    },
+                    "created_at": {
+                        "type": "string"
+                    },
+                    "url": {
+                        "type": "string",
+                        "format": "uri"
+                    }
+                },
+                "required": [
+                    "id",
+                    "kind",
+                    "reason",
+                    "read",
+                    "text",
+                    "project",
+                    "created_at",
+                    "url"
+                ]
+            }
+        }
+    }
+}

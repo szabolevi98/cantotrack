@@ -42,6 +42,22 @@ class ApiDocsController extends Controller
     }
 
     /**
+     * docs/openapi.json, with this installation's address as its server: for
+     * Postman, Insomnia or a client generator to read. No token needed — it
+     * says nothing the public repository does not — and readable from any
+     * page, so that an online editor can load it by its address.
+     */
+    public function openapi(): never
+    {
+        // Read as objects: an empty {} in it has to stay an object, not become [].
+        $document = json_decode((string) file_get_contents(dirname(__DIR__, 2) . '/docs/openapi.json'), false, 512, JSON_THROW_ON_ERROR);
+        $document->servers = [['url' => rtrim((string) Config::get('app.base_url'), '/') . '/api/v1']];
+
+        header('Access-Control-Allow-Origin: *');
+        $this->json((array) $document);
+    }
+
+    /**
      * The second-level headings, for the list beside the text.
      *
      * @return list<array{id: string, title: string}>

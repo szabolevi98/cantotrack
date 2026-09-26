@@ -1280,6 +1280,11 @@ if ($email === null || $password === null) {
     $apiToken = $m[1] ?? '';
     check('a token can be made on the profile, and is shown once', $apiToken !== '');
     check('and not again', !str_contains(request($baseUrl . '/profile/tokens', [], $jar)['body'], $apiToken));
+    $openapi = api($baseUrl . '/api/v1/openapi.json', '');
+    check(
+        'the OpenAPI document is there without a token, with this installation\'s address',
+        $openapi['status'] === 200 && ($openapi['json']['servers'][0]['url'] ?? '') === $baseUrl . '/api/v1' && isset($openapi['json']['paths']['/tickets'])
+    );
     $docs = request($baseUrl . '/help/api', [], $jar);
     check(
         'the API documentation opens, with this installation\'s address in its examples',

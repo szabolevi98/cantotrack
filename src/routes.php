@@ -367,6 +367,7 @@ $router->post('/settings/webhooks/{id}/deliveries/{delivery}', static fn($id, $d
 // ---------------------------------------------------------------------------
 // The API, version 1 — JSON, with a personal access token as a bearer token
 // ---------------------------------------------------------------------------
+$router->get('/api/v1/openapi.json', static fn() => (new ApiDocsController())->openapi());
 $router->post('/api/v1/auth/login', static fn() => (new ApiAuthController())->login());
 $router->post('/api/v1/auth/logout', static fn() => (new ApiController())->signOut());
 $router->get('/api/v1/me', static fn() => (new ApiController())->me());

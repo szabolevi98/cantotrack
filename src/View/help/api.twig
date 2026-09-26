@@ -5,6 +5,7 @@
 {% block subheading %}<p class="content__sub">{{ 'Every endpoint, with what it takes and what it answers. The examples use this installation’s own address.'|t }}</p>{% endblock %}
 
 {% block actions %}
+    <a class="button" href="{{ url('/api/v1/openapi.json') }}" download="cantotrack-openapi.json" title="{{ 'For Postman, Insomnia or a client generator'|t }}"><i class="bi bi-code-slash" aria-hidden="true"></i> OpenAPI</a>
     <a class="button" href="{{ url('/profile/tokens') }}"><i class="bi bi-key" aria-hidden="true"></i> {{ 'Access tokens'|t }}</a>
     {% if is_admin %}
         <a class="button" href="{{ url('/settings/service-accounts') }}"><i class="bi bi-robot" aria-hidden="true"></i> {{ 'Service accounts'|t }}</a>

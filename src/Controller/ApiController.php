@@ -254,6 +254,39 @@ class ApiController extends Controller
         $this->json(['data' => $this->worklogData((array) (new WorklogRepository())->find($logged['id'])) + ['rounded' => $logged['rounded']]], 201);
     }
 
+    /**
+     * {"time": "1h 30m", "date": "2026-09-22", "note": "…", "start": "09:30",
+     *  "billable": true, "work_type": "Design"} — only the fields sent change.
+     * A day that is handed in or approved, or hours already billed, are
+     * refused with 422, as on the web.
+     */
+    public function updateWorklog(int $id): never
+    {
+        $this->member();
+        $worklog = (new WorklogRepository())->find($id);
+
+        if ($worklog === null) {
+            $this->notFound(__('There is no such worklog.'));
+        }
+
+        if (!WorklogService::canChange($worklog, (int) Auth::id(), Auth::isAdmin())) {
+            $this->forbidden(__('Those are somebody else’s hours.'));
+        }
+
+        $input = $this->body();
+        $changed = (new WorklogService())->change(
+            $worklog,
+            isset($input['time']) ? (string) $input['time'] : $worklog['minutes'] . 'm',
+            isset($input['date']) ? (string) $input['date'] : (string) $worklog['work_date'],
+            array_key_exists('note', $input) ? (string) $input['note'] : ($worklog['note'] === null ? null : (string) $worklog['note']),
+            isset($input['billable']) ? (bool) $input['billable'] : null,
+            array_key_exists('start', $input) ? (string) $input['start'] : null,
+            isset($input['work_type']) ? (string) $input['work_type'] : null
+        );
+
+        $this->json(['data' => $this->worklogData((array) (new WorklogRepository())->find($id)) + ['rounded' => $changed['rounded']]]);
+    }
+
     public function deleteWorklog(int $id): never
     {
         $this->member();

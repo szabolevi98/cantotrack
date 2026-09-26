@@ -1323,6 +1323,12 @@ if ($email === null || $password === null) {
 
     $week = api($baseUrl . '/api/v1/worklogs', $apiToken);
     check('lists one\'s own hours', $week['status'] === 200 && in_array($apiLogId, array_column($week['json']['data'] ?? [], 'id'), true));
+    $changedLog = api($baseUrl . '/api/v1/worklogs/' . $apiLogId, $apiToken, 'PATCH', ['time' => '1h 15m']);
+    check(
+        'changes an entry, only in what it is sent',
+        $changedLog['status'] === 200 && ($changedLog['json']['data']['minutes'] ?? 0) === 75
+        && ($changedLog['json']['data']['note'] ?? '') === 'Through the API'
+    );
     check('and deletes an entry', api($baseUrl . '/api/v1/worklogs/' . $apiLogId, $apiToken, 'DELETE')['status'] === 204);
     check('answers an unknown ticket with a JSON 404', ($missingTicket = api($baseUrl . '/api/v1/tickets/' . $code . '-99999', $apiToken))['status'] === 404 && isset($missingTicket['json']['error']));
 

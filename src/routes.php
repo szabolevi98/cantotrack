@@ -368,6 +368,7 @@ $router->get('/api/v1/tickets/{key}/comments', static fn($key) => (new ApiContro
 $router->post('/api/v1/tickets/{key}/comments', static fn($key) => (new ApiController())->addComment((string) $key));
 $router->post('/api/v1/tickets/{key}/worklogs', static fn($key) => (new ApiController())->logWork((string) $key));
 $router->get('/api/v1/worklogs', static fn() => (new ApiController())->worklogs());
+$router->patch('/api/v1/worklogs/{id}', static fn($id) => (new ApiController())->updateWorklog((int) $id));
 $router->delete('/api/v1/worklogs/{id}', static fn($id) => (new ApiController())->deleteWorklog((int) $id));
 $router->get('/api/v1/timer', static fn() => (new ApiController())->timer());
 $router->post('/api/v1/tickets/{key}/timer', static fn($key) => (new ApiController())->startTimer((string) $key));

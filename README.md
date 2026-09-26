@@ -396,6 +396,7 @@ curl -H "Authorization: Bearer ct_…" https://tracker.example/api/v1/me
 | `POST` | `/api/v1/tickets/{key}/comments` | `{"body": "…"}` |
 | `POST` | `/api/v1/tickets/{key}/worklogs` | `{"time": "1h 30m", "date": "2026-09-22", "note": "…", "remaining": "2h", "billable": true}` |
 | `GET` | `/api/v1/worklogs` | hours in a range: `?from=2026-09-01&to=2026-09-30&user=3` (your own by default) |
+| `PATCH` | `/api/v1/worklogs/{id}` | change an entry of yours: `time`, `date`, `note`, `start`, `billable`, `work_type` — only the fields sent |
 | `DELETE` | `/api/v1/worklogs/{id}` | remove an entry of yours |
 | `GET` | `/api/v1/timer` | your running clock — the same one the web shows — or `null` |
 | `POST` | `/api/v1/tickets/{key}/timer` | start it on a ticket; one running elsewhere is logged first |

@@ -5,6 +5,8 @@
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
     gap: var(--ct-gap);
+    /* The same space under it as under a card: on the boards page a card follows. */
+    margin-bottom: var(--ct-gap);
 }
 
 .project {

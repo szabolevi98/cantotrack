@@ -70,7 +70,8 @@
 
     <section class="card card--narrow">
         <h2 class="card__title">{{ 'Using it'|t }}</h2>
-        <p class="card__body">{{ 'Send the token in the Authorization header. Everything is under {base}; the README lists the endpoints.'|t({base: api_base}) }}</p>
+        <p class="card__body">{{ 'Send the token in the Authorization header. Everything is under {base}.'|t({base: api_base}) }}
+            <a href="{{ url('/help/api') }}">{{ 'Every endpoint is in the API documentation.'|t }}</a></p>
         <pre class="code-sample"><code>curl -H "Authorization: Bearer ct_…" "{{ api_base }}/tickets?assignee=me&amp;open=1"
 
 curl -X POST -H "Authorization: Bearer ct_…" -H "Content-Type: application/json" \

@@ -78,3 +78,5 @@
 .bi-printer::before { content: "\f501"; }
 .bi-envelope::before { content: "\f32f"; }
 .bi-briefcase::before { content: "\f1cc"; }
+.bi-journal-code::before { content: "\f43f"; }
+.bi-robot::before { content: "\f6b1"; }

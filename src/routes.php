@@ -12,6 +12,7 @@
 
 use CantoTrack\Controller\ApiAuthController;
 use CantoTrack\Controller\ApiController;
+use CantoTrack\Controller\ApiDocsController;
 use CantoTrack\Controller\ApiTokenController;
 use CantoTrack\Controller\AttachmentController;
 use CantoTrack\Controller\AuditController;
@@ -112,6 +113,7 @@ $router->post('/profile/calendar-export', static fn() => (new ProfileController(
 $router->post('/profile/notifications', static fn() => (new ProfileController())->notifications());
 $router->get('/calendar/{secret}', static fn($secret) => (new CalendarExportController())->feed((string) $secret));
 $router->get('/profile/tokens', static fn() => (new ApiTokenController())->index());
+$router->get('/help/api', static fn() => (new ApiDocsController())->show());
 $router->post('/profile/avatar', static fn() => (new AvatarController())->upload());
 $router->post('/profile/avatar/delete', static fn() => (new AvatarController())->remove());
 $router->get('/avatars/{id}/{file}', static fn($id, $file) => (new AvatarController())->show((int) $id, (string) $file));

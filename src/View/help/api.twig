@@ -1,0 +1,25 @@
+{% extends 'layout.twig' %}
+
+{% block title %}{{ 'API documentation'|t }} — {{ app_name }}{% endblock %}
+{% block heading %}{{ 'API documentation'|t }}{% endblock %}
+{% block subheading %}<p class="content__sub">{{ 'Every endpoint, with what it takes and what it answers. The examples use this installation’s own address.'|t }}</p>{% endblock %}
+
+{% block actions %}
+    <a class="button" href="{{ url('/profile/tokens') }}"><i class="bi bi-key" aria-hidden="true"></i> {{ 'Access tokens'|t }}</a>
+{% endblock %}
+
+{% block content %}
+    <div class="api-docs">
+        <nav class="card api-docs__contents" aria-label="{{ 'Contents'|t }}">
+            <h2 class="card__title">{{ 'Contents'|t }}</h2>
+            <ol>
+                {% for part in contents %}
+                    <li><a href="#{{ part.id }}">{{ part.title }}</a></li>
+                {% endfor %}
+            </ol>
+        </nav>
+        <article class="card page-body api-docs__text" lang="en">
+            <div class="markdown">{{ html|raw }}</div>
+        </article>
+    </div>
+{% endblock %}

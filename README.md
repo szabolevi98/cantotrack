@@ -380,6 +380,11 @@ own back — see [Signing in from an app](#signing-in-from-an-app).
 curl -H "Authorization: Bearer ct_…" https://tracker.example/api/v1/me
 ```
 
+The whole reference — every parameter, field and answer, with examples — is
+[docs/API.md](docs/API.md), and inside the application under **API
+documentation** in the account menu, with the examples written against the
+installation's own address. In short:
+
 | Method | Path | |
 |---|---|---|
 | `POST` | `/api/v1/auth/login` | sign in from an app; no token needed (below) |

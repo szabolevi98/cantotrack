@@ -549,3 +549,52 @@ mark {
 tr.is-paused td {
     color: var(--ct-muted);
 }
+
+/* The API's documentation: its contents beside the text, and staying in
+   view while the text scrolls. */
+.api-docs {
+    display: grid;
+    grid-template-columns: 230px minmax(0, 1fr);
+    gap: var(--ct-gap);
+    align-items: start;
+}
+
+.api-docs__contents {
+    position: sticky;
+    top: 76px;
+    max-height: calc(100vh - 96px);
+    overflow-y: auto;
+}
+
+.api-docs__contents ol {
+    margin: 0;
+    padding-left: 20px;
+    font-size: 0.9rem;
+    line-height: 1.8;
+}
+
+.api-docs__text .markdown table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+}
+
+.api-docs__text .markdown h2 {
+    padding-top: 12px;
+    border-top: 1px solid var(--ct-border);
+}
+
+.api-docs__text .markdown h2:first-of-type {
+    border-top: 0;
+}
+
+@media (max-width: 980px) {
+    .api-docs {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .api-docs__contents {
+        position: static;
+        max-height: none;
+    }
+}

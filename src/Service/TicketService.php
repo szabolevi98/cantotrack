@@ -625,8 +625,14 @@ class TicketService
             return $id;
         }
 
-        if ($this->users->findActive($id) === null) {
+        $person = $this->users->findActive($id);
+
+        if ($person === null) {
             throw new ValidationError(__('That person cannot be given work: there is no such active account.'));
+        }
+
+        if ((int) ($person['is_service'] ?? 0) === 1) {
+            throw new ValidationError(__('{name} is a service account, and cannot be given work.', ['name' => $person['name']]));
         }
 
         return $id;

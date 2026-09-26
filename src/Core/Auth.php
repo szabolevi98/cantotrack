@@ -41,7 +41,9 @@ class Auth
             return null;
         }
 
-        if ((int) $user['is_active'] !== 1) {
+        // A service account is a program's, and signs in with its tokens only
+        // (see the 0052 migration); its password was never anybody's.
+        if ((int) $user['is_active'] !== 1 || (int) ($user['is_service'] ?? 0) === 1) {
             return null;
         }
 

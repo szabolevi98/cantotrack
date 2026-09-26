@@ -1749,6 +1749,31 @@ if ($email === null || $password === null) {
         isset($m[0]) && !str_contains($m[0], 'value="' . $colleagueId . '"')
     );
 
+    // A service account: made, given a token, and it acts through the API as
+    // itself — but it is nobody's to sign in as, or to give work to. Like a
+    // person it is never deleted, so it is switched off again at the end.
+    $madeService = request($baseUrl . '/settings/service-accounts', ['_token' => $token, 'name' => 'Smoke Test Service', 'role' => 'member'], $jar);
+    preg_match('#/settings/service-accounts/(\d+)#', $madeService['headers'], $m);
+    $serviceId = (int) ($m[1] ?? 0);
+    check('an administrator can make a service account', $madeService['status'] === 302 && $serviceId > 0);
+
+    request($baseUrl . '/settings/service-accounts/' . $serviceId . '/tokens', ['_token' => $token, 'name' => 'Smoke'], $jar);
+    preg_match('/value="(ct_[0-9a-f]{40})"/', request($baseUrl . '/settings/service-accounts/' . $serviceId, [], $jar)['body'], $m);
+    $serviceToken = $m[1] ?? '';
+    $serviceMe = api($baseUrl . '/api/v1/me', $serviceToken);
+    check(
+        'and a token for it, which acts as the service account',
+        $serviceMe['status'] === 200 && ($serviceMe['json']['data']['id'] ?? 0) === $serviceId && ($serviceMe['json']['data']['service'] ?? false) === true
+    );
+    check('it is not one of the people', !str_contains(request($baseUrl . '/people', [], $jar)['body'], 'Smoke Test Service'));
+    $offered = api($baseUrl . '/api/v1/users', $serviceToken);
+    check(
+        'nor offered as somebody to give work to',
+        $offered['status'] === 200 && !in_array($serviceId, array_column($offered['json']['data'] ?? [], 'id'), true)
+    );
+    request($baseUrl . '/settings/service-accounts/' . $serviceId, ['_token' => $token, 'name' => 'Smoke Test Service', 'role' => 'member'], $jar);
+    check('switched off, its tokens are refused', in_array(api($baseUrl . '/api/v1/me', $serviceToken)['status'], [401, 429], true));
+
     // A GET must not sign anybody out: an <img src=".../logout"> on any page
     // on the internet would otherwise do it.
     $getOut = request($baseUrl . '/logout', [], $jar);

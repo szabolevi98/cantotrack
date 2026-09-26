@@ -26,7 +26,7 @@ final class Presenter
         ];
 
         if ($self) {
-            $out += ['email' => $user['email'], 'role' => $user['role']];
+            $out += ['email' => $user['email'], 'role' => $user['role'], 'service' => (int) ($user['is_service'] ?? 0) === 1];
         }
 
         return $out;

@@ -261,7 +261,9 @@ deploy with `git pull`.
 ### For other programs
 
 - **A JSON API** under `/api/v1`, with personal access tokens made on the
-  profile — see [The API](#the-api) below.
+  profile, and **service accounts** for the programs the team relies on — a
+  webshop, a CI server — so that they do not write as somebody who may leave.
+  Documented in full inside the application — see [The API](#the-api) below.
 - **Webhooks**: signed messages about every change, to any address outside the
   server's own network, retried with backoff when the other end is down, with a
   log of every delivery that can be resent.
@@ -374,7 +376,10 @@ Every request carries a personal access token, made under **Profile → Access
 tokens**, as a bearer token. It acts as the person it belongs to, with their
 rights and nothing more, through the same services the forms use. An app can
 sign in with the email address and password instead, and gets a token of its
-own back — see [Signing in from an app](#signing-in-from-an-app).
+own back — see [Signing in from an app](#signing-in-from-an-app). A program the
+team relies on gets a **service account** from an administrator instead: an
+account of its own, named after it, with tokens made on its page, that cannot
+sign in with a password, is not given work and is never notified.
 
 ```
 curl -H "Authorization: Bearer ct_…" https://tracker.example/api/v1/me

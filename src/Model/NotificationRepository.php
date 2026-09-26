@@ -282,7 +282,7 @@ class NotificationRepository
     {
         $statement = $this->db->prepare(
             'SELECT u.* FROM users u
-             WHERE u.is_active = 1 AND (
+             WHERE u.is_active = 1 AND u.is_service = 0 AND (
                  u.id IN (SELECT user_id FROM ticket_watchers WHERE ticket_id = :a)
                  OR u.id = (SELECT reporter_id FROM tickets WHERE id = :b)
                  OR u.id = (SELECT assignee_id FROM tickets WHERE id = :c)

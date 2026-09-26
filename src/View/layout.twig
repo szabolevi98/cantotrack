@@ -116,7 +116,7 @@
                href="{{ url('/billing') }}"><i class="bi bi-receipt" aria-hidden="true"></i><span>{{ 'Billing'|t }}</span></a>
             <a class="sidebar__link{{ current_path starts with '/settings/work-types' ? ' is-active' : '' }}"
                href="{{ url('/settings/work-types') }}"><i class="bi bi-tags" aria-hidden="true"></i><span>{{ 'Work types'|t }}</span></a>
-            <a class="sidebar__link{{ current_path starts with '/settings' and not (current_path starts with '/settings/webhooks') and not (current_path starts with '/settings/work-types') and not (current_path starts with '/settings/automation') and not (current_path starts with '/settings/audit') and not (current_path starts with '/settings/email') ? ' is-active' : '' }}"
+            <a class="sidebar__link{{ current_path starts with '/settings' and not (current_path starts with '/settings/webhooks') and not (current_path starts with '/settings/work-types') and not (current_path starts with '/settings/automation') and not (current_path starts with '/settings/audit') and not (current_path starts with '/settings/email') and not (current_path starts with '/settings/service-accounts') ? ' is-active' : '' }}"
                href="{{ url('/settings') }}"><i class="bi bi-calendar3" aria-hidden="true"></i><span>{{ 'Calendar'|t }}</span></a>
             <a class="sidebar__link{{ current_path starts with '/settings/email' ? ' is-active' : '' }}"
                href="{{ url('/settings/email') }}"><i class="bi bi-envelope" aria-hidden="true"></i><span>{{ 'Email'|t }}</span>{% set undelivered = failed_mail() %}{% if undelivered > 0 %} <span class="sidebar__count">{{ undelivered }}</span>{% endif %}</a>
@@ -124,6 +124,8 @@
                href="{{ url('/settings/automation') }}"><i class="bi bi-lightning-charge" aria-hidden="true"></i><span>{{ 'Automation'|t }}</span></a>
             <a class="sidebar__link{{ current_path starts with '/settings/webhooks' ? ' is-active' : '' }}"
                href="{{ url('/settings/webhooks') }}"><i class="bi bi-broadcast" aria-hidden="true"></i><span>{{ 'Webhooks'|t }}</span></a>
+            <a class="sidebar__link{{ current_path starts with '/settings/service-accounts' ? ' is-active' : '' }}"
+               href="{{ url('/settings/service-accounts') }}"><i class="bi bi-robot" aria-hidden="true"></i><span>{{ 'Service accounts'|t }}</span></a>
             <a class="sidebar__link{{ current_path starts with '/settings/audit' ? ' is-active' : '' }}"
                href="{{ url('/settings/audit') }}"><i class="bi bi-shield-lock" aria-hidden="true"></i><span>{{ 'Audit log'|t }}</span></a>
         {% endif %}

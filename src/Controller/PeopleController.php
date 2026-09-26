@@ -195,6 +195,11 @@ class PeopleController extends Controller
             $this->notFound(__('There is no such person.'));
         }
 
+        // A program's account has a page of its own, without a password.
+        if ((int) $person['is_service'] === 1) {
+            $this->redirect('/settings/service-accounts/' . $id);
+        }
+
         return $person;
     }
 }

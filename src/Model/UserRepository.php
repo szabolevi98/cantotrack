@@ -92,11 +92,52 @@ class UserRepository
         return $statement->fetch() ?: null;
     }
 
-    public function active(): array
+    /**
+     * The active people, by name: who work can be given to, whose hours are
+     * expected. Service accounts are not people, and are left out unless
+     * asked for — a project's members are the one list they belong on.
+     */
+    public function active(bool $withServices = false): array
     {
         return $this->rows(
-            'SELECT * FROM users WHERE is_active = 1 ORDER BY name'
+            'SELECT * FROM users WHERE is_active = 1' . ($withServices ? '' : ' AND is_service = 0') . ' ORDER BY name'
         );
+    }
+
+    /**
+     * The service accounts, active first, each with how many tokens it has
+     * and when one was last used — see the 0052 migration.
+     */
+    public function services(): array
+    {
+        return $this->rows(
+            'SELECT u.*,
+                    (SELECT COUNT(*) FROM api_tokens t WHERE t.user_id = u.id) AS token_count,
+                    (SELECT MAX(t.last_used_at) FROM api_tokens t WHERE t.user_id = u.id) AS last_used_at
+             FROM users u WHERE u.is_service = 1
+             ORDER BY u.is_active DESC, u.name'
+        );
+    }
+
+    /**
+     * A service account: an account for a program, which never signs in with
+     * a password. Its address is made up, under .invalid, where no mail is
+     * ever sent (see Mailer), and gives it a handle to be @mentioned by; its
+     * password is random and thrown away, and the sign-in refuses it anyway.
+     */
+    public function createService(string $name, string $role = 'member'): int
+    {
+        $ascii = (string) @iconv('UTF-8', 'ASCII//TRANSLIT//IGNORE', $name);
+        $base = trim((string) preg_replace('/[^a-z0-9]+/', '-', strtolower($ascii)), '-');
+        $base = substr($base === '' ? 'service' : $base, 0, 40);
+
+        for ($suffix = 1; $this->emailTaken($email = ($suffix === 1 ? $base : $base . '-' . $suffix) . '@service.invalid'); $suffix++);
+
+        $id = $this->create($name, $email, bin2hex(random_bytes(24)), $role === 'guest' ? 'guest' : 'member');
+
+        $this->db->prepare('UPDATE users SET is_service = 1, notify_email = 0 WHERE id = :id')->execute(['id' => $id]);
+
+        return $id;
     }
 
     public function all(): array
@@ -294,6 +335,7 @@ class UserRepository
                     (SELECT COALESCE(SUM(w.minutes), 0) FROM worklogs w
                      WHERE w.user_id = u.id AND w.work_date >= DATE_SUB(CURDATE(), INTERVAL 30 DAY)) AS minutes_30d
              FROM users u
+             WHERE u.is_service = 0
              ORDER BY ' . Sort::orderBy(self::SORTS, 'u.is_active DESC, u.name')
         );
     }

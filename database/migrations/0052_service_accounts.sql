@@ -1,0 +1,15 @@
+-- Service accounts: somebody for a program to be.
+--
+-- A personal access token acts as the person who made it, so a webshop or a
+-- CI server wired up with Anna's token writes as Anna — and stops working the
+-- day she leaves and her account is deactivated. A service account is an
+-- account of its own for such a program: made by an administrator, named
+-- after what it is ("GitLab CI"), with tokens made for it on its own page.
+--
+-- It is a row in `users` like anybody, so that everything that points at a
+-- person (the reporter of a ticket, the author of a comment, the history)
+-- points at it the same way, and the same rules decide what it may see: its
+-- role, and the private projects it is added to. But it is nobody: it cannot
+-- sign in with a password, is not offered as an assignee, has no hours
+-- expected of it, and is not told about anything.
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_service TINYINT(1) NOT NULL DEFAULT 0 AFTER role;

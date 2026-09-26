@@ -21,7 +21,7 @@ Every request but the app sign-in carries a token as a bearer token:
 curl -H "Authorization: Bearer ct_…" https://tracker.example/api/v1/me
 ```
 
-A token is `ct_` and forty hexadecimal characters. There are two ways to get
+A token is `ct_` and forty hexadecimal characters. There are three ways to get
 one.
 
 **A personal access token**, made under **Profile → Access tokens**, for a
@@ -33,6 +33,23 @@ revoked on the same page.
 token that comes back is listed on the profile with an **App** badge and ends
 with your sessions: a new password, a reset one or **Sign out everywhere else**
 signs the app out too. A token made by hand is left alone by all three.
+
+**A service account's token**, for a program the team relies on — a webshop, a
+CI server, a bookkeeping export. A personal token acts as the person who made
+it, so whatever it writes is signed with their name, and it stops working the
+day their account is switched off. A service account is an account of its own
+for the program instead: an administrator makes it under **Service accounts**,
+names it after what uses it ("GitLab CI"), and makes its tokens on its page.
+The tickets it makes and the comments it writes carry its name, and its
+`@handle` shows it on the account's page.
+
+A service account is either a *member*, which may change the work, or a
+*guest*, which only reads and comments; never an administrator. Like a person
+it sees the team's projects (a member) and the private projects it is added
+to under the project's **Members**. It cannot sign in with a password, is not
+offered as an assignee (giving it a ticket is `422`), has no hours expected of
+it, and is never notified. `GET /me` says `"service": true` for one. Switching
+it off refuses all its tokens at once; switching it on again brings them back.
 
 A missing token, one that is unknown, expired or revoked, or one whose account
 is deactivated, is answered `401`. A connection that keeps sending wrong tokens

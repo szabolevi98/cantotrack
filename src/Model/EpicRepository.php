@@ -241,7 +241,7 @@ class EpicRepository
     public function watchers(int $epicId): array
     {
         $statement = $this->db->prepare(
-            'SELECT u.* FROM epic_watchers w JOIN users u ON u.id = w.user_id WHERE w.epic_id = :epic AND u.is_active = 1 ORDER BY u.name'
+            'SELECT u.* FROM epic_watchers w JOIN users u ON u.id = w.user_id WHERE w.epic_id = :epic AND u.is_active = 1 AND u.is_service = 0 ORDER BY u.name'
         );
         $statement->execute(['epic' => $epicId]);
 

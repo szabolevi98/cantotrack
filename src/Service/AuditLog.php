@@ -19,7 +19,7 @@ final class AuditLog
     /** What can be recorded, grouped the way the log's filter offers them. */
     public const GROUPS = [
         'access' => ['signin', 'signin_failed', 'signout', 'signed_out_elsewhere', 'password_changed', 'password_reset', 'two_factor_on', 'two_factor_off', 'token_created', 'token_revoked'],
-        'people' => ['person_created', 'person_updated', 'person_password_reset'],
+        'people' => ['person_created', 'person_updated', 'person_password_reset', 'service_created', 'service_updated', 'service_token_created', 'service_token_revoked'],
         'projects' => ['project_created', 'project_updated', 'project_deleted', 'member_added', 'member_removed', 'member_role', 'column_created', 'column_updated', 'column_deleted', 'moves_saved', 'field_created', 'field_updated', 'field_deleted'],
         'work' => ['ticket_deleted', 'page_deleted'],
         'settings' => ['settings_lock', 'settings_currency', 'holiday_added', 'holiday_removed', 'rule_created', 'rule_updated', 'rule_toggled', 'rule_deleted', 'webhook_created', 'webhook_updated', 'webhook_deleted'],

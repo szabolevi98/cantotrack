@@ -114,6 +114,12 @@ class Notifier
             // watcher taken off a private project, a guest @mentioned in one
             // they were never added to.
             $person = $this->users->find($userId);
+
+            // A service account is a program, and nobody reads its bell.
+            if ($person !== null && (int) ($person['is_service'] ?? 0) === 1) {
+                continue;
+            }
+
             $visible = $person === null ? [] : Access::forUser($person);
 
             if ($visible !== null && !in_array((int) ($ticket['project_id'] ?? 0), $visible, true)) {

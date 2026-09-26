@@ -287,7 +287,8 @@ class ProjectController extends Controller
         $this->render('projects/form.twig', $context + [
             'clients' => (new ClientRepository())->all(),
             'members' => $projectId > 0 ? (new ProjectRepository())->members($projectId) : [],
-            'people' => (new UserRepository())->active(),
+            // Service accounts too: a private project is added to like a person.
+            'people' => (new UserRepository())->active(true),
         ], $status);
     }
 

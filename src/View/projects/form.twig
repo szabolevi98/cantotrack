@@ -146,9 +146,9 @@
                 <ul class="split-list">
                     {% for member in members %}
                         <li>
-                            <span>{{ member.name }}{% if member.role == 'guest' %} <span class="badge badge--amber">{{ 'Guest'|t }}</span>{% endif %}{% if member.project_role == 'lead' %} <span class="badge badge--blue">{{ 'Lead'|t }}</span>{% endif %}{% if not member.is_active %} <span class="badge badge--muted">{{ 'Deactivated'|t }}</span>{% endif %}</span>
-                            <span class="muted">{{ member.email }}</span>
-                            {% if member.role != 'guest' %}
+                            <span>{{ member.name }}{% if member.role == 'guest' %} <span class="badge badge--amber">{{ 'Guest'|t }}</span>{% endif %}{% if member.project_role == 'lead' %} <span class="badge badge--blue">{{ 'Lead'|t }}</span>{% endif %}{% if member.is_service %} <span class="badge badge--muted">{{ 'Service account'|t }}</span>{% endif %}{% if not member.is_active %} <span class="badge badge--muted">{{ 'Deactivated'|t }}</span>{% endif %}</span>
+                            <span class="muted">{{ member.is_service ? '' : member.email }}</span>
+                            {% if member.role != 'guest' and not member.is_service %}
                                 <form class="move" method="post" action="{{ url('/projects/' ~ project.id ~ '/members/' ~ member.id ~ '/role') }}">
                                     <input type="hidden" name="_token" value="{{ csrf_token }}">
                                     <select class="field field--inline" name="role" data-autosubmit aria-label="{{ 'Role of {name}'|t({name: member.name}) }}">
@@ -173,7 +173,7 @@
                     <input type="hidden" name="_token" value="{{ csrf_token }}">
                     <select class="field" name="user_id" aria-label="{{ 'Person'|t }}">
                         {% for person in addable %}
-                            <option value="{{ person.id }}">{{ person.name }}{% if person.role == 'guest' %} ({{ 'guest'|t }}){% endif %}</option>
+                            <option value="{{ person.id }}">{{ person.name }}{% if person.is_service %} ({{ 'service account'|t }}){% elseif person.role == 'guest' %} ({{ 'guest'|t }}){% endif %}</option>
                         {% endfor %}
                     </select>
                     <button class="button" type="submit">{{ 'Add'|t }}</button>

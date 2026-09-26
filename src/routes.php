@@ -44,6 +44,7 @@ use CantoTrack\Controller\ReleaseController;
 use CantoTrack\Controller\ReportController;
 use CantoTrack\Controller\RoadmapController;
 use CantoTrack\Controller\SearchController;
+use CantoTrack\Controller\ServiceAccountController;
 use CantoTrack\Controller\SettingsController;
 use CantoTrack\Controller\SprintController;
 use CantoTrack\Controller\SuggestController;
@@ -342,6 +343,13 @@ $router->post('/settings/holidays/delete', static fn() => (new SettingsControlle
 $router->get('/settings/work-types', static fn() => (new WorkTypeController())->index());
 $router->post('/settings/work-types', static fn() => (new WorkTypeController())->create());
 $router->post('/settings/work-types/{id}', static fn($id) => (new WorkTypeController())->update((int) $id));
+
+$router->get('/settings/service-accounts', static fn() => (new ServiceAccountController())->index());
+$router->post('/settings/service-accounts', static fn() => (new ServiceAccountController())->create());
+$router->get('/settings/service-accounts/{id}', static fn($id) => (new ServiceAccountController())->show((int) $id));
+$router->post('/settings/service-accounts/{id}', static fn($id) => (new ServiceAccountController())->update((int) $id));
+$router->post('/settings/service-accounts/{id}/tokens', static fn($id) => (new ServiceAccountController())->createToken((int) $id));
+$router->post('/settings/service-accounts/{id}/tokens/{token}/delete', static fn($id, $token) => (new ServiceAccountController())->revokeToken((int) $id, (int) $token));
 
 $router->get('/settings/webhooks', static fn() => (new WebhookController())->index());
 $router->post('/settings/webhooks', static fn() => (new WebhookController())->create());

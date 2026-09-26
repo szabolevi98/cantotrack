@@ -49,7 +49,7 @@ class ProjectRepository
     public function members(int $projectId): array
     {
         $statement = $this->db->prepare(
-            'SELECT u.id, u.name, u.email, u.role, u.is_active, m.added_at, m.role AS project_role
+            'SELECT u.id, u.name, u.email, u.role, u.is_active, u.is_service, m.added_at, m.role AS project_role
              FROM project_members m JOIN users u ON u.id = m.user_id
              WHERE m.project_id = :project ORDER BY u.name'
         );

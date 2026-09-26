@@ -6,12 +6,14 @@ use CantoTrack\Core\Auth;
 use CantoTrack\Core\HttpError;
 use CantoTrack\Model\ApiTokenRepository;
 use CantoTrack\Model\CommentRepository;
+use CantoTrack\Model\LinkRepository;
 use CantoTrack\Model\ProjectRepository;
 use CantoTrack\Model\StatusRepository;
 use CantoTrack\Model\TicketRepository;
 use CantoTrack\Model\UserRepository;
 use CantoTrack\Model\WorklogRepository;
 use CantoTrack\Service\CommentService;
+use CantoTrack\Service\LinkService;
 use CantoTrack\Service\Presenter;
 use CantoTrack\Service\TicketService;
 use CantoTrack\Service\TimerService;
@@ -75,7 +77,8 @@ class ApiController extends ApiEndpoint
 
     /**
      * A filtered page of tickets: ?project=CT&status=in_progress&assignee=me
-     * &label=…&q=…&open=1&page=2&per_page=50.
+     * &label=…&q=…&open=1&sprint=12&epic=4&release=7&parent=CT-12&due=overdue
+     * &top_level=1&page=2&per_page=50.
      */
     public function tickets(): never
     {
@@ -83,6 +86,31 @@ class ApiController extends ApiEndpoint
 
         if (($_GET['project'] ?? '') !== '') {
             $filters['project_id'] = (int) $this->projectOr404((string) $_GET['project'])['id'];
+        }
+
+        // A sprint's tickets, or with "none" the ones in no sprint: a backlog.
+        $sprint = (string) ($_GET['sprint'] ?? '');
+        if ($sprint === 'none') {
+            $filters['backlog_only'] = true;
+        } elseif (ctype_digit($sprint)) {
+            $filters['sprint_id'] = (int) $sprint;
+        }
+
+        foreach (['epic' => 'epic_id', 'release' => 'release_id'] as $given => $filter) {
+            if (ctype_digit((string) ($_GET[$given] ?? ''))) {
+                $filters[$filter] = (int) $_GET[$given];
+            }
+        }
+
+        // A ticket's subtasks; or, the other way, only the tickets themselves.
+        if (($_GET['parent'] ?? '') !== '') {
+            $filters['parent_id'] = (int) $this->ticketOr404((string) $_GET['parent'])['id'];
+        } elseif (!empty($_GET['top_level'])) {
+            $filters['top_level'] = true;
+        }
+
+        if (in_array($_GET['due'] ?? '', ['overdue', 'week'], true)) {
+            $filters['due'] = (string) $_GET['due'];
         }
 
         $assignee = (string) ($_GET['assignee'] ?? '');
@@ -112,14 +140,13 @@ class ApiController extends ApiEndpoint
             $filters['query_order'] = $compiled['order'];
         }
 
-        $perPage = max(1, min(self::MAX_PAGE, (int) ($_GET['per_page'] ?? 50)));
-        $page = max(1, (int) ($_GET['page'] ?? 1));
+        [$page, $perPage, $offset] = $this->paging();
         $tickets = new TicketRepository();
         $total = $tickets->count($filters);
 
         $this->json([
-            'data' => array_map(fn(array $t): array => Presenter::ticket($t), $tickets->search($filters, $perPage, ($page - 1) * $perPage)),
-            'meta' => ['page' => $page, 'per_page' => $perPage, 'total' => $total, 'pages' => (int) ceil($total / $perPage)],
+            'data' => array_map(fn(array $t): array => Presenter::ticket($t), $tickets->search($filters, $perPage, $offset)),
+            'meta' => self::pageMeta($page, $perPage, $total),
         ]);
     }
 
@@ -160,7 +187,13 @@ class ApiController extends ApiEndpoint
 
         $status = $input['status'] ?? null;
         $resolution = isset($input['resolution']) ? (string) $input['resolution'] : null;
-        unset($input['status'], $input['resolution'], $input['project'], $input['project_id']);
+        $sprintGiven = array_key_exists('sprint', $input) || array_key_exists('sprint_id', $input);
+        $sprint = $input['sprint'] ?? $input['sprint_id'] ?? null;
+        unset($input['status'], $input['resolution'], $input['project'], $input['project_id'], $input['sprint'], $input['sprint_id']);
+
+        if ($sprintGiven && $sprint !== null && !ctype_digit((string) $sprint)) {
+            throw new HttpError(422, __('A sprint is given by its id, or null for the backlog.'));
+        }
 
         if ($input !== []) {
             $service->update((int) $ticket['id'], $input, (int) Auth::id());
@@ -172,7 +205,96 @@ class ApiController extends ApiEndpoint
             $service->resolve((int) $ticket['id'], $resolution, (int) Auth::id());
         }
 
+        // Into a sprint, or with null back to the backlog — its subtasks
+        // with it. A sprint on a board the ticket's project is not on
+        // leaves it where it was, which is said rather than let pass.
+        if ($sprintGiven) {
+            $sprintId = $sprint === null ? null : (int) $sprint;
+            (new \CantoTrack\Service\SprintService())->assign([(int) $ticket['id']], $sprintId, (int) Auth::id());
+
+            if ((int) ((new TicketRepository())->find((int) $ticket['id'])['sprint_id'] ?? 0) !== (int) $sprintId) {
+                throw new HttpError(422, __('{key}’s project is not on that sprint’s board.', ['key' => $key]));
+            }
+        }
+
         $this->json(['data' => Presenter::ticket((array) (new TicketRepository())->find((int) $ticket['id']), true)]);
+    }
+
+    /**
+     * Deletes a ticket — an administrator's to do, as on the web, and only
+     * one without hours or subtasks (422 otherwise).
+     */
+    public function deleteTicket(string $key): never
+    {
+        if (!Auth::isAdmin()) {
+            $this->forbidden(__('Only an administrator can delete a ticket.'));
+        }
+
+        $ticket = $this->ticketOr404($key);
+        (new TicketService())->delete((int) $ticket['id']);
+        \CantoTrack\Service\AuditLog::record('ticket_deleted', 'ticket', (int) $ticket['id'], $ticket['project_code'] . '-' . $ticket['number'] . ' ' . $ticket['title']);
+
+        $this->noContent();
+    }
+
+    /** Follows a ticket: its changes and comments reach you from now on. */
+    public function watch(string $key): never
+    {
+        $ticket = $this->ticketOr404($key);
+        (new \CantoTrack\Model\NotificationRepository())->watch((int) $ticket['id'], (int) Auth::id());
+
+        $this->noContent();
+    }
+
+    /** Stops following it. Being given it or mentioned in it still reaches you. */
+    public function unwatch(string $key): never
+    {
+        $ticket = $this->ticketOr404($key);
+        (new \CantoTrack\Model\NotificationRepository())->unwatch((int) $ticket['id'], (int) Auth::id());
+
+        $this->noContent();
+    }
+
+    // -----------------------------------------------------------------------
+    // Links between tickets
+    // -----------------------------------------------------------------------
+
+    /** A ticket's links, each read from this ticket's end. */
+    public function links(string $key): never
+    {
+        $ticket = $this->ticketOr404($key);
+
+        $this->json(['data' => array_map(fn(array $l): array => $this->linkData($l), (new LinkRepository())->forTicket((int) $ticket['id']))]);
+    }
+
+    /** {"kind": "blocks", "ticket": "CT-7"} — kind is blocks, blocked_by, relates, duplicates or duplicated_by. */
+    public function addLink(string $key): never
+    {
+        $this->member();
+        $ticket = $this->ticketOr404($key);
+        $input = $this->body();
+
+        (new LinkService())->link((int) $ticket['id'], (string) ($input['kind'] ?? ''), (string) ($input['ticket'] ?? ''), Auth::id());
+
+        $links = (new LinkRepository())->forTicket((int) $ticket['id']);
+        $other = strtoupper(trim((string) ($input['ticket'] ?? '')));
+        $made = array_values(array_filter($links, fn(array $l): bool => $l['other_code'] . '-' . $l['other_number'] === $other));
+
+        $this->json(['data' => array_map(fn(array $l): array => $this->linkData($l), $made)], 201);
+    }
+
+    public function deleteLink(int $id): never
+    {
+        $this->member();
+        $link = (new LinkRepository())->find($id);
+
+        if ($link === null) {
+            $this->notFound(__('There is no such link.'));
+        }
+
+        (new LinkService())->unlink($link, (int) $link['source_id'], Auth::id());
+
+        $this->noContent();
     }
 
     // -----------------------------------------------------------------------
@@ -193,6 +315,42 @@ class ApiController extends ApiEndpoint
         $id = (new CommentService())->add((int) $ticket['id'], (int) Auth::id(), (string) ($this->body()['body'] ?? ''));
 
         $this->json(['data' => $this->commentData((array) (new CommentRepository())->find($id))], 201);
+    }
+
+    /** {"body": "…"} — one's own comment, corrected. */
+    public function updateComment(int $id): never
+    {
+        $comment = $this->commentOr404($id);
+
+        if (!CommentService::canEdit($comment, (int) Auth::id())) {
+            $this->forbidden(__('Only the person who wrote a comment can change it.'));
+        }
+
+        (new CommentService())->edit($comment, (string) ($this->body()['body'] ?? ''));
+
+        $this->json(['data' => $this->commentData((array) (new CommentRepository())->find($id))]);
+    }
+
+    /** One's own comment taken back — anybody's, as an administrator. */
+    public function deleteComment(int $id): never
+    {
+        $comment = $this->commentOr404($id);
+
+        if (!CommentService::canDelete($comment, (int) Auth::id(), Auth::isAdmin())) {
+            $this->forbidden(__('That is somebody else’s comment.'));
+        }
+
+        (new CommentService())->remove($comment);
+
+        $this->noContent();
+    }
+
+    /** A ticket's hours, everybody's, the newest day first. */
+    public function ticketWorklogs(string $key): never
+    {
+        $ticket = $this->ticketOr404($key);
+
+        $this->json(['data' => array_map(fn(array $w): array => $this->worklogData($w), (new WorklogRepository())->forTicket((int) $ticket['id']))]);
     }
 
     /** ?from=2026-09-01&to=2026-09-30&user=3 — one's own when no user is given. */
@@ -340,6 +498,39 @@ class ApiController extends ApiEndpoint
     // -----------------------------------------------------------------------
     // What goes out
     // -----------------------------------------------------------------------
+
+    private function commentOr404(int $id): array
+    {
+        $comment = (new CommentRepository())->find($id);
+
+        if ($comment === null) {
+            $this->notFound(__('There is no such comment.'));
+        }
+
+        return $comment;
+    }
+
+    /**
+     * A link as seen from the ticket it was asked about: "blocks" CT-7 from
+     * the one doing the blocking, "blocked_by" CT-3 from the one waiting —
+     * the same words a new link is made with.
+     */
+    private function linkData(array $link): array
+    {
+        $out = $link['direction'] === 'out';
+
+        return [
+            'id' => (int) $link['id'],
+            'kind' => match ((string) $link['kind']) {
+                'blocks' => $out ? 'blocks' : 'blocked_by',
+                'duplicates' => $out ? 'duplicates' : 'duplicated_by',
+                default => 'relates',
+            },
+            'ticket' => $link['other_code'] . '-' . $link['other_number'],
+            'title' => $link['other_title'],
+            'status' => ['name' => $link['other_status'], 'category' => $link['other_category']],
+        ];
+    }
 
     private function projectData(array $project): array
     {

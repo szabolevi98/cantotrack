@@ -1971,4 +1971,8 @@ Az E-mail oldalról küldted.',
     'service account' => 'szolgáltatásfiók',
     '{name} is a service account, and cannot be given work.' => '{name} szolgáltatásfiók, ezért nem kaphat munkát.',
     '{name} is made. Make it a token below.' => '{name} létrejött. Lent hozhatsz létre hozzá tokent.',
+    'A sprint is given by its id, or null for the backlog.' => 'A sprintet az azonosítójával add meg, vagy null-lal a backloghoz.',
+    'Only an administrator can delete a ticket.' => 'Jegyet csak adminisztrátor törölhet.',
+    'Send the file as multipart/form-data, in a field called "file" — or "files[]" for several.' => 'A fájlt multipart/form-data formában küldd, egy "file" nevű mezőben — vagy többet "files[]"-ben.',
+    '{key}’s project is not on that sprint’s board.' => 'A(z) {key} projektje nincs rajta annak a sprintnek a tábláján.',
 ];

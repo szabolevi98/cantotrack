@@ -270,6 +270,11 @@ and they add up:
 | `type` | `task`, `bug` or `story` |
 | `label` | one label, exactly |
 | `q` | words in the title, the text or the comments — or a key, which finds that ticket |
+| `sprint` | a sprint's id; or `none`, for the ones in no sprint — a backlog |
+| `epic`, `release` | an epic's or a release's id |
+| `parent` | a ticket's key: its subtasks |
+| `top_level` | `1`: only tickets, not their subtasks |
+| `due` | `overdue`, or `week` for due in the next seven days; unfinished ones only |
 | `query` | the query language of the ticket list, the whole of it: `project = CT AND assignee = me ORDER BY priority DESC` |
 | `page`, `per_page` | see above |
 
@@ -322,6 +327,7 @@ Changes the fields sent, and no others — the same fields as a new ticket, and:
 | `status` | moves it to another column, by id or name — one the project's workflow allows it to go to from where it is; `422` otherwise |
 | `resolution` | why a finished ticket is finished: with `status`, or on its own for one that is done already |
 | `assignee_id` | `null` to take it off whoever has it |
+| `sprint` | a sprint's id — one not closed, on a board the ticket's project is on — or `null` for the backlog; its subtasks go with it |
 | `version` | the `version` you read: see below |
 
 Sending the `version` you read makes the change conditional: if somebody else
@@ -334,6 +340,18 @@ curl -X PATCH -H "Authorization: Bearer ct_…" -H "Content-Type: application/js
 ```
 
 Answers `200` with the ticket as it is now.
+
+### DELETE /tickets/{key}
+
+Deletes a ticket — an administrator's to do, as on the web. One with hours
+logged on it, or with subtasks, is `422`: move it to done instead, or delete
+those first. Answers `204`.
+
+### POST /tickets/{key}/watch
+
+Follows a ticket: its changes and comments reach your notifications from now
+on. `DELETE` on the same address stops following it; being given it or
+mentioned in it still reaches you. Both answer `204`.
 
 ## Comments
 
@@ -356,6 +374,83 @@ A ticket's comments, oldest first.
 ```
 
 Answers `201` with the comment. Guests may comment too.
+
+### PATCH /comments/{id}
+
+Corrects a comment of yours: `{"body": "…"}`. Only the person who wrote it
+can; anybody else is `403`. Answers `200` with the comment, and `edited_at`
+set.
+
+### DELETE /comments/{id}
+
+Takes a comment of yours back — anybody's, as an administrator. Answers `204`.
+
+## Links
+
+How tickets depend on each other. A link is read from the ticket it is asked
+about:
+
+```json
+{"id": 31, "kind": "blocked_by", "ticket": "CT-3", "title": "Sign-in page", "status": {"name": "Review", "category": "in_progress"}}
+```
+
+`kind` is `blocks`, `blocked_by`, `relates`, `duplicates` or `duplicated_by`.
+
+### GET /tickets/{key}/links
+
+A ticket's links — to the tickets you can see.
+
+### POST /tickets/{key}/links
+
+```json
+{"kind": "blocks", "ticket": "CT-7"}
+```
+
+Answers `201` with the link, as seen from this ticket. Linking a ticket to
+itself, twice the same way, or two tickets that would block each other is
+`422`.
+
+### DELETE /links/{id}
+
+Takes a link away, from whichever end. Answers `204`.
+
+## Attachments
+
+Files on a ticket: pictures, documents, archives — checked by what they are,
+not by their name, and up to the installation's size limit (`413` beyond it).
+
+```json
+{"id": 157, "name": "totals.png", "type": "image/png", "size": 48213, "image": {"width": 1280, "height": 720},
+ "author": {"id": 3, "name": "Anna Kovács"}, "created_at": "2026-09-22 14:05:11",
+ "url": "https://tracker.example/api/v1/attachments/157"}
+```
+
+`image` is `null` for anything that is not a picture.
+
+### GET /tickets/{key}/attachments
+
+A ticket's files, oldest first.
+
+### POST /tickets/{key}/attachments
+
+One file or several, as `multipart/form-data` — in a field called `file`, or
+`files[]` for several:
+
+```
+curl -H "Authorization: Bearer ct_…" -F "file=@totals.png" \
+     https://tracker.example/api/v1/tickets/CT-14/attachments
+```
+
+Answers `201` with the ones that got in under `data`, and why the others did
+not under `errors`; when none got in, `422`. Guests may attach files too.
+
+### GET /attachments/{id}
+
+The file itself, as a download with its own type.
+
+### DELETE /attachments/{id}
+
+Removes a file you attached — anybody's, as an administrator. Answers `204`.
 
 ## Hours
 
@@ -385,6 +480,10 @@ Hours in a range, oldest first — your own unless `user` says whose.
 ```json
 {"data": [{"…": "…"}], "meta": {"from": "2026-09-01", "to": "2026-09-30", "user_id": 3}}
 ```
+
+### GET /tickets/{key}/worklogs
+
+A ticket's hours — everybody's — the newest day first.
 
 ### POST /tickets/{key}/worklogs
 
@@ -455,6 +554,110 @@ is `422`.
 ### DELETE /timer
 
 Stops it without logging anything. Answers `204`.
+
+## Boards and sprints
+
+What the work is planned on. Each project has a board of its own; a shared
+board holds several projects, and its sprints can hold tickets of any of them.
+Planning itself — making, starting and closing sprints — is done on the web;
+the API reads it, and puts tickets into sprints with `PATCH /tickets/{key}`.
+
+### GET /boards
+
+Every board you can see: the projects' own first, then the shared ones.
+
+```json
+{"data": [{"id": 44, "name": "Client bugs", "shared": true, "projects": ["BIKE", "WEB"], "query": "type = bug",
+           "url": "https://tracker.example/boards/44"}]}
+```
+
+`query` narrows what a board shows of its projects' tickets, in the ticket
+list's query language; `null` for all of them.
+
+### GET /boards/{id}
+
+One board, with its columns left to right — each with the ids of the project
+statuses it holds, and whether it is a done column — and its sprints, the
+running one first:
+
+```json
+{"data": {"id": 44, "name": "Client bugs", "…": "…",
+          "columns": [{"name": "To do", "done": false, "status_ids": [2427, 2432]}, {"…": "…"}],
+          "sprints": [{"id": 711, "name": "Sprint 2", "goal": "…", "state": "active", "starts_on": "2026-09-21", "ends_on": "2026-10-02",
+                       "tickets": {"count": 7, "done": 1}, "points": {"total": 21, "done": 2}, "url": "…"}]}}
+```
+
+`state` is `planned`, `active` or `closed`. The counts are of tickets, without
+their subtasks.
+
+### GET /sprints/{id}
+
+One sprint, the same way, with the board it is on. Its tickets are
+`GET /tickets?sprint={id}`.
+
+## Epics, releases and work types
+
+### GET /projects/{code}/epics
+
+A project's epics, the open ones first:
+
+```json
+{"data": [{"id": 4, "title": "Reporting", "description": "…", "done": false, "starts_on": "2026-09-01", "ends_on": "2026-10-31",
+           "tickets": {"count": 7, "done": 2}, "url": "https://tracker.example/epics/4"}]}
+```
+
+Its tickets are `GET /tickets?epic={id}`; a ticket is put in one with
+`epic_id`.
+
+### GET /projects/{code}/releases
+
+A project's releases: the ones still coming, soonest first, then the ones that
+went out:
+
+```json
+{"data": [{"id": 7, "name": "1.4", "description": "…", "starts_on": "2026-09-01", "release_on": "2026-10-16",
+           "released": false, "released_at": null, "tickets": {"count": 16, "done": 7}, "url": "…"}]}
+```
+
+Its tickets are `GET /tickets?release={id}`; a ticket is put in one with
+`release`, by name or id.
+
+### GET /work-types
+
+The kinds of work an entry can be logged as, for `work_type`:
+
+```json
+{"data": [{"id": 1, "name": "Development"}, {"id": 2, "name": "Design"}]}
+```
+
+## Notifications
+
+What the bell says: what you were told about, newest first.
+
+```json
+{"id": 130, "kind": "mentioned", "reason": "mentioned", "read": false,
+ "text": "Anna Kovács mentioned you: can you check the totals?",
+ "actor": {"id": 3, "name": "Anna Kovács"}, "ticket": {"key": "CT-14", "title": "Export as PDF"}, "epic": null,
+ "project": "CT", "created_at": "2026-09-22 14:05:11", "url": "https://tracker.example/t/CT-14"}
+```
+
+`kind` is `assigned`, `mentioned`, `status`, `commented` or `changes` — what
+the profile's notification settings are chosen by; `reason` is why it reached
+you: `assigned`, `mentioned` or `watching`. `text` is the sentence the bell
+shows, in your own language. One about an epic has `epic` instead of `ticket`.
+
+### GET /notifications
+
+A page of them; only the unread ones with `?unread=1`. `meta.unread` is how
+many are unread in all — the number on the bell.
+
+### POST /notifications/{id}/read
+
+Marks one read. Answers `204`.
+
+### POST /notifications/read
+
+Marks them all read. Answers `204`.
 
 ## Webhooks
 

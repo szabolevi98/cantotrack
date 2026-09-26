@@ -42,7 +42,8 @@ class AttachmentRepository
     {
         // A ticket's, a page's or an epic's, and only where the person may look.
         $statement = $this->db->prepare(
-            'SELECT a.* FROM attachments a
+            'SELECT a.*, u.name AS user_name FROM attachments a
+             JOIN users u ON u.id = a.user_id
              LEFT JOIN tickets t ON t.id = a.ticket_id
              LEFT JOIN pages pg ON pg.id = a.page_id
              LEFT JOIN epics ep ON ep.id = a.epic_id

@@ -1322,6 +1322,56 @@ if ($email === null || $password === null) {
 
     $commented = api($baseUrl . '/api/v1/tickets/' . $apiKey . '/comments', $apiToken, 'POST', ['body' => 'Said through the API']);
     check('takes a comment', $commented['status'] === 201 && ($commented['json']['data']['body'] ?? '') === 'Said through the API');
+    $commentId = (int) ($commented['json']['data']['id'] ?? 0);
+    $corrected = api($baseUrl . '/api/v1/comments/' . $commentId, $apiToken, 'PATCH', ['body' => 'Said through the API, corrected']);
+    check('corrects it', $corrected['status'] === 200 && ($corrected['json']['data']['edited_at'] ?? null) !== null);
+    $takenBack = api($baseUrl . '/api/v1/tickets/' . $apiKey . '/comments', $apiToken, 'POST', ['body' => 'Taken back']);
+    check('and takes one back', api($baseUrl . '/api/v1/comments/' . (int) ($takenBack['json']['data']['id'] ?? 0), $apiToken, 'DELETE')['status'] === 204);
+
+    // A second ticket, linked to the first and read from both ends.
+    $second = api($baseUrl . '/api/v1/tickets', $apiToken, 'POST', ['project' => $code, 'title' => 'Waits for the first']);
+    $secondKey = (string) ($second['json']['data']['key'] ?? '');
+    $linked = api($baseUrl . '/api/v1/tickets/' . $apiKey . '/links', $apiToken, 'POST', ['kind' => 'blocks', 'ticket' => $secondKey]);
+    $fromTheOtherEnd = api($baseUrl . '/api/v1/tickets/' . $secondKey . '/links', $apiToken)['json']['data'][0] ?? [];
+    check(
+        'links two tickets, read from each end',
+        $linked['status'] === 201 && ($fromTheOtherEnd['kind'] ?? '') === 'blocked_by' && ($fromTheOtherEnd['ticket'] ?? '') === $apiKey
+    );
+    check('and takes the link away', api($baseUrl . '/api/v1/links/' . (int) ($fromTheOtherEnd['id'] ?? 0), $apiToken, 'DELETE')['status'] === 204);
+
+    // A file, as multipart, and back again.
+    $handle = curl_init($baseUrl . '/api/v1/tickets/' . $apiKey . '/attachments');
+    $note = tempnam(sys_get_temp_dir(), 'ct');
+    file_put_contents($note, 'Attached through the API');
+    curl_setopt_array($handle, [
+        CURLOPT_RETURNTRANSFER => true,
+        CURLOPT_POST => true,
+        CURLOPT_POSTFIELDS => ['file' => new CURLFile($note, 'text/plain', 'api-note.txt')],
+        CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . $apiToken, 'Accept: application/json'],
+    ]);
+    $attached = json_decode((string) curl_exec($handle), true);
+    $attachedStatus = (int) curl_getinfo($handle, CURLINFO_HTTP_CODE);
+    curl_close($handle);
+    unlink($note);
+    $attachmentId = (int) ($attached['data'][0]['id'] ?? 0);
+    check('takes a file', $attachedStatus === 201 && ($attached['data'][0]['name'] ?? '') === 'api-note.txt');
+    $downloaded = api($baseUrl . '/api/v1/attachments/' . $attachmentId, $apiToken);
+    check('hands it back as it was', $downloaded['status'] === 200 && $downloaded['body'] === 'Attached through the API');
+    check('and removes it', api($baseUrl . '/api/v1/attachments/' . $attachmentId, $apiToken, 'DELETE')['status'] === 204);
+
+    check('deletes a ticket without hours', api($baseUrl . '/api/v1/tickets/' . $secondKey, $apiToken, 'DELETE')['status'] === 204);
+    check('follows a ticket, and stops', api($baseUrl . '/api/v1/tickets/' . $apiKey . '/watch', $apiToken, 'POST')['status'] === 204
+        && api($baseUrl . '/api/v1/tickets/' . $apiKey . '/watch', $apiToken, 'DELETE')['status'] === 204);
+
+    $boards = api($baseUrl . '/api/v1/boards', $apiToken);
+    $ownBoard = array_values(array_filter($boards['json']['data'] ?? [], static fn(array $b): bool => $b['projects'] === [$code]))[0] ?? null;
+    check('lists the boards, the project\'s own among them', $boards['status'] === 200 && $ownBoard !== null);
+    check('and one board with its columns', count(api($baseUrl . '/api/v1/boards/' . (int) ($ownBoard['id'] ?? 0), $apiToken)['json']['data']['columns'] ?? []) > 0);
+    check('a project\'s epics and releases, and the work types', api($baseUrl . '/api/v1/projects/' . $code . '/epics', $apiToken)['status'] === 200
+        && api($baseUrl . '/api/v1/projects/' . $code . '/releases', $apiToken)['status'] === 200
+        && api($baseUrl . '/api/v1/work-types', $apiToken)['status'] === 200);
+    $bell = api($baseUrl . '/api/v1/notifications?unread=1', $apiToken);
+    check('the notifications, with how many are unread', $bell['status'] === 200 && isset($bell['json']['meta']['unread']));
 
     $apiLog = api($baseUrl . '/api/v1/tickets/' . $apiKey . '/worklogs', $apiToken, 'POST', ['time' => '45m', 'note' => 'Through the API']);
     $apiLogId = (int) ($apiLog['json']['data']['id'] ?? 0);
@@ -1344,6 +1394,7 @@ if ($email === null || $password === null) {
 
     $week = api($baseUrl . '/api/v1/worklogs', $apiToken);
     check('lists one\'s own hours', $week['status'] === 200 && in_array($apiLogId, array_column($week['json']['data'] ?? [], 'id'), true));
+    check('and a ticket\'s', in_array($apiLogId, array_column(api($baseUrl . '/api/v1/tickets/' . $apiKey . '/worklogs', $apiToken)['json']['data'] ?? [], 'id'), true));
     $changedLog = api($baseUrl . '/api/v1/worklogs/' . $apiLogId, $apiToken, 'PATCH', ['time' => '1h 15m']);
     check(
         'changes an entry, only in what it is sent',

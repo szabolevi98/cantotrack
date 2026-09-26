@@ -10,9 +10,12 @@
  * @var \CantoTrack\Core\Router $router
  */
 
+use CantoTrack\Controller\ApiAttachmentController;
 use CantoTrack\Controller\ApiAuthController;
 use CantoTrack\Controller\ApiController;
 use CantoTrack\Controller\ApiDocsController;
+use CantoTrack\Controller\ApiNotificationController;
+use CantoTrack\Controller\ApiPlanController;
 use CantoTrack\Controller\ApiTokenController;
 use CantoTrack\Controller\AttachmentController;
 use CantoTrack\Controller\AuditController;
@@ -374,8 +377,21 @@ $router->get('/api/v1/tickets', static fn() => (new ApiController())->tickets())
 $router->post('/api/v1/tickets', static fn() => (new ApiController())->createTicket());
 $router->get('/api/v1/tickets/{key}', static fn($key) => (new ApiController())->ticket((string) $key));
 $router->patch('/api/v1/tickets/{key}', static fn($key) => (new ApiController())->updateTicket((string) $key));
+$router->delete('/api/v1/tickets/{key}', static fn($key) => (new ApiController())->deleteTicket((string) $key));
+$router->post('/api/v1/tickets/{key}/watch', static fn($key) => (new ApiController())->watch((string) $key));
+$router->delete('/api/v1/tickets/{key}/watch', static fn($key) => (new ApiController())->unwatch((string) $key));
+$router->get('/api/v1/tickets/{key}/links', static fn($key) => (new ApiController())->links((string) $key));
+$router->post('/api/v1/tickets/{key}/links', static fn($key) => (new ApiController())->addLink((string) $key));
+$router->delete('/api/v1/links/{id}', static fn($id) => (new ApiController())->deleteLink((int) $id));
+$router->get('/api/v1/tickets/{key}/attachments', static fn($key) => (new ApiAttachmentController())->index((string) $key));
+$router->post('/api/v1/tickets/{key}/attachments', static fn($key) => (new ApiAttachmentController())->upload((string) $key));
+$router->get('/api/v1/attachments/{id}', static fn($id) => (new ApiAttachmentController())->download((int) $id));
+$router->delete('/api/v1/attachments/{id}', static fn($id) => (new ApiAttachmentController())->delete((int) $id));
 $router->get('/api/v1/tickets/{key}/comments', static fn($key) => (new ApiController())->comments((string) $key));
 $router->post('/api/v1/tickets/{key}/comments', static fn($key) => (new ApiController())->addComment((string) $key));
+$router->patch('/api/v1/comments/{id}', static fn($id) => (new ApiController())->updateComment((int) $id));
+$router->delete('/api/v1/comments/{id}', static fn($id) => (new ApiController())->deleteComment((int) $id));
+$router->get('/api/v1/tickets/{key}/worklogs', static fn($key) => (new ApiController())->ticketWorklogs((string) $key));
 $router->post('/api/v1/tickets/{key}/worklogs', static fn($key) => (new ApiController())->logWork((string) $key));
 $router->get('/api/v1/worklogs', static fn() => (new ApiController())->worklogs());
 $router->patch('/api/v1/worklogs/{id}', static fn($id) => (new ApiController())->updateWorklog((int) $id));
@@ -384,6 +400,15 @@ $router->get('/api/v1/timer', static fn() => (new ApiController())->timer());
 $router->post('/api/v1/tickets/{key}/timer', static fn($key) => (new ApiController())->startTimer((string) $key));
 $router->post('/api/v1/timer/stop', static fn() => (new ApiController())->stopTimer());
 $router->delete('/api/v1/timer', static fn() => (new ApiController())->discardTimer());
+$router->get('/api/v1/boards', static fn() => (new ApiPlanController())->boards());
+$router->get('/api/v1/boards/{id}', static fn($id) => (new ApiPlanController())->board((int) $id));
+$router->get('/api/v1/sprints/{id}', static fn($id) => (new ApiPlanController())->sprint((int) $id));
+$router->get('/api/v1/projects/{code}/epics', static fn($code) => (new ApiPlanController())->epics((string) $code));
+$router->get('/api/v1/projects/{code}/releases', static fn($code) => (new ApiPlanController())->releases((string) $code));
+$router->get('/api/v1/work-types', static fn() => (new ApiPlanController())->workTypes());
+$router->get('/api/v1/notifications', static fn() => (new ApiNotificationController())->index());
+$router->post('/api/v1/notifications/read', static fn() => (new ApiNotificationController())->readAll());
+$router->post('/api/v1/notifications/{id}/read', static fn($id) => (new ApiNotificationController())->read((int) $id));
 
 // ---------------------------------------------------------------------------
 // News from other services, each signed with its own secret

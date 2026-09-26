@@ -51,6 +51,23 @@ class NotificationRepository
         return $statement->fetchAll();
     }
 
+    /** How many forUser() finds with the same filters, for the pages of a list. */
+    public function countForUser(int $userId, array $filters = []): int
+    {
+        [$where, $parameters] = $this->narrowed($userId, $filters);
+
+        $statement = $this->db->prepare(
+            'SELECT COUNT(*) FROM notifications n
+             LEFT JOIN tickets t ON t.id = n.ticket_id
+             LEFT JOIN epics ep ON ep.id = n.epic_id
+             JOIN projects p ON p.id = COALESCE(t.project_id, ep.project_id)
+             WHERE ' . $where
+        );
+        $statement->execute($parameters);
+
+        return (int) $statement->fetchColumn();
+    }
+
     /**
      * The unread ones that came after the one with `$afterId` — what the page
      * that asks every minute has not shown yet — oldest first.

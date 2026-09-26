@@ -184,7 +184,7 @@ class AttachmentController extends Controller
      *
      * @return list<array<string, mixed>>
      */
-    private static function files(): array
+    public static function files(): array
     {
         $files = [];
 

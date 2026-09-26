@@ -398,12 +398,20 @@ installation's own address. In short:
 | `GET` | `/api/v1/users` | the active people |
 | `GET` | `/api/v1/projects` | the projects you can see (`?archived=1` for all) |
 | `GET` | `/api/v1/projects/{code}` | one project, with its columns |
-| `GET` | `/api/v1/tickets` | a page of tickets: `?project=CT&status=in_progress&assignee=me&label=…&q=…&type=bug&open=1&page=2&per_page=50` |
+| `GET` | `/api/v1/tickets` | a page of tickets: `?project=CT&status=in_progress&assignee=me&label=…&q=…&type=bug&open=1&sprint=12&epic=4&parent=CT-12&due=overdue&page=2` — or the whole query language in `?query=` |
 | `POST` | `/api/v1/tickets` | a new ticket |
 | `GET` | `/api/v1/tickets/{key}` | one ticket, by its key |
-| `PATCH` | `/api/v1/tickets/{key}` | change the fields sent, and no others |
+| `PATCH` | `/api/v1/tickets/{key}` | change the fields sent, and no others — its column, its sprint too |
+| `DELETE` | `/api/v1/tickets/{key}` | delete one without hours (administrators) |
+| `POST`, `DELETE` | `/api/v1/tickets/{key}/watch` | follow it, or stop |
 | `GET` | `/api/v1/tickets/{key}/comments` | its comments |
 | `POST` | `/api/v1/tickets/{key}/comments` | `{"body": "…"}` |
+| `PATCH`, `DELETE` | `/api/v1/comments/{id}` | correct a comment of yours, or take it back |
+| `GET`, `POST` | `/api/v1/tickets/{key}/links` | its links; `{"kind": "blocks", "ticket": "CT-7"}` |
+| `DELETE` | `/api/v1/links/{id}` | take a link away |
+| `GET`, `POST` | `/api/v1/tickets/{key}/attachments` | its files; upload as `multipart/form-data` |
+| `GET`, `DELETE` | `/api/v1/attachments/{id}` | a file itself, or remove it |
+| `GET` | `/api/v1/tickets/{key}/worklogs` | its hours, everybody's |
 | `POST` | `/api/v1/tickets/{key}/worklogs` | `{"time": "1h 30m", "date": "2026-09-22", "note": "…", "remaining": "2h", "billable": true}` |
 | `GET` | `/api/v1/worklogs` | hours in a range: `?from=2026-09-01&to=2026-09-30&user=3` (your own by default) |
 | `PATCH` | `/api/v1/worklogs/{id}` | change an entry of yours: `time`, `date`, `note`, `start`, `billable`, `work_type` — only the fields sent |
@@ -412,6 +420,11 @@ installation's own address. In short:
 | `POST` | `/api/v1/tickets/{key}/timer` | start it on a ticket; one running elsewhere is logged first |
 | `POST` | `/api/v1/timer/stop` | `{"note": "…"}` — stop it and log the time (under a minute logs nothing) |
 | `DELETE` | `/api/v1/timer` | stop it without logging |
+| `GET` | `/api/v1/boards`, `/api/v1/boards/{id}`, `/api/v1/sprints/{id}` | the boards, with their columns and sprints |
+| `GET` | `/api/v1/projects/{code}/epics`, `/api/v1/projects/{code}/releases` | a project's epics and releases |
+| `GET` | `/api/v1/work-types` | what hours can be logged as |
+| `GET` | `/api/v1/notifications` | the bell: `?unread=1` |
+| `POST` | `/api/v1/notifications/{id}/read`, `/api/v1/notifications/read` | mark one read, or all |
 
 A new ticket:
 

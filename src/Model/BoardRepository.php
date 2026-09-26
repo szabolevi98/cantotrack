@@ -83,6 +83,19 @@ class BoardRepository
         return $statement->fetchAll();
     }
 
+    /** Every board somebody may see: the projects' own by code, then the shared ones by name — for the API. */
+    public function visible(): array
+    {
+        $statement = $this->db->prepare(
+            'SELECT b.* FROM boards b LEFT JOIN projects p ON p.id = b.project_id
+             WHERE 1 = 1' . Access::boardSql('b.id') . '
+             ORDER BY b.project_id IS NULL, p.code, b.name, b.id'
+        );
+        $statement->execute();
+
+        return $statement->fetchAll();
+    }
+
     /** The shared boards a project is on, by name. */
     public function sharedWith(int $projectId): array
     {

@@ -223,6 +223,8 @@ $schemas = [
         'description' => str('Markdown, as it was written.'),
         'reporter' => nullable(ref('PersonRef')),
         'fields' => ['type' => 'object', 'description' => 'The project\'s own fields, by name; null where empty.', 'additionalProperties' => true],
+        'starred' => boolean('Whether you starred it.'),
+        'watching' => boolean('Whether its changes reach you: you follow it, or it is yours and not muted.'),
     ], ['description', 'fields'])]],
     'TicketInput' => obj([
         'project' => str('A project\'s code. Needed for a new ticket; ignored in a PATCH.'),
@@ -349,6 +351,45 @@ $schemas = [
         'url' => str(null, ['format' => 'uri']),
     ], ['id', 'name', 'released', 'tickets', 'url']),
     'WorkType' => obj(['id' => int(), 'name' => str()], ['id', 'name']),
+    'Absence' => obj([
+        'id' => int(),
+        'starts_on' => date_(),
+        'ends_on' => date_(),
+        'kind' => str(null, ['enum' => ['vacation', 'sick', 'other']]),
+        'note' => nullable(str()),
+    ], ['id', 'starts_on', 'ends_on', 'kind']),
+    'AbsenceInput' => obj([
+        'starts_on' => date_(),
+        'ends_on' => date_('The last day; the first when not given.'),
+        'kind' => str('vacation when not given.', ['enum' => ['vacation', 'sick', 'other']]),
+        'note' => str(),
+        'user' => int('An administrator\'s, for somebody else.'),
+    ], ['starts_on']),
+    'Week' => obj([
+        'monday' => date_(),
+        'sunday' => date_(),
+        'user' => ref('PersonRef'),
+        'days' => listOf(obj([
+            'date' => date_(),
+            'expected_minutes' => int('What the day asks for: the person\'s own week, 0 on a holiday or a day away.'),
+            'logged_minutes' => int(),
+            'holiday' => nullable(str('The holiday\'s name.')),
+            'absence' => nullable(str(null, ['enum' => ['vacation', 'sick', 'other']])),
+        ], ['date', 'expected_minutes', 'logged_minutes'])),
+        'logged_minutes' => int(),
+        'expected_minutes' => int('The whole week\'s.'),
+        'expected_to_date_minutes' => int('Up to today: the days still to come are not missing yet.'),
+        'state' => nullable(obj([
+            'state' => str(null, ['enum' => ['submitted', 'approved', 'rejected']]),
+            'submitted_at' => nullable(str()),
+            'reviewed_at' => nullable(str()),
+            'reviewer' => nullable(ref('PersonRef')),
+            'comment' => nullable(str('Why it was sent back.')),
+        ], ['state'])),
+        'can_submit' => boolean('Your own week, begun, and not handed in (or sent back).'),
+        'locked_until' => nullable(date_('Hours up to this day are closed for everybody.')),
+        'absences' => listOf(ref('Absence')),
+    ], ['monday', 'sunday', 'user', 'days', 'logged_minutes', 'expected_minutes', 'expected_to_date_minutes', 'state', 'can_submit', 'absences']),
     'Notification' => obj([
         'id' => int(),
         'kind' => str(null, ['enum' => ['assigned', 'mentioned', 'status', 'commented', 'changes']]),
@@ -454,7 +495,12 @@ $add('/tickets', 'get', op('get', 'Tickets', 'tickets', 'A page of tickets', 'Th
 $add('/tickets', 'post', op('post', 'Tickets', 'createTicket', 'A new ticket', 'project and title are needed.', [
     '201' => ['description' => 'Made; its address is in Location.', 'headers' => ['Location' => ['schema' => str(null, ['format' => 'uri'])]], 'content' => ['application/json' => ['schema' => envelope(ref('TicketDetail'))]]],
 ] + errors(400, 403, 404, 422), [], body(ref('TicketInput'))));
-$add('/tickets/{key}', 'get', op('get', 'Tickets', 'ticket', 'One ticket', '', ['200' => json(envelope(ref('TicketDetail')), 'The ticket.')] + errors(404), [p('key')]));
+$add('/tickets/{key}', 'get', op('get', 'Tickets', 'ticket', 'One ticket', 'Reading it is opening it, as on the web: it is among your recently opened, and its notifications are read.', ['200' => json(envelope(ref('TicketDetail')), 'The ticket.')] + errors(404), [p('key')]));
+$add('/tickets/suggested', 'get', op('get', 'Tickets', 'suggestedTickets', 'What to log time on', 'Your starred tickets, the ones you logged time on lately, and the ones you have in progress — what the web\'s Log time offers before anything is typed.', ['200' => json(envelope(listOf(ref('Ticket'))), 'At most twenty.')]));
+$add('/tickets/{key}/star', 'post', op('post', 'Tickets', 'star', 'Star a ticket', 'First when you log time, and a row in your week\'s grid.', $noContent + errors(404), [p('key')]));
+$add('/tickets/{key}/star', 'delete', op('delete', 'Tickets', 'unstar', 'Take the star off', '', $noContent + errors(404), [p('key')]));
+$add('/starred', 'get', op('get', 'Tickets', 'starred', 'Your starred tickets', 'The unfinished ones, the latest starred first.', ['200' => json(envelope(listOf(ref('Ticket'))), 'The tickets.')]));
+$add('/recent', 'get', op('get', 'Tickets', 'recent', 'The tickets you opened lately', 'On the web or in an app, the latest first.', ['200' => json(envelope(listOf(ref('Ticket'))), 'At most fifteen.')]));
 $add('/tickets/{key}', 'patch', op('patch', 'Tickets', 'updateTicket', 'Change the fields sent, and no others', 'Its column, its sprint too. With version, conditional.', ['200' => json(envelope(ref('TicketDetail')), 'The ticket as it is now.')] + errors(400, 403, 404, 409, 422), [p('key')], body(ref('TicketInput'))));
 $add('/tickets/{key}', 'delete', op('delete', 'Tickets', 'deleteTicket', 'Delete a ticket', 'Administrators only; one with hours or subtasks is 422.', $noContent + errors(403, 404, 422), [p('key')]));
 $add('/tickets/{key}/watch', 'post', op('post', 'Tickets', 'watch', 'Follow a ticket', '', $noContent + errors(404), [p('key')]));
@@ -499,6 +545,20 @@ $add('/tickets/{key}/timer', 'post', op('post', 'The clock', 'startTimer', 'Star
 $add('/timer/stop', 'post', op('post', 'The clock', 'stopTimer', 'Stop it and log the time', 'Under a minute nothing is logged, and data is null. No clock running is 422.', [
     '200' => json(envelope(nullable(ref('Logged'))), 'What was logged.'),
 ] + errors(400, 403, 422), [], body(obj(['note' => str()]), false)));
+
+$add('/week', 'get', op('get', 'Hours', 'week', 'A week of hours against what it asks for', 'Each day\'s hours beside what the day asks for — the person\'s own week, less holidays and days away — and where the week stands with the one approving it.', [
+    '200' => json(envelope(ref('Week')), 'The week.'),
+] + errors(403, 404, 422), [
+    query('week', date_(), 'Any day of the week; this week when not given.'),
+    query('user', int(), 'A person\'s id; yours when not given.'),
+]));
+$add('/week/submit', 'post', op('post', 'Hours', 'submitWeek', 'Hand your week in', 'For an administrator to approve; its hours stop changing until it is approved or sent back. One handed in already, or not begun, is 422.', [
+    '200' => json(envelope(ref('Week')), 'The week, handed in.'),
+] + errors(400, 403, 422), [], body(obj(['week' => date_('Any day of the week; this week when not given.')]), false)));
+$add('/absences', 'post', op('post', 'Hours', 'addAbsence', 'Days away', 'Your own — anybody\'s, as an administrator. Those days ask for no hours.', [
+    '201' => json(envelope(ref('Absence')), 'Noted.'),
+] + errors(400, 403, 422), [], body(ref('AbsenceInput'))));
+$add('/absences/{id}', 'delete', op('delete', 'Hours', 'deleteAbsence', 'Take days away off the calendar', '', $noContent + errors(403, 404), [p('id')]));
 
 $add('/boards', 'get', op('get', 'Planning', 'boards', 'Every board you can see', 'The projects\' own first, then the shared ones.', ['200' => json(envelope(listOf(ref('Board'))), 'The boards.')]));
 $add('/boards/{id}', 'get', op('get', 'Planning', 'board', 'One board', 'Its columns and its sprints, the running one first.', ['200' => json(envelope(ref('BoardDetail')), 'The board.')] + errors(404), [p('id')]));

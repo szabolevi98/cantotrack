@@ -56,6 +56,94 @@
         }
     ],
     "paths": {
+        "/absences": {
+            "post": {
+                "tags": [
+                    "Hours"
+                ],
+                "operationId": "addAbsence",
+                "summary": "Days away",
+                "description": "Your own — anybody's, as an administrator. Those days ask for no hours.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "requestBody": {
+                    "required": true,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "$ref": "#/components/schemas/AbsenceInput"
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "201": {
+                        "description": "Noted.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Absence"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/Unprocessable"
+                    }
+                }
+            }
+        },
+        "/absences/{id}": {
+            "delete": {
+                "tags": [
+                    "Hours"
+                ],
+                "operationId": "deleteAbsence",
+                "summary": "Take days away off the calendar",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/id"
+                    },
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Done; nothing to show for it."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
         "/attachments/{id}": {
             "get": {
                 "tags": [
@@ -786,6 +874,42 @@
                 }
             }
         },
+        "/recent": {
+            "get": {
+                "tags": [
+                    "Tickets"
+                ],
+                "operationId": "recent",
+                "summary": "The tickets you opened lately",
+                "description": "On the web or in an app, the latest first.",
+                "responses": {
+                    "200": {
+                        "description": "At most fifteen.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Ticket"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    }
+                }
+            }
+        },
         "/sprints/{id}": {
             "get": {
                 "tags": [
@@ -823,6 +947,42 @@
                     },
                     "404": {
                         "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
+        "/starred": {
+            "get": {
+                "tags": [
+                    "Tickets"
+                ],
+                "operationId": "starred",
+                "summary": "Your starred tickets",
+                "description": "The unfinished ones, the latest starred first.",
+                "responses": {
+                    "200": {
+                        "description": "The tickets.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Ticket"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
                     }
                 }
             }
@@ -1088,6 +1248,42 @@
                 }
             }
         },
+        "/tickets/suggested": {
+            "get": {
+                "tags": [
+                    "Tickets"
+                ],
+                "operationId": "suggestedTickets",
+                "summary": "What to log time on",
+                "description": "Your starred tickets, the ones you logged time on lately, and the ones you have in progress — what the web's Log time offers before anything is typed.",
+                "responses": {
+                    "200": {
+                        "description": "At most twenty.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "type": "array",
+                                            "items": {
+                                                "$ref": "#/components/schemas/Ticket"
+                                            }
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    }
+                }
+            }
+        },
         "/tickets/{key}": {
             "get": {
                 "tags": [
@@ -1095,6 +1291,7 @@
                 ],
                 "operationId": "ticket",
                 "summary": "One ticket",
+                "description": "Reading it is opening it, as on the web: it is among your recently opened, and its notifications are read.",
                 "parameters": [
                     {
                         "$ref": "#/components/parameters/key"
@@ -1561,6 +1758,61 @@
                 }
             }
         },
+        "/tickets/{key}/star": {
+            "post": {
+                "tags": [
+                    "Tickets"
+                ],
+                "operationId": "star",
+                "summary": "Star a ticket",
+                "description": "First when you log time, and a row in your week's grid.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/key"
+                    },
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Done; nothing to show for it."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            },
+            "delete": {
+                "tags": [
+                    "Tickets"
+                ],
+                "operationId": "unstar",
+                "summary": "Take the star off",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/key"
+                    },
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "responses": {
+                    "204": {
+                        "description": "Done; nothing to show for it."
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    }
+                }
+            }
+        },
         "/tickets/{key}/timer": {
             "post": {
                 "tags": [
@@ -1955,6 +2207,139 @@
                     },
                     "401": {
                         "$ref": "#/components/responses/Unauthorized"
+                    }
+                }
+            }
+        },
+        "/week": {
+            "get": {
+                "tags": [
+                    "Hours"
+                ],
+                "operationId": "week",
+                "summary": "A week of hours against what it asks for",
+                "description": "Each day's hours beside what the day asks for — the person's own week, less holidays and days away — and where the week stands with the one approving it.",
+                "parameters": [
+                    {
+                        "name": "week",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "string",
+                            "format": "date",
+                            "examples": [
+                                "2026-09-22"
+                            ]
+                        },
+                        "description": "Any day of the week; this week when not given."
+                    },
+                    {
+                        "name": "user",
+                        "in": "query",
+                        "required": false,
+                        "schema": {
+                            "type": "integer"
+                        },
+                        "description": "A person's id; yours when not given."
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "The week.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Week"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "404": {
+                        "$ref": "#/components/responses/NotFound"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/Unprocessable"
+                    }
+                }
+            }
+        },
+        "/week/submit": {
+            "post": {
+                "tags": [
+                    "Hours"
+                ],
+                "operationId": "submitWeek",
+                "summary": "Hand your week in",
+                "description": "For an administrator to approve; its hours stop changing until it is approved or sent back. One handed in already, or not begun, is 422.",
+                "parameters": [
+                    {
+                        "$ref": "#/components/parameters/IdempotencyKey"
+                    }
+                ],
+                "requestBody": {
+                    "required": false,
+                    "content": {
+                        "application/json": {
+                            "schema": {
+                                "type": "object",
+                                "properties": {
+                                    "week": {
+                                        "type": "string",
+                                        "description": "Any day of the week; this week when not given.",
+                                        "format": "date",
+                                        "examples": [
+                                            "2026-09-22"
+                                        ]
+                                    }
+                                }
+                            }
+                        }
+                    }
+                },
+                "responses": {
+                    "200": {
+                        "description": "The week, handed in.",
+                        "content": {
+                            "application/json": {
+                                "schema": {
+                                    "type": "object",
+                                    "properties": {
+                                        "data": {
+                                            "$ref": "#/components/schemas/Week"
+                                        }
+                                    },
+                                    "required": [
+                                        "data"
+                                    ]
+                                }
+                            }
+                        }
+                    },
+                    "400": {
+                        "$ref": "#/components/responses/BadRequest"
+                    },
+                    "401": {
+                        "$ref": "#/components/responses/Unauthorized"
+                    },
+                    "403": {
+                        "$ref": "#/components/responses/Forbidden"
+                    },
+                    "422": {
+                        "$ref": "#/components/responses/Unprocessable"
                     }
                 }
             }
@@ -2767,6 +3152,14 @@
                                 "type": "object",
                                 "description": "The project's own fields, by name; null where empty.",
                                 "additionalProperties": true
+                            },
+                            "starred": {
+                                "type": "boolean",
+                                "description": "Whether you starred it."
+                            },
+                            "watching": {
+                                "type": "boolean",
+                                "description": "Whether its changes reach you: you follow it, or it is yours and not muted."
                             }
                         },
                         "required": [
@@ -3597,6 +3990,247 @@
                 "required": [
                     "id",
                     "name"
+                ]
+            },
+            "Absence": {
+                "type": "object",
+                "properties": {
+                    "id": {
+                        "type": "integer"
+                    },
+                    "starts_on": {
+                        "type": "string",
+                        "format": "date",
+                        "examples": [
+                            "2026-09-22"
+                        ]
+                    },
+                    "ends_on": {
+                        "type": "string",
+                        "format": "date",
+                        "examples": [
+                            "2026-09-22"
+                        ]
+                    },
+                    "kind": {
+                        "type": "string",
+                        "enum": [
+                            "vacation",
+                            "sick",
+                            "other"
+                        ]
+                    },
+                    "note": {
+                        "type": [
+                            "string",
+                            "null"
+                        ]
+                    }
+                },
+                "required": [
+                    "id",
+                    "starts_on",
+                    "ends_on",
+                    "kind"
+                ]
+            },
+            "AbsenceInput": {
+                "type": "object",
+                "properties": {
+                    "starts_on": {
+                        "type": "string",
+                        "format": "date",
+                        "examples": [
+                            "2026-09-22"
+                        ]
+                    },
+                    "ends_on": {
+                        "type": "string",
+                        "description": "The last day; the first when not given.",
+                        "format": "date",
+                        "examples": [
+                            "2026-09-22"
+                        ]
+                    },
+                    "kind": {
+                        "type": "string",
+                        "description": "vacation when not given.",
+                        "enum": [
+                            "vacation",
+                            "sick",
+                            "other"
+                        ]
+                    },
+                    "note": {
+                        "type": "string"
+                    },
+                    "user": {
+                        "type": "integer",
+                        "description": "An administrator's, for somebody else."
+                    }
+                },
+                "required": [
+                    "starts_on"
+                ]
+            },
+            "Week": {
+                "type": "object",
+                "properties": {
+                    "monday": {
+                        "type": "string",
+                        "format": "date",
+                        "examples": [
+                            "2026-09-22"
+                        ]
+                    },
+                    "sunday": {
+                        "type": "string",
+                        "format": "date",
+                        "examples": [
+                            "2026-09-22"
+                        ]
+                    },
+                    "user": {
+                        "$ref": "#/components/schemas/PersonRef"
+                    },
+                    "days": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "properties": {
+                                "date": {
+                                    "type": "string",
+                                    "format": "date",
+                                    "examples": [
+                                        "2026-09-22"
+                                    ]
+                                },
+                                "expected_minutes": {
+                                    "type": "integer",
+                                    "description": "What the day asks for: the person's own week, 0 on a holiday or a day away."
+                                },
+                                "logged_minutes": {
+                                    "type": "integer"
+                                },
+                                "holiday": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "description": "The holiday's name."
+                                },
+                                "absence": {
+                                    "type": [
+                                        "string",
+                                        "null"
+                                    ],
+                                    "enum": [
+                                        "vacation",
+                                        "sick",
+                                        "other",
+                                        null
+                                    ]
+                                }
+                            },
+                            "required": [
+                                "date",
+                                "expected_minutes",
+                                "logged_minutes"
+                            ]
+                        }
+                    },
+                    "logged_minutes": {
+                        "type": "integer"
+                    },
+                    "expected_minutes": {
+                        "type": "integer",
+                        "description": "The whole week's."
+                    },
+                    "expected_to_date_minutes": {
+                        "type": "integer",
+                        "description": "Up to today: the days still to come are not missing yet."
+                    },
+                    "state": {
+                        "type": [
+                            "object",
+                            "null"
+                        ],
+                        "properties": {
+                            "state": {
+                                "type": "string",
+                                "enum": [
+                                    "submitted",
+                                    "approved",
+                                    "rejected"
+                                ]
+                            },
+                            "submitted_at": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "reviewed_at": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ]
+                            },
+                            "reviewer": {
+                                "oneOf": [
+                                    {
+                                        "$ref": "#/components/schemas/PersonRef"
+                                    },
+                                    {
+                                        "type": "null"
+                                    }
+                                ]
+                            },
+                            "comment": {
+                                "type": [
+                                    "string",
+                                    "null"
+                                ],
+                                "description": "Why it was sent back."
+                            }
+                        },
+                        "required": [
+                            "state"
+                        ]
+                    },
+                    "can_submit": {
+                        "type": "boolean",
+                        "description": "Your own week, begun, and not handed in (or sent back)."
+                    },
+                    "locked_until": {
+                        "type": [
+                            "string",
+                            "null"
+                        ],
+                        "description": "Hours up to this day are closed for everybody.",
+                        "format": "date",
+                        "examples": [
+                            "2026-09-22"
+                        ]
+                    },
+                    "absences": {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/components/schemas/Absence"
+                        }
+                    }
+                },
+                "required": [
+                    "monday",
+                    "sunday",
+                    "user",
+                    "days",
+                    "logged_minutes",
+                    "expected_minutes",
+                    "expected_to_date_minutes",
+                    "state",
+                    "can_submit",
+                    "absences"
                 ]
             },
             "Notification": {

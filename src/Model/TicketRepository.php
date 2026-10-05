@@ -813,6 +813,17 @@ class TicketRepository
         return true;
     }
 
+    /** Stars a ticket; starring one already starred changes nothing. */
+    public function star(int $ticketId, int $userId): void
+    {
+        $this->db->prepare('INSERT IGNORE INTO ticket_favourites (ticket_id, user_id) VALUES (:t, :u)')->execute(['t' => $ticketId, 'u' => $userId]);
+    }
+
+    public function unstar(int $ticketId, int $userId): void
+    {
+        $this->db->prepare('DELETE FROM ticket_favourites WHERE ticket_id = :t AND user_id = :u')->execute(['t' => $ticketId, 'u' => $userId]);
+    }
+
     /**
      * Somebody's starred tickets that are not finished — the ones they can
      * see — most recently starred first.

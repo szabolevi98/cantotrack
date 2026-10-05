@@ -397,6 +397,7 @@ return [
     'Only the person who wrote a comment can change it.' => 'Egy hozzászólást csak az módosíthat, aki írta.',
     'Only these people, and the administrators, can see the project.' => 'A projektet csak ezek az emberek és az adminisztrátorok látják.',
     'Only your own days away, or anybody’s as an administrator.' => 'Csak a saját távolléteidet, vagy adminisztrátorként bárkiét.',
+    'A day away is vacation, sick or other.' => 'A távollét szabadság, betegség vagy egyéb lehet.',
     'Open' => 'Nyitott',
     'Open only' => 'Csak nyitottak',
     'Optional' => 'Nem kötelező',

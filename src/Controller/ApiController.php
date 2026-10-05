@@ -150,9 +150,75 @@ class ApiController extends ApiEndpoint
         ]);
     }
 
+    /**
+     * One ticket. Reading it is opening it, as on the web: it goes to the top
+     * of your recently opened, and what you were told about it counts as read.
+     */
     public function ticket(string $key): never
     {
-        $this->json(['data' => Presenter::ticket($this->ticketOr404($key), true)]);
+        $ticket = $this->ticketOr404($key);
+        (new \CantoTrack\Model\RecentRepository())->viewed((int) Auth::id(), 'ticket', (int) $ticket['id']);
+        (new \CantoTrack\Model\NotificationRepository())->markTicketRead((int) Auth::id(), (int) $ticket['id']);
+
+        $this->json(['data' => $this->fullTicket($ticket)]);
+    }
+
+    /**
+     * The tickets "Log time" offers before anything is typed, as on the web:
+     * your starred ones, the ones you logged time on lately, and the ones you
+     * have in progress — each once.
+     */
+    public function suggested(): never
+    {
+        $tickets = new TicketRepository();
+        $me = (int) Auth::id();
+        $found = [];
+
+        foreach ([$tickets->favouritesOf($me, 10), $tickets->recentlyLoggedBy($me, 10), $tickets->search(['assignee_id' => $me, 'status' => 'in_progress'], 10)] as $list) {
+            foreach ($list as $ticket) {
+                $found[(int) $ticket['id']] ??= $ticket;
+            }
+        }
+
+        $this->json(['data' => array_map(fn(array $t): array => Presenter::ticket($t), array_values(array_slice($found, 0, 20, true)))]);
+    }
+
+    /** Your starred tickets that are not finished, the latest starred first. */
+    public function starred(): never
+    {
+        $this->json(['data' => array_map(fn(array $t): array => Presenter::ticket($t), (new TicketRepository())->favouritesOf((int) Auth::id(), 50))]);
+    }
+
+    /** Stars a ticket: first when you log time, a row in your week's grid. */
+    public function star(string $key): never
+    {
+        $ticket = $this->ticketOr404($key);
+        (new TicketRepository())->star((int) $ticket['id'], (int) Auth::id());
+
+        $this->noContent();
+    }
+
+    public function unstar(string $key): never
+    {
+        $ticket = $this->ticketOr404($key);
+        (new TicketRepository())->unstar((int) $ticket['id'], (int) Auth::id());
+
+        $this->noContent();
+    }
+
+    /** The tickets you opened lately — on the web or in an app — the latest first. */
+    public function recent(): never
+    {
+        $tickets = new TicketRepository();
+        $found = [];
+
+        foreach ((new \CantoTrack\Model\RecentRepository())->latest((int) Auth::id(), 30) as $item) {
+            if ($item['kind'] === 'ticket' && count($found) < 15 && ($ticket = $tickets->find($item['id'])) !== null) {
+                $found[] = Presenter::ticket($ticket);
+            }
+        }
+
+        $this->json(['data' => $found]);
     }
 
     /**
@@ -171,7 +237,7 @@ class ApiController extends ApiEndpoint
         $ticket = (array) (new TicketRepository())->find($id);
 
         header('Location: ' . Presenter::url('/api/v1/tickets/' . $ticket['project_code'] . '-' . $ticket['number']));
-        $this->json(['data' => Presenter::ticket($ticket, true)], 201);
+        $this->json(['data' => $this->fullTicket($ticket)], 201);
     }
 
     /**
@@ -217,7 +283,7 @@ class ApiController extends ApiEndpoint
             }
         }
 
-        $this->json(['data' => Presenter::ticket((array) (new TicketRepository())->find((int) $ticket['id']), true)]);
+        $this->json(['data' => $this->fullTicket((array) (new TicketRepository())->find((int) $ticket['id']))]);
     }
 
     /**
@@ -498,6 +564,21 @@ class ApiController extends ApiEndpoint
     // -----------------------------------------------------------------------
     // What goes out
     // -----------------------------------------------------------------------
+
+    /**
+     * A ticket read on its own, with what only the one asking has: whether
+     * they starred it, and whether they follow it.
+     */
+    private function fullTicket(array $ticket): array
+    {
+        $id = (int) $ticket['id'];
+        $me = (int) Auth::id();
+
+        return Presenter::ticket($ticket, true) + [
+            'starred' => (new TicketRepository())->isFavourite($id, $me),
+            'watching' => (new \CantoTrack\Model\NotificationRepository())->isWatching($id, $me),
+        ];
+    }
 
     private function commentOr404(int $id): array
     {

@@ -292,7 +292,33 @@ A mistake in `query` is `422`, with the message saying where.
 
 ### GET /tickets/{key}
 
-One ticket, with its description, reporter and fields.
+One ticket, with its description, reporter and fields — and two things that
+are yours alone: `starred`, and `watching`, whether its changes reach you (you
+follow it, or it is yours and you have not muted it).
+
+Reading it is opening it, as on the web: it goes to the top of your recently
+opened tickets, and what you were told about it counts as read.
+
+### GET /tickets/suggested
+
+What "Log time" offers before anything is typed: your starred tickets, the
+ones you logged time on in the last three weeks, and the ones you have in
+progress — each once, at most twenty.
+
+### GET /starred
+
+Your starred tickets that are not finished, the latest starred first.
+
+### POST /tickets/{key}/star
+
+Stars a ticket: it comes first when you log time, and has a row in your week's
+grid. `DELETE` on the same address takes the star off. Both answer `204`, and
+neither minds being sent twice.
+
+### GET /recent
+
+The tickets you opened lately — on the web or in an app — the latest first, at
+most fifteen.
 
 ### POST /tickets
 
@@ -517,6 +543,56 @@ Changes an entry of yours — anybody's, as an administrator: `time`, `date`,
 ### DELETE /worklogs/{id}
 
 Removes an entry of yours. Answers `204`.
+
+### GET /week
+
+A week the way the timesheet reads it: each day's hours beside what the day
+asks for — the person's own working week, nothing on a holiday or a day away —
+and where the week stands with the one approving it.
+
+| Parameter | |
+|---|---|
+| `week` | any day of the week; this week when not given |
+| `user` | a person's id; yours when not given |
+
+```json
+{"data": {"monday": "2026-09-21", "sunday": "2026-09-27", "user": {"id": 3, "name": "Anna Kovács"},
+          "days": [{"date": "2026-09-21", "expected_minutes": 480, "logged_minutes": 465, "holiday": null, "absence": null}, {"…": "…"}],
+          "logged_minutes": 1920, "expected_minutes": 2400, "expected_to_date_minutes": 1920,
+          "state": {"state": "rejected", "submitted_at": "2026-09-26 16:02:11", "reviewed_at": "2026-09-28 09:12:40",
+                    "reviewer": {"id": 1, "name": "Szabó Levente"}, "comment": "Friday is missing."},
+          "can_submit": true, "locked_until": "2026-08-31",
+          "absences": [{"id": 9, "starts_on": "2026-09-25", "ends_on": "2026-09-25", "kind": "vacation", "note": null}]}}
+```
+
+`expected_to_date_minutes` stops at today: Thursday's hours are not missing on
+a Tuesday. `state` is `null` for a week not handed in, or `submitted`,
+`approved` or `rejected` — sent back, with the reason in `comment`.
+`can_submit` says whether it can be handed in now: your own, begun, and not
+handed in yet or sent back. `absence` is `vacation`, `sick` or `other`.
+
+### POST /week/submit
+
+Hands your week in, for an administrator to approve: `{"week": "2026-09-21"}`,
+any day of it. Its hours stop changing until it is approved or sent back, as on
+the web. One handed in already, or a week that has not begun, is `422`.
+Answers `200` with the week.
+
+### POST /absences
+
+Days away, which then ask for no hours:
+
+```json
+{"starts_on": "2026-10-12", "ends_on": "2026-10-16", "kind": "vacation", "note": "Lake Balaton"}
+```
+
+`ends_on` is the first day when not given, `kind` is `vacation` when not given.
+Your own — anybody's, as an administrator, with `user`. Answers `201` with the
+absence.
+
+### DELETE /absences/{id}
+
+Takes days away off the calendar. Answers `204`.
 
 ## The clock
 

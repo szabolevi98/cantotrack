@@ -188,8 +188,11 @@ class Calendar
         return $statement->fetchAll();
     }
 
-    /** @throws ValidationError */
-    public function addAbsence(int $userId, string $from, string $to, string $kind, string $note): void
+    /**
+     * @return int the absence's id
+     * @throws ValidationError
+     */
+    public function addAbsence(int $userId, string $from, string $to, string $kind, string $note): int
     {
         $start = \DateTimeImmutable::createFromFormat('!Y-m-d', $from);
         $end = \DateTimeImmutable::createFromFormat('!Y-m-d', $to ?: $from);
@@ -207,6 +210,8 @@ class Calendar
             'kind' => in_array($kind, ['vacation', 'sick', 'other'], true) ? $kind : 'vacation',
             'note' => mb_substr(trim($note), 0, 200) ?: null,
         ]);
+
+        return (int) $this->db->lastInsertId();
     }
 
     public function findAbsence(int $id): ?array

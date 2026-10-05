@@ -404,7 +404,10 @@ from it. In short:
 | `GET` | `/api/v1/projects/{code}` | one project, with its columns |
 | `GET` | `/api/v1/tickets` | a page of tickets: `?project=CT&status=in_progress&assignee=me&label=…&q=…&type=bug&open=1&sprint=12&epic=4&parent=CT-12&due=overdue&page=2` — or the whole query language in `?query=` |
 | `POST` | `/api/v1/tickets` | a new ticket |
-| `GET` | `/api/v1/tickets/{key}` | one ticket, by its key |
+| `GET` | `/api/v1/tickets/{key}` | one ticket, by its key — with `starred` and `watching`; reading it is opening it |
+| `GET` | `/api/v1/tickets/suggested` | what "Log time" offers: starred, logged on lately, in progress |
+| `POST`, `DELETE` | `/api/v1/tickets/{key}/star` | star it, or take the star off |
+| `GET` | `/api/v1/starred`, `/api/v1/recent` | your starred tickets; the ones you opened lately |
 | `PATCH` | `/api/v1/tickets/{key}` | change the fields sent, and no others — its column, its sprint too |
 | `DELETE` | `/api/v1/tickets/{key}` | delete one without hours (administrators) |
 | `POST`, `DELETE` | `/api/v1/tickets/{key}/watch` | follow it, or stop |
@@ -420,6 +423,10 @@ from it. In short:
 | `GET` | `/api/v1/worklogs` | hours in a range: `?from=2026-09-01&to=2026-09-30&user=3` (your own by default) |
 | `PATCH` | `/api/v1/worklogs/{id}` | change an entry of yours: `time`, `date`, `note`, `start`, `billable`, `work_type` — only the fields sent |
 | `DELETE` | `/api/v1/worklogs/{id}` | remove an entry of yours |
+| `GET` | `/api/v1/week` | a week's hours against what each day asks for, and where it stands: `?week=2026-09-22&user=3` |
+| `POST` | `/api/v1/week/submit` | `{"week": "2026-09-21"}` — hand your week in for approval |
+| `POST` | `/api/v1/absences` | `{"starts_on": "2026-10-12", "ends_on": "2026-10-16", "kind": "vacation"}` — days away |
+| `DELETE` | `/api/v1/absences/{id}` | take days away off the calendar |
 | `GET` | `/api/v1/timer` | your running clock — the same one the web shows — or `null` |
 | `POST` | `/api/v1/tickets/{key}/timer` | start it on a ticket; one running elsewhere is logged first |
 | `POST` | `/api/v1/timer/stop` | `{"note": "…"}` — stop it and log the time (under a minute logs nothing) |
